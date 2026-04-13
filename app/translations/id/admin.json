@@ -1,0 +1,25 @@
+{
+  "title": "Dashboard Admin",
+  "welcome": "Selamat datang di Panel Admin",
+  "navigation": {
+    "dashboard": "Dashboard",
+    "users": "Pengguna",
+    "content": "Konten",
+    "analytics": "Analitik",
+    "settings": "Pengaturan",
+    "profile": "Profil",
+    "logout": "Keluar"
+  },
+  "stats": {
+    "total_users": "Total Pengguna",
+    "active_users": "Pengguna Aktif",
+    "total_orders": "Total Pesanan",
+    "revenue": "Pendapatan"
+  },
+  "actions": {
+    "view_all": "Lihat Semua",
+    "add_new": "Tambah Baru",
+    "export": "Ekspor",
+    "import": "Impor"
+  }
+}
