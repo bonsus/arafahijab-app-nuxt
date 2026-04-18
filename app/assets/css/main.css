@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
+
+@layer utilities {
+  /* Override font sizes - reduced by ~10-15% */
+  .text-xs {
+    font-size: 0.6875rem !important; /* 11px, default: 12px */
+    line-height: 1rem !important;
+  }
+  
+  .text-sm {
+    font-size: 0.8125rem !important; /* 13px, default: 14px */
+    line-height: 1.25rem !important;
+  }
+  
+  .text-base {
+    font-size: 0.875rem !important; /* 14px, default: 16px */
+    line-height: 1.375rem !important;
+  }
+  
+  .text-lg {
+    font-size: 1rem !important; /* 16px, default: 18px */
+    line-height: 1.5rem !important;
+  }
+  
+  .text-xl {
+    font-size: 1.125rem !important; /* 18px, default: 20px */
+    line-height: 1.625rem !important;
+  }
+  
+  .text-2xl {
+    font-size: 1.25rem !important; /* 20px, default: 24px */
+    line-height: 1.75rem !important;
+  }
+  
+  .text-3xl {
+    font-size: 1.625rem !important; /* 26px, default: 30px */
+    line-height: 2rem !important;
+  }
+  
+  .text-4xl {
+    font-size: 1.875rem !important; /* 30px, default: 36px */
+    line-height: 2.25rem !important;
+  }
+  
+  .text-5xl {
+    font-size: 2.5rem !important; /* 40px, default: 48px */
+    line-height: 1 !important;
+  }
+}

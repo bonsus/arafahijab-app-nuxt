@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import 'vue-sonner/style.css';
+const { setRef } = useConfirm()
 </script>
 
 <template>
-  <div>
+  <NuxtLayout>
     <NuxtPage />
-    <Toaster position="top-center" class="pointer-events-auto"/>
-  </div>
+  </NuxtLayout>
+  <AppToast />
+  <AppConfirm :ref="(el: any) => setRef(el)" />
 </template>
-<style>
-.toaster li{
-  background: #ffffff !important;
-}
-</style>

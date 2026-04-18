@@ -1,73 +1,42 @@
-// stores/auth.ts
-export const useAuthAdminStore = defineStore('authAdmin', () => {
-  const user = ref<any>(null)
+import { defineStore } from 'pinia'
+import type { User, LoginPayload, LoginResponse, ApiResponse } from '~/types'
 
-  const login = async (email: string, password: string) => {
-    try {
-      const res = await $fetch('/api/admin/login', {
-        method: 'POST',
-        body: { email, password },
-      })
-      user.value = res // res = user data
-    } catch (err: any) {
-      user.value = null
-      const errorMessage = err?.data?.error || '';
-      const errorDetails = err?.data?.errors || {};
-      throw new Error(JSON.stringify({ error: errorMessage, errors: errorDetails }));
-    }
+export const useAuthStore = defineStore('auth', () => {
+  const token = useCookie('auth_token', {
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: '/',
+    sameSite: 'lax',
+    secure: import.meta.env.PROD,
+  })
+  const user = ref<User | null>(null)
+
+  const isAuthenticated = computed(() => !!token.value)
+
+  async function login(payload: LoginPayload) {
+    const api = useApi()
+    const response = await api.post<ApiResponse<LoginResponse>>('/user/auth/login', payload)
+    token.value = response.data.token
+    user.value = response.data.user
   }
 
-  const fetchUser = async () => {
-    try {
-      const res = await $fetch('/api/admin/me')
-      console.log('Fetched user:', res)
-      user.value = res
-    } catch {
-      user.value = null
-    }
+  async function fetchMe() {
+    const api = useApi()
+    const response = await api.get<ApiResponse<LoginResponse>>('/user/auth/me')
+    user.value = response.data.user
   }
 
-  const logout = async () => {
-    await $fetch('/api/admin/logout', { method: 'POST' })
+  function logout() {
+    token.value = null
     user.value = null
+    navigateTo('/login')
   }
 
-  return { user, login, fetchUser, logout }
-})
-export const useAuthUserStore = defineStore('authUser', () => {
-  const user = ref<any>(null)
-
-  const login = async (email: string, password: string) => {
-    try {
-      const res = await $fetch('/api/user/login', {
-        method: 'POST',
-        body: { email, password },
-      })
-      user.value = res // res = user data
-    } catch (err: any) {
-      user.value = null
-      const errorMessage = err?.data?.error || '';
-      const errorDetails = err?.data?.errors || {};
-      throw new Error(JSON.stringify({ error: errorMessage, errors: errorDetails }));
-    }
+  return {
+    token,
+    user,
+    isAuthenticated,
+    login,
+    fetchMe,
+    logout,
   }
-
-  const fetchUser = async () => {
-    try {
-      const res = await $fetch('/api/user/auth/me',{
-        method: 'GET',
-      })
-      console.log('Fetched user:', res)
-      user.value = res
-    } catch {
-      user.value = null
-    }
-  }
-
-  const logout = async () => {
-    await $fetch('/api/user/auth/logout', { method: 'POST' })
-    user.value = null
-  }
-
-  return { user, login, fetchUser, logout }
 })
