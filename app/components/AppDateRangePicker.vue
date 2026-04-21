@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Calendar, X as XIcon } from 'lucide-vue-next'
 
 const props = defineProps<{
   modelValue: { from: string; to: string }
@@ -11,6 +11,9 @@ const emit = defineEmits<{
 
 const open = ref(false)
 const pickerRef = ref<HTMLElement>()
+const triggerRef = ref<HTMLElement>()
+const desktopDropdownRef = ref<HTMLElement>()
+const dropdownPos = ref({ top: '0px', left: '0px' })
 
 // Internal selection state
 const selecting = ref<{ from: string; to: string }>({ from: '', to: '' })
@@ -263,11 +266,25 @@ function openPicker() {
   viewYear.value = d.getFullYear()
   viewMonth.value = d.getMonth()
   open.value = true
+  // Position desktop dropdown
+  nextTick(() => {
+    if (triggerRef.value) {
+      const rect = triggerRef.value.getBoundingClientRect()
+      dropdownPos.value = {
+        top: `${rect.bottom + 8}px`,
+        left: `${Math.max(8, rect.right - 680)}px`,
+      }
+    }
+  })
 }
 
 // Click outside
 function onClickOutside(e: MouseEvent) {
-  if (pickerRef.value && !pickerRef.value.contains(e.target as Node)) {
+  const target = e.target as Node
+  if (
+    pickerRef.value && !pickerRef.value.contains(target)
+    && (!desktopDropdownRef.value || !desktopDropdownRef.value.contains(target))
+  ) {
     open.value = false
   }
 }
@@ -279,8 +296,9 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   <div ref="pickerRef" class="relative">
     <!-- Trigger -->
     <button
+      ref="triggerRef"
       type="button"
-      class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs transition-colors hover:bg-gray-50"
+      class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs whitespace-nowrap transition-colors hover:bg-gray-50"
       :class="displayLabel ? 'text-gray-900' : 'text-gray-400'"
       @click="openPicker"
     >
@@ -288,18 +306,135 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
       <span>{{ displayLabel || 'Pilih tanggal' }}</span>
     </button>
 
-    <!-- Dropdown -->
-    <Transition
-      enter-active-class="transition duration-150 ease-out"
-      enter-from-class="scale-95 opacity-0"
-      enter-to-class="scale-100 opacity-100"
-      leave-active-class="transition duration-100 ease-in"
-      leave-from-class="scale-100 opacity-100"
-      leave-to-class="scale-95 opacity-0"
-    >
-      <div
-        v-if="open"
-        class="absolute left-0 top-full z-50 mt-2 flex origin-top-left rounded-xl bg-white shadow-xl ring-1 ring-gray-200"
+    <!-- Mobile: fullscreen modal -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="open" class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 lg:hidden" @mousedown.self="open = false">
+          <div class="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-white pb-safe" @mousedown.stop>
+            <!-- Header -->
+            <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
+              <span class="text-sm font-semibold text-gray-900">Pilih Tanggal</span>
+              <button type="button" class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" @click="open = false">
+                <XIcon class="h-5 w-5" />
+              </button>
+            </div>
+
+            <!-- Presets -->
+            <div class="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-3">
+              <button
+                v-for="preset in presets"
+                :key="preset.label"
+                type="button"
+                class="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50"
+                @click="applyPreset(preset)"
+              >
+                {{ preset.label }}
+              </button>
+              <button
+                type="button"
+                class="rounded-full border border-red-200 px-3 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50"
+                @click="clearFilter"
+              >
+                Hapus filter
+              </button>
+            </div>
+
+            <!-- Calendar (single month on mobile) -->
+            <div class="px-4 py-3">
+              <div class="mb-2 flex items-center justify-between">
+                <button type="button" class="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" @click="prevMonth">
+                  <ChevronLeft class="h-5 w-5" />
+                </button>
+                <div class="flex items-center gap-1">
+                  <button type="button" class="rounded px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100" @click="openMonthPicker('left')">{{ monthNames[leftMonth.month] }}</button>
+                  <button type="button" class="rounded px-2 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-100" @click="openYearPicker('left')">{{ leftMonth.year }}</button>
+                </div>
+                <button type="button" class="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" @click="nextMonth">
+                  <ChevronRight class="h-5 w-5" />
+                </button>
+              </div>
+
+              <!-- Month picker -->
+              <div v-if="monthPickerSide === 'left'" class="grid grid-cols-3 gap-2 pb-2">
+                <button
+                  v-for="(mn, mi) in monthNames"
+                  :key="mi"
+                  type="button"
+                  class="rounded-lg py-3 text-sm font-medium transition-colors"
+                  :class="mi === viewMonth ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'"
+                  @click="selectMonth(mi)"
+                >{{ mn }}</button>
+              </div>
+
+              <!-- Year picker -->
+              <div v-else-if="yearPickerSide === 'left'" class="pb-2">
+                <div class="mb-2 flex items-center justify-between">
+                  <button type="button" class="rounded p-1 text-gray-400 hover:bg-gray-100" @click="yearGridStart -= 12"><ChevronLeft class="h-4 w-4" /></button>
+                  <span class="text-xs font-medium text-gray-500">{{ yearGridStart }} – {{ yearGridStart + 11 }}</span>
+                  <button type="button" class="rounded p-1 text-gray-400 hover:bg-gray-100" @click="yearGridStart += 12"><ChevronRight class="h-4 w-4" /></button>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    v-for="yi in 12"
+                    :key="yi"
+                    type="button"
+                    class="rounded-lg py-3 text-sm font-medium transition-colors"
+                    :class="yearGridStart + yi - 1 === viewYear ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'"
+                    @click="selectYear(yearGridStart + yi - 1)"
+                  >{{ yearGridStart + yi - 1 }}</button>
+                </div>
+              </div>
+
+              <!-- Day grid -->
+              <div v-else class="grid grid-cols-7 text-center">
+                <span v-for="dh in dayHeaders" :key="dh" class="py-2 text-xs font-medium text-gray-400">{{ dh }}</span>
+                <button
+                  v-for="d in leftDays"
+                  :key="d.date"
+                  type="button"
+                  class="relative h-10 text-sm transition-colors"
+                  :class="[
+                    !d.current && 'text-gray-300',
+                    d.current && !isInRange(d.date) && 'text-gray-700 hover:bg-gray-100',
+                    isInRange(d.date) && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'bg-blue-50 text-blue-700',
+                    isRangeStart(d.date) && 'bg-blue-600 text-white rounded-l-md',
+                    isRangeEnd(d.date) && 'bg-blue-600 text-white rounded-r-md',
+                    d.date === todayStr() && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'font-bold',
+                  ]"
+                  @click="d.current && onDayClick(d.date)"
+                  @mouseenter="d.current && onDayHover(d.date)"
+                >
+                  {{ d.day }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Desktop: teleported dropdown -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="scale-95 opacity-0"
+        enter-to-class="scale-100 opacity-100"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="scale-100 opacity-100"
+        leave-to-class="scale-95 opacity-0"
+      >
+        <div
+          v-if="open"
+          ref="desktopDropdownRef"
+          class="fixed z-50 hidden origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-gray-200 lg:flex"
+          :style="{ top: dropdownPos.top, left: dropdownPos.left }"
       >
         <!-- Presets -->
         <div class="w-36 shrink-0 border-r border-gray-100 py-2">
@@ -464,5 +599,6 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
         </div>
       </div>
     </Transition>
+    </Teleport>
   </div>
 </template>

@@ -23,6 +23,7 @@ import {
   Warehouse,
   FileBarChart,
   Settings,
+  Wallet,
   ChevronDown,
   ChevronsUpDown,
   LogOut,
@@ -71,6 +72,7 @@ const iconMap: Record<string, Component> = {
   'warehouse': Warehouse,
   'file-bar-chart': FileBarChart,
   'settings': Settings,
+  'wallet': Wallet,
 }
 
 function getIcon(name: string): Component {

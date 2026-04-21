@@ -20,8 +20,18 @@ export function useSidebarMenu(): MenuItem[] {
       label: 'Pembelian',
       icon: 'package-check',
       children: [
-        { label: 'Purchase Order', to: '/pembelian/purchase-order' },
-        { label: 'Penerimaan', to: '/pembelian/penerimaan' },
+        { label: 'Purchase Order', to: '/purchase/order' }, 
+        { label: 'Penerimaan Barang', to: '/purchase/receipt' },
+        { label: 'Pembayaran', to: '/purchase/payment' },
+        { label: 'Retur Pembelian', to: '/purchase/return' },
+      ],
+    },
+    {
+      label: 'WMS',
+      icon: 'warehouse',
+      children: [ 
+        { label: 'Lokasi', to: '/wms/locations' },
+        { label: 'Layout', to: '/wms/layout' },
       ],
     },
     {
@@ -75,17 +85,17 @@ export function useSidebarMenu(): MenuItem[] {
       ],
     },
     {
+      label: 'Dompet',
+      icon: 'wallet',
+      children: [
+        { label: 'Saldo Dompet', to: '/wallet' },
+        { label: 'History Transaksi', to: '/wallet/history' },
+      ],
+    },
+    {
       label: 'Media',
       icon: 'image',
       to: '/media',
-    },
-    {
-      label: 'WMS',
-      icon: 'warehouse',
-      children: [ 
-        { label: 'Lokasi', to: '/wms/locations' },
-        { label: 'Layout', to: '/wms/layout' },
-      ],
     },
     {
       label: 'Pengaturan',
