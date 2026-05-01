@@ -8,10 +8,12 @@ interface Warehouse {
 
 defineProps<{
   modelValue: string
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'select': [warehouse: Warehouse]
 }>()
 
 const api = useApi()
@@ -41,8 +43,14 @@ onMounted(() => fetchWarehouses())
   <div class="relative">
     <select
       :value="modelValue"
+      :disabled="disabled"
       class="input-base appearance-none pr-8"
-      @change="emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
+      @change="(e) => {
+        const value = (e.target as HTMLSelectElement).value
+        emit('update:modelValue', value)
+        const wh = options.find(w => w.id === value)
+        if (wh) emit('select', wh)
+      }"
     >
       <option value="" disabled>Pilih Gudang</option>
       <option v-for="wh in options" :key="wh.id" :value="wh.id">

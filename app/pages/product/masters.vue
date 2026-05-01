@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Plus, Search, Pencil, Trash2, Package, Eye,
-  ChevronLeft, ChevronRight, ChevronDown, Image as ImageIcon,
+  Image as ImageIcon,
   ToggleLeft, ToggleRight, Loader2, EllipsisVertical, Filter,
   X,
 } from 'lucide-vue-next'
@@ -36,6 +36,7 @@ interface Product {
   type: string
   status: string
   sku_count: number
+  stock_available: number
   price_min: number
   price_max: number
   category: CategoryRef | null
@@ -51,6 +52,7 @@ interface SkuItem {
   is_preorder: boolean
   buffer_stock: number
   rewards_point: string
+  stock_available: number
   status: string
   prices: {
     id: string
@@ -236,9 +238,14 @@ function onCategoryFilter() {
   fetchProducts()
 }
 
-function goPage(p: number) {
-  if (p < 1 || p > totalPage.value) return
+function onPageChange(p: number) {
   page.value = p
+  fetchProducts()
+}
+
+function onPerPageChange(pp: number) {
+  perPage.value = pp
+  page.value = 1
   fetchProducts()
 }
 
@@ -501,7 +508,7 @@ onUnmounted(() => {
 
       <!-- Table header -->
       <div class="hidden border-b border-gray-200 bg-gray-50/80 md:block">
-        <div class="grid grid-cols-[40px_1fr_120px_140px_110px_100px] items-center gap-2 px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-gray-500">
+        <div class="grid grid-cols-[40px_1fr_100px_100px_140px_110px_100px] items-center gap-2 px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-gray-500">
           <label class="flex cursor-pointer items-center justify-center">
             <input
               type="checkbox"
@@ -513,6 +520,7 @@ onUnmounted(() => {
           </label>
           <span>Produk</span>
           <span>SKU</span>
+          <span>Stok</span>
           <span>Harga Jual</span>
           <span>Status</span>
           <span class="text-right">Tindakan</span>
@@ -558,7 +566,7 @@ onUnmounted(() => {
           class="border-b border-gray-100 last:border-b-0"
         >
           <!-- Product row — desktop table / mobile stack -->
-          <div class="grid grid-cols-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50/50 md:grid-cols-[40px_1fr_120px_140px_110px_100px] md:gap-2">
+          <div class="grid grid-cols-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50/50 md:grid-cols-[40px_1fr_100px_100px_140px_110px_100px] md:gap-2">
             <!-- Checkbox cell -->
             <label class="hidden cursor-pointer items-center justify-center md:flex">
               <input
@@ -615,6 +623,16 @@ onUnmounted(() => {
             <!-- SKU count cell -->
             <div class="hidden md:block cursor-pointer" @click="toggleSkus(product)">
               <span class="text-sm text-gray-700">{{ product.sku_count }}</span>
+            </div>
+
+            <!-- Stok cell -->
+            <div @click="toggleSkus(product)" class="hidden md:block">
+              <span
+                class="text-sm font-medium"
+                :class="product.stock_available > 0 ? 'text-gray-900' : 'text-red-500'"
+              >
+                {{ product.stock_available.toLocaleString('id-ID') }}
+              </span>
             </div>
 
             <!-- Harga cell -->
@@ -767,6 +785,7 @@ onUnmounted(() => {
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Berat</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Buffer</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Reward</th>
+                    <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Stok</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Harga</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Status</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500" />
@@ -790,6 +809,14 @@ onUnmounted(() => {
                     <td class="whitespace-nowrap px-4 py-2.5 text-gray-600">{{ sku.weight ? `${sku.weight}g` : '-' }}</td>
                     <td class="whitespace-nowrap px-4 py-2.5 text-gray-600">{{ sku.buffer_stock || '-' }}</td>
                     <td class="whitespace-nowrap px-4 py-2.5 text-gray-600">{{ sku.rewards_point || '-' }}</td>
+                    <td class="whitespace-nowrap px-4 py-2.5">
+                      <span
+                        class="text-xs font-medium"
+                        :class="sku.stock_available > 0 ? 'text-gray-900' : 'text-red-500'"
+                      >
+                        {{ sku.stock_available.toLocaleString('id-ID') }}
+                      </span>
+                    </td>
                     <td class="px-4 py-2.5">
                       <div v-if="sku.prices?.length">
                         <button
@@ -845,39 +872,15 @@ onUnmounted(() => {
       </div>
 
       <!-- Pagination (inside card) -->
-      <div
-        v-if="!loading && totalPage > 1"
-        class="flex flex-col items-center gap-3 border-t border-gray-200 bg-gray-50/50 px-4 py-3 sm:flex-row sm:justify-between"
-      >
-        <p class="text-xs text-gray-500">
-          Halaman {{ page }} dari {{ totalPage }} &middot; {{ total }} produk
-        </p>
-        <div class="flex items-center gap-1">
-          <button
-            :disabled="page <= 1"
-            class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white hover:text-gray-600 disabled:opacity-40"
-            @click="goPage(page - 1)"
-          >
-            <ChevronLeft class="h-4 w-4" />
-          </button>
-          <button
-            v-for="p in visiblePages"
-            :key="p"
-            class="min-w-[32px] rounded-lg px-2.5 py-1 text-sm font-medium transition-colors"
-            :class="p === page ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-600 hover:bg-white'"
-            @click="goPage(p)"
-          >
-            {{ p }}
-          </button>
-          <button
-            :disabled="page >= totalPage"
-            class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white hover:text-gray-600 disabled:opacity-40"
-            @click="goPage(page + 1)"
-          >
-            <ChevronRight class="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <AppPagination
+        :page="page"
+        :total-page="totalPage"
+        :total="total"
+        :per-page="perPage"
+        :loading="loading"
+        @update:page="onPageChange"
+        @update:per-page="onPerPageChange"
+      />
     </div>
   </div>
 </template>

@@ -27,14 +27,6 @@ export function useSidebarMenu(): MenuItem[] {
       ],
     },
     {
-      label: 'WMS',
-      icon: 'warehouse',
-      children: [ 
-        { label: 'Lokasi', to: '/wms/locations' },
-        { label: 'Layout', to: '/wms/layout' },
-      ],
-    },
-    {
       label: 'Produk',
       icon: 'box',
       children: [
@@ -42,6 +34,15 @@ export function useSidebarMenu(): MenuItem[] {
         { label: 'Kategori Produk', to: '/product/categories' },
         { label: 'Produk Binding', to: '/product/binding' },
         { label: 'Produk Integrations', to: '/product/integrations' },
+      ],
+    },
+    {
+      label: 'WMS',
+      icon: 'warehouse',
+      children: [ 
+        { label: 'Inbound', to: '/wms/inbound' },
+        { label: 'Lokasi', to: '/wms/locations' },
+        { label: 'Layout', to: '/wms/layout' },
       ],
     },
     {
@@ -67,11 +68,11 @@ export function useSidebarMenu(): MenuItem[] {
       icon: 'package-search',
       children: [
         { label: 'Stock', to: '/inventory/stock' },
-        { label: 'Riwayat Stock Movement', to: '/inventory/movement' },
-        { label: 'Konversi Stock', to: '/inventory/konversi' },
-        { label: 'Pindah Gudang Stock', to: '/inventory/pindah-gudang' },
-        { label: 'Penyesuaian Stock', to: '/inventory/penyesuaian' },
+        { label: 'Stock Movement', to: '/inventory/movement' },
         { label: 'Stock Opname', to: '/inventory/opname' },
+        { label: 'Penyesuaian Stock', to: '/inventory/adjustment' },
+        { label: 'Konversi Stock', to: '/inventory/conversion' },
+        { label: 'Transfer Stock', to: '/inventory/transfer' },
       ],
     },
     {

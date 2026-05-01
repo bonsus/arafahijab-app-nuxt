@@ -141,30 +141,6 @@ const visibleLogs = computed(() => {
   return all.slice(0, 3)
 })
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat('id-ID').format(val)
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr || dateStr.startsWith('0001')) return '-'
-  return new Date(dateStr).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
-function formatDateTime(dateStr: string): string {
-  if (!dateStr || dateStr.startsWith('0001')) return '-'
-  return new Date(dateStr).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 function formatLogAction(action: string): string {
   const map: Record<string, string> = {
     purchase_return_created: 'Return Dibuat',

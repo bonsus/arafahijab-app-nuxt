@@ -272,10 +272,6 @@ async function handleSubmit() {
   }
 }
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat('id-ID').format(val)
-}
-
 function getFieldError(key: string): string | undefined {
   return formErrors.value[key]?.[0]
 }

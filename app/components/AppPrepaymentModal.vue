@@ -10,9 +10,9 @@ interface POOption {
   id: string
   no: string
   total: number
+  payment_total: number
   payment_status: string
-  customer: { id: string; name: string } | null
-  prepayments: { id: string; amount: string }[] | null
+  customer: { id: string; name: string } | null 
 }
 
 const props = defineProps<{
@@ -45,14 +45,9 @@ const form = reactive({
   note: '',
 })
 
-const totalPaid = computed(() => {
-  if (!selectedPO.value?.prepayments?.length) return 0
-  return selectedPO.value.prepayments.reduce((sum, p) => sum + Number(p.amount), 0)
-})
-
 const remainingPayment = computed(() => {
   if (!selectedPO.value) return 0
-  return Number(selectedPO.value.total) - totalPaid.value
+  return Number(selectedPO.value.total) - Number(selectedPO.value.payment_total)
 })
 
 function formatCurrency(val: number): string {
@@ -271,7 +266,7 @@ watch(() => props.modelValue, (val) => {
                 </div>
                 <div class="rounded-lg bg-emerald-50 p-3 text-center ring-1 ring-emerald-100">
                   <p class="text-xs text-emerald-500">Dibayar</p>
-                  <p class="mt-1 text-sm font-bold text-emerald-700">Rp{{ formatCurrency(totalPaid) }}</p>
+                  <p class="mt-1 text-sm font-bold text-emerald-700">Rp{{ formatCurrency(Number(selectedPO.payment_total)) }}</p>
                 </div>
                 <div class="rounded-lg p-3 text-center ring-1" :class="remainingPayment <= 0 ? 'bg-green-50 ring-green-100' : 'bg-red-50 ring-red-100'">
                   <p class="text-xs" :class="remainingPayment <= 0 ? 'text-green-500' : 'text-red-500'">Sisa</p>

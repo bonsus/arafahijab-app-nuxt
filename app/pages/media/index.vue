@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Upload, Search, Trash2, Pencil, X, Loader2, Image as ImageIcon,
-  ChevronLeft, ChevronRight, Eye, Copy, Check,
+  Eye, Copy, Check,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -96,19 +96,16 @@ function onSearch() {
   }, 300)
 }
 
-function goPage(p: number) {
-  if (p < 1 || p > totalPage.value) return
+function onPageChange(p: number) {
   page.value = p
   fetchMedias()
 }
 
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const start = Math.max(1, page.value - 2)
-  const end = Math.min(totalPage.value, page.value + 2)
-  for (let i = start; i <= end; i++) pages.push(i)
-  return pages
-})
+function onPerPageChange(pp: number) {
+  perPage.value = pp
+  page.value = 1
+  fetchMedias()
+}
 
 // --- Upload ---
 function triggerUpload() {
@@ -380,36 +377,17 @@ onMounted(() => fetchMedias())
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPage > 1" class="flex items-center justify-between rounded-xl bg-white px-5 py-3 shadow-sm ring-1 ring-gray-200">
-      <p class="text-sm text-gray-500">
-        Halaman <span class="font-medium text-gray-700">{{ page }}</span> dari <span class="font-medium text-gray-700">{{ totalPage }}</span>
-      </p>
-      <div class="flex items-center gap-1">
-        <button
-          :disabled="page <= 1"
-          class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-40"
-          @click="goPage(page - 1)"
-        >
-          <ChevronLeft class="h-4 w-4" />
-        </button>
-        <button
-          v-for="p in visiblePages"
-          :key="p"
-          class="min-w-[36px] rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="p === page ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
-          @click="goPage(p)"
-        >
-          {{ p }}
-        </button>
-        <button
-          :disabled="page >= totalPage"
-          class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-40"
-          @click="goPage(page + 1)"
-        >
-          <ChevronRight class="h-4 w-4" />
-        </button>
-      </div>
-    </div>
+    <AppPagination
+      v-if="totalPage > 1"
+      :page="page"
+      :total-page="totalPage"
+      :total="total"
+      :per-page="perPage"
+      :loading="loading"
+      :show-per-page="false"
+      @update:page="onPageChange"
+      @update:per-page="onPerPageChange"
+    />
 
     <!-- Detail / Edit Modal -->
     <Teleport to="body">

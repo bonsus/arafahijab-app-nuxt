@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Plus, Search, Eye, Pencil, Trash2, Users, EllipsisVertical,
-  ChevronLeft, ChevronRight, ToggleLeft, ToggleRight,
+  ToggleLeft, ToggleRight,
   KeyRound, Tag, Loader2,
 } from 'lucide-vue-next'
 
@@ -215,9 +215,14 @@ function onDateFilter(val: { from: string; to: string }) {
   page.value = 1; fetchCustomers()
 }
 
-function goPage(p: number) {
-  if (p < 1 || p > totalPage.value) return
+function onPageChange(p: number) {
   page.value = p
+  fetchCustomers()
+}
+
+function onPerPageChange(pp: number) {
+  perPage.value = pp
+  page.value = 1
   fetchCustomers()
 }
 
@@ -521,14 +526,17 @@ onUnmounted(() => { document.removeEventListener('click', closeMenu) })
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPage > 1" class="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-      <p class="text-sm text-gray-500">Halaman {{ page }} dari {{ totalPage }} ({{ total }} pelanggan)</p>
-      <div class="flex items-center gap-1">
-        <button :disabled="page <= 1" class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-40" @click="goPage(page - 1)"><ChevronLeft class="h-4 w-4" /></button>
-        <button v-for="p in visiblePages" :key="p" class="min-w-[36px] rounded-lg px-3 py-1.5 text-sm font-medium transition-colors" :class="p === page ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'" @click="goPage(p)">{{ p }}</button>
-        <button :disabled="page >= totalPage" class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-40" @click="goPage(page + 1)"><ChevronRight class="h-4 w-4" /></button>
-      </div>
-    </div>
+    <AppPagination
+      v-if="totalPage > 1"
+      :page="page"
+      :total-page="totalPage"
+      :total="total"
+      :per-page="perPage"
+      :loading="loading"
+      :show-per-page="false"
+      @update:page="onPageChange"
+      @update:per-page="onPerPageChange"
+    />
 
     <!-- Password Modal -->
     <Teleport to="body">

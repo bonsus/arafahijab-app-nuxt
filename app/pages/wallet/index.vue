@@ -54,10 +54,6 @@ function getTypeLabel(type: string): string {
   return walletTypes.find(t => t.value === type)?.label || type
 }
 
-function formatCurrency(value: number | string): string {
-  return new Intl.NumberFormat('id-ID').format(Number(value) || 0)
-}
-
 async function fetchWallets() {
   loading.value = true
   try {

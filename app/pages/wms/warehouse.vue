@@ -69,9 +69,14 @@ function onSearch() {
   }, 300)
 }
 
-function goPage(p: number) {
-  if (p < 1 || p > totalPage.value) return
+function onPageChange(p: number) {
   page.value = p
+  fetchWarehouses()
+}
+
+function onPerPageChange(pp: number) {
+  perPage.value = pp
+  page.value = 1
   fetchWarehouses()
 }
 
@@ -308,37 +313,16 @@ onMounted(() => fetchWarehouses())
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPage > 1" class="flex items-center justify-between pt-2">
-      <span class="text-sm text-gray-500">{{ total }} gudang</span>
-      <div class="flex items-center gap-1">
-        <button
-          type="button"
-          :disabled="page <= 1"
-          class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-40"
-          @click="goPage(page - 1)"
-        >
-          ‹
-        </button>
-        <template v-for="p in totalPage" :key="p">
-          <button
-            type="button"
-            class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-            :class="p === page ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
-            @click="goPage(p)"
-          >
-            {{ p }}
-          </button>
-        </template>
-        <button
-          type="button"
-          :disabled="page >= totalPage"
-          class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-40"
-          @click="goPage(page + 1)"
-        >
-          ›
-        </button>
-      </div>
-    </div>
+    <AppPagination
+      :page="page"
+      :total-page="totalPage"
+      :total="total"
+      :per-page="perPage"
+      :loading="loading"
+      :show-per-page="false"
+      @update:page="onPageChange"
+      @update:per-page="onPerPageChange"
+    />
 
     <!-- Modal -->
     <Teleport to="body">

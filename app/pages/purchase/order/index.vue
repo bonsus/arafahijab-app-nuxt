@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  Plus, Search, Eye, Trash2, ChevronLeft, ChevronRight,
+  Plus, Search, Eye, Trash2,
   Package, Loader2, Check, X, Pencil, Wallet, Calendar, RefreshCw,
 } from 'lucide-vue-next'
 
@@ -171,31 +171,15 @@ async function fetchSuppliers(search?: string) {
   }
 }
 
-function goPage(p: number) {
-  if (p < 1 || p > totalPage.value) return
+function onPageChange(p: number) {
   page.value = p
   fetchOrders()
 }
 
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const start = Math.max(1, page.value - 2)
-  const end = Math.min(totalPage.value, page.value + 2)
-  for (let i = start; i <= end; i++) pages.push(i)
-  return pages
-})
-
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat('id-ID').format(val)
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr || dateStr.startsWith('0001')) return '-'
-  return new Date(dateStr).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+function onPerPageChange(pp: number) {
+  perPage.value = pp
+  page.value = 1
+  fetchOrders()
 }
 
 async function handleDelete(po: PurchaseOrder) {
@@ -570,39 +554,15 @@ onMounted(() => {
       </div>
 
       <!-- Pagination -->
-      <div
-        v-if="!loading && totalPage > 1"
-        class="flex flex-col items-center gap-3 border-t border-gray-200 bg-gray-50/50 px-4 py-3 sm:flex-row sm:justify-between"
-      >
-        <p class="text-xs text-gray-500">
-          Halaman {{ page }} dari {{ totalPage }} &middot; {{ total }} data
-        </p>
-        <div class="flex items-center gap-1">
-          <button
-            :disabled="page <= 1"
-            class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white hover:text-gray-600 disabled:opacity-40"
-            @click="goPage(page - 1)"
-          >
-            <ChevronLeft class="h-4 w-4" />
-          </button>
-          <button
-            v-for="p in visiblePages"
-            :key="p"
-            class="min-w-[32px] rounded-lg px-2.5 py-1 text-sm font-medium transition-colors"
-            :class="p === page ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-600 hover:bg-white'"
-            @click="goPage(p)"
-          >
-            {{ p }}
-          </button>
-          <button
-            :disabled="page >= totalPage"
-            class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white hover:text-gray-600 disabled:opacity-40"
-            @click="goPage(page + 1)"
-          >
-            <ChevronRight class="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <AppPagination
+        :page="page"
+        :total-page="totalPage"
+        :total="total"
+        :per-page="perPage"
+        :loading="loading"
+        @update:page="onPageChange"
+        @update:per-page="onPerPageChange"
+      />
     </div>
   </div>
 </template>

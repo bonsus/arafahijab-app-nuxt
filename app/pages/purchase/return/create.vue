@@ -107,10 +107,6 @@ const items = ref<ReturnItemInput[]>([])
 const subtotal = computed(() => items.value.reduce((sum, item) => sum + item.total, 0))
 const grandTotal = computed(() => subtotal.value - form.discount + form.shipping_fee + form.tax + form.adjustment)
 
-function formatCurrency(val: number): string {
-  return new Intl.NumberFormat('id-ID').format(Number(val) || 0)
-}
-
 function getFieldError(key: string): string | undefined {
   return formErrors.value[key]?.[0]
 }

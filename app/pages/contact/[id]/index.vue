@@ -3,7 +3,6 @@ import {
   ArrowLeft, ArrowRight, Pencil, Users, MapPin, Star, Tag, Calendar,
   ToggleLeft, ToggleRight, Plus, Trash2, Loader2, KeyRound,
   Mail, Phone, AtSign, Hash, Shield, Clock, Award,
-  ChevronLeft, ChevronRight,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -186,6 +185,7 @@ async function handleSetPrimaryAddress(addr: any) {
 // --- Point History ---
 const pointHistories = ref<any[]>([])
 const pointPage = ref(1)
+const pointPerPage = ref(10)
 const pointTotalPage = ref(1)
 const pointTotal = ref(0)
 const loadingPoints = ref(false)
@@ -195,7 +195,7 @@ async function fetchPointHistory() {
   try {
     const res = await api.get<{ data: any }>(`/customers/${customerId}/point-histories`, {
       page: String(pointPage.value),
-      per_page: '10',
+      per_page: String(pointPerPage.value),
     })
     pointHistories.value = res.data?.data || []
     pointTotalPage.value = res.data?.total_page || 1
@@ -207,9 +207,14 @@ async function fetchPointHistory() {
   }
 }
 
-function goPointPage(p: number) {
-  if (p < 1 || p > pointTotalPage.value) return
+function onPointPageChange(p: number) {
   pointPage.value = p
+  fetchPointHistory()
+}
+
+function onPointPerPageChange(pp: number) {
+  pointPerPage.value = pp
+  pointPage.value = 1
   fetchPointHistory()
 }
 
@@ -513,13 +518,17 @@ onMounted(() => {
               </div>
 
               <!-- Point pagination -->
-              <div v-if="pointTotalPage > 1" class="mt-4 flex items-center justify-between">
-                <p class="text-xs text-gray-400">Halaman {{ pointPage }} dari {{ pointTotalPage }}</p>
-                <div class="flex items-center gap-1">
-                  <button :disabled="pointPage <= 1" class="rounded p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-40" @click="goPointPage(pointPage - 1)"><ChevronLeft class="h-3.5 w-3.5" /></button>
-                  <button :disabled="pointPage >= pointTotalPage" class="rounded p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-40" @click="goPointPage(pointPage + 1)"><ChevronRight class="h-3.5 w-3.5" /></button>
-                </div>
-              </div>
+              <AppPagination
+                v-if="pointTotalPage > 1"
+                :page="pointPage"
+                :total-page="pointTotalPage"
+                :total="pointTotal"
+                :per-page="pointPerPage"
+                :loading="loadingPoints"
+                :show-per-page="false"
+                @update:page="onPointPageChange"
+                @update:per-page="onPointPerPageChange"
+              />
             </template>
           </div>
 

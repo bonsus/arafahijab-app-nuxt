@@ -2,6 +2,10 @@
 import {
   ArrowLeft, Loader2, Plus, Trash2, X,
 } from 'lucide-vue-next'
+import type { ProductResult, ProductSku } from '~/components/AppProductSkuPicker.vue'
+import type { Customer } from '~/components/AppCustomerPicker.vue'
+import type { CustomerCategory } from '~/components/AppCustomerCategoryPicker.vue'
+import type { ProductCategory } from '~/components/AppProductCategoryPicker.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -66,21 +70,42 @@ interface PromoItem {
   min_qty: number | null
   max_qty: number | null
   qty: number | null
+  // Display data
+  product_name?: string
+  sku?: string
+  category_name?: string
 }
 
 const items = ref<PromoItem[]>([])
 
-function addItem(role: string = 'condition') {
+function addItemProduct(role: string, product: ProductResult, sku: ProductSku) {
   items.value.push({
     item_role: role,
-    product_id: '',
-    sku_id: '',
+    product_id: product.id,
+    sku_id: sku.sku_id,
     product_category_id: '',
     discount_value: null,
     max_discount_value: null,
     min_qty: null,
     max_qty: null,
     qty: null,
+    product_name: product.name,
+    sku: sku.sku,
+  })
+}
+
+function addItemCategory(role: string, category: ProductCategory) {
+  items.value.push({
+    item_role: role,
+    product_id: '',
+    sku_id: '',
+    product_category_id: category.id,
+    discount_value: null,
+    max_discount_value: null,
+    min_qty: null,
+    max_qty: null,
+    qty: null,
+    category_name: category.name,
   })
 }
 
@@ -88,27 +113,54 @@ function removeItem(index: number) {
   items.value.splice(index, 1)
 }
 
-// Customer Categories
-const customerCategories = ref<{ customer_category_id: string }[]>([])
+const addedProductSkuIds = computed(() => items.value.map(i => i.sku_id).filter(Boolean))
+const addedCategoryIds = computed(() => items.value.map(i => i.product_category_id).filter(Boolean))
 
-function addCustomerCategory() {
-  customerCategories.value.push({ customer_category_id: '' })
+// Customer Categories
+interface CustomerCategoryItem {
+  customer_category_id: string
+  name?: string
+}
+
+const customerCategories = ref<CustomerCategoryItem[]>([])
+
+function addCustomerCategory(category: CustomerCategory) {
+  if (customerCategories.value.some(c => c.customer_category_id === category.id)) return
+  customerCategories.value.push({ 
+    customer_category_id: category.id,
+    name: category.name 
+  })
 }
 
 function removeCustomerCategory(index: number) {
   customerCategories.value.splice(index, 1)
 }
 
-// Individual Customers
-const customerIndividuals = ref<{ customer_id: string }[]>([])
+const addedCustomerCategoryIds = computed(() => customerCategories.value.map(c => c.customer_category_id))
 
-function addCustomerIndividual() {
-  customerIndividuals.value.push({ customer_id: '' })
+// Individual Customers
+interface CustomerIndividualItem {
+  customer_id: string
+  name?: string
+  email?: string
+}
+
+const customerIndividuals = ref<CustomerIndividualItem[]>([])
+
+function addCustomerIndividual(customer: Customer) {
+  if (customerIndividuals.value.some(c => c.customer_id === customer.id)) return
+  customerIndividuals.value.push({ 
+    customer_id: customer.id,
+    name: customer.name,
+    email: customer.email 
+  })
 }
 
 function removeCustomerIndividual(index: number) {
   customerIndividuals.value.splice(index, 1)
 }
+
+const addedCustomerIds = computed(() => customerIndividuals.value.map(c => c.customer_id))
 
 // Couriers (shipping only)
 interface PromoCourier {
@@ -375,83 +427,109 @@ async function handleSubmit() {
             v-if="form.item_type === 'specific' || promoType === 'product_free'"
             class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 sm:p-6"
           >
-            <div class="mb-4 flex items-center justify-between">
-              <h2 class="text-base font-semibold text-gray-900">
+            <div class="mb-4">
+              <h2 class="mb-1 text-base font-semibold text-gray-900">
                 {{ promoType === 'product_free' ? 'Item Syarat & Hadiah' : 'Item Promo' }}
               </h2>
-              <div class="flex gap-2">
-                <button
-                  v-if="promoType === 'product_free'"
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
-                  @click="addItem('reward')"
-                >
-                  <Plus class="h-3.5 w-3.5" />
-                  Hadiah
-                </button>
-                <button
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100"
-                  @click="addItem('condition')"
-                >
-                  <Plus class="h-3.5 w-3.5" />
-                  {{ promoType === 'product_free' ? 'Syarat' : 'Item' }}
-                </button>
+              <p class="text-xs text-gray-500">Pilih produk/SKU atau kategori produk yang akan diikutsertakan</p>
+            </div>
+
+            <!-- Picker dropdowns -->
+            <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                  {{ promoType === 'product_free' ? 'Produk/SKU Syarat' : 'Pilih Produk/SKU' }}
+                </label>
+                <AppProductSkuPicker 
+                  :added-sku-ids="addedProductSkuIds"
+                  @add-sku="(product, sku) => addItemProduct('condition', product, sku)"
+                />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                  {{ promoType === 'product_free' ? 'Kategori Syarat' : 'Pilih Kategori' }}
+                </label>
+                <AppProductCategoryPicker 
+                  :added-ids="addedCategoryIds"
+                  @select="addItemCategory('condition', $event)"
+                />
+              </div>
+            </div>
+            
+            <div v-if="promoType === 'product_free'" class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-700">Produk/SKU Hadiah</label>
+                <AppProductSkuPicker 
+                  :added-sku-ids="addedProductSkuIds"
+                  @add-sku="(product, sku) => addItemProduct('reward', product, sku)"
+                />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-medium text-gray-700">Kategori Hadiah</label>
+                <AppProductCategoryPicker 
+                  :added-ids="addedCategoryIds"
+                  @select="addItemCategory('reward', $event)"
+                />
               </div>
             </div>
 
             <div v-if="!items.length" class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
-              Belum ada item. Klik tombol di atas untuk menambahkan.
+              Belum ada item. Pilih produk/SKU atau kategori di atas.
             </div>
 
-            <div v-else class="space-y-3">
+            <div v-else class="space-y-2">
               <div
                 v-for="(item, idx) in items"
                 :key="idx"
-                class="rounded-lg border p-4"
-                :class="item.item_role === 'reward' ? 'border-blue-200 bg-blue-50/50' : 'border-gray-200 bg-gray-50/50'"
+                class="rounded-lg border p-3"
+                :class="item.item_role === 'reward' ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200 bg-gray-50/30'"
               >
-                <div class="mb-3 flex items-center justify-between">
-                  <span class="text-xs font-semibold uppercase tracking-wide" :class="item.item_role === 'reward' ? 'text-blue-600' : 'text-gray-500'">
-                    {{ item.item_role === 'reward' ? 'Hadiah' : 'Syarat' }}
-                  </span>
-                  <button type="button" class="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500" @click="removeItem(idx)">
+                <div class="flex items-start gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="mb-2 flex items-center gap-2">
+                      <span 
+                        class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        :class="item.item_role === 'reward' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'"
+                      >
+                        {{ item.item_role === 'reward' ? 'Hadiah' : 'Syarat' }}
+                      </span>
+                      <span class="text-xs font-medium text-gray-900">
+                        {{ item.product_name || item.category_name }}
+                      </span>
+                      <span v-if="item.sku" class="text-xs text-gray-500">SKU: {{ item.sku }}</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <div v-if="promoType === 'discount' && item.item_role === 'condition'">
+                        <label class="mb-0.5 block text-[10px] font-medium text-gray-500">Diskon/Item</label>
+                        <input v-model.number="item.discount_value" type="number" class="form-input text-xs" placeholder="0" />
+                      </div>
+                      <div v-if="promoType === 'discount' && item.item_role === 'condition'">
+                        <label class="mb-0.5 block text-[10px] font-medium text-gray-500">Maks Diskon</label>
+                        <input v-model.number="item.max_discount_value" type="number" class="form-input text-xs" placeholder="0" />
+                      </div>
+                      <div>
+                        <label class="mb-0.5 block text-[10px] font-medium text-gray-500">Min Qty</label>
+                        <input v-model.number="item.min_qty" type="number" class="form-input text-xs" placeholder="0" />
+                      </div>
+                      <div>
+                        <label class="mb-0.5 block text-[10px] font-medium text-gray-500">Maks Qty</label>
+                        <input v-model.number="item.max_qty" type="number" class="form-input text-xs" placeholder="0" />
+                      </div>
+                      <div v-if="item.item_role === 'reward'">
+                        <label class="mb-0.5 block text-[10px] font-medium text-gray-500">Qty Gratis</label>
+                        <input v-model.number="item.qty" type="number" class="form-input text-xs" placeholder="1" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="button" 
+                    class="shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-red-500" 
+                    @click="removeItem(idx)"
+                  >
                     <X class="h-4 w-4" />
                   </button>
-                </div>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Product ID</label>
-                    <input v-model="item.product_id" type="text" class="form-input text-sm" placeholder="ULID produk" />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600">SKU ID</label>
-                    <input v-model="item.sku_id" type="text" class="form-input text-sm" placeholder="ULID SKU" />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Kategori Produk ID</label>
-                    <input v-model="item.product_category_id" type="text" class="form-input text-sm" placeholder="ULID kategori" />
-                  </div>
-                  <div v-if="promoType === 'discount' && item.item_role === 'condition'">
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Diskon per Item</label>
-                    <input v-model.number="item.discount_value" type="number" class="form-input text-sm" placeholder="Nilai diskon" />
-                  </div>
-                  <div v-if="promoType === 'discount' && item.item_role === 'condition'">
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Maks. Diskon per Item</label>
-                    <input v-model.number="item.max_discount_value" type="number" class="form-input text-sm" placeholder="Maks diskon" />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Min. Qty</label>
-                    <input v-model.number="item.min_qty" type="number" class="form-input text-sm" placeholder="Min qty" />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Maks. Qty</label>
-                    <input v-model.number="item.max_qty" type="number" class="form-input text-sm" placeholder="Maks qty" />
-                  </div>
-                  <div v-if="item.item_role === 'reward'">
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Qty Gratis</label>
-                    <input v-model.number="item.qty" type="number" class="form-input text-sm" placeholder="Jumlah gratis" />
-                  </div>
                 </div>
               </div>
             </div>
@@ -466,29 +544,40 @@ async function handleSubmit() {
 
             <!-- Kategori Customer -->
             <div class="mb-5">
-              <div class="mb-3 flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-gray-700">Kategori Customer</h3>
-                <button
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
-                  @click="addCustomerCategory"
-                >
-                  <Plus class="h-3.5 w-3.5" />
-                  Kategori
-                </button>
+              <div class="mb-3">
+                <h3 class="mb-1 text-sm font-semibold text-gray-700">Kategori Customer</h3>
+                <p class="text-xs text-gray-500">Pilih kategori customer yang bisa menggunakan promosi</p>
+              </div>
+              
+              <div class="mb-3">
+                <AppCustomerCategoryPicker
+                  :added-ids="addedCustomerCategoryIds"
+                  @select="addCustomerCategory"
+                />
               </div>
 
               <div v-if="!customerCategories.length" class="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400">
-                Belum ada kategori customer.
+                Belum ada kategori customer dipilih.
               </div>
 
               <div v-else class="space-y-2">
-                <div v-for="(cat, idx) in customerCategories" :key="idx" class="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-                  <div class="flex-1">
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Kategori Customer ID</label>
-                    <input v-model="cat.customer_category_id" type="text" class="form-input text-sm" placeholder="ULID kategori customer" />
+                <div 
+                  v-for="(cat, idx) in customerCategories" 
+                  :key="idx" 
+                  class="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/30 px-3 py-2"
+                >
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                    <span class="text-xs font-semibold text-blue-600">K</span>
                   </div>
-                  <button type="button" class="mt-4 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500" @click="removeCustomerCategory(idx)">
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-medium text-gray-900">{{ cat.name }}</p>
+                    <p class="text-xs text-gray-500">ID: {{ cat.customer_category_id.slice(0, 8) }}...</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    class="shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-red-500" 
+                    @click="removeCustomerCategory(idx)"
+                  >
                     <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
@@ -497,29 +586,40 @@ async function handleSubmit() {
 
             <!-- Customer Individual -->
             <div>
-              <div class="mb-3 flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-gray-700">Customer Individual</h3>
-                <button
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100"
-                  @click="addCustomerIndividual"
-                >
-                  <Plus class="h-3.5 w-3.5" />
-                  Customer
-                </button>
+              <div class="mb-3">
+                <h3 class="mb-1 text-sm font-semibold text-gray-700">Customer Individual</h3>
+                <p class="text-xs text-gray-500">Pilih customer spesifik yang bisa menggunakan promosi</p>
+              </div>
+              
+              <div class="mb-3">
+                <AppCustomerPicker
+                  :added-ids="addedCustomerIds"
+                  @select="addCustomerIndividual"
+                />
               </div>
 
               <div v-if="!customerIndividuals.length" class="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400">
-                Belum ada customer individual.
+                Belum ada customer individual dipilih.
               </div>
 
               <div v-else class="space-y-2">
-                <div v-for="(cust, idx) in customerIndividuals" :key="idx" class="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/50 p-3">
-                  <div class="flex-1">
-                    <label class="mb-1 block text-xs font-medium text-gray-600">Customer ID</label>
-                    <input v-model="cust.customer_id" type="text" class="form-input text-sm" placeholder="ULID customer" />
+                <div 
+                  v-for="(cust, idx) in customerIndividuals" 
+                  :key="idx" 
+                  class="flex items-center gap-3 rounded-lg border border-primary-200 bg-primary-50/30 px-3 py-2"
+                >
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                    <span class="text-xs font-semibold text-primary-600">{{ cust.name?.[0]?.toUpperCase() || 'C' }}</span>
                   </div>
-                  <button type="button" class="mt-4 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500" @click="removeCustomerIndividual(idx)">
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-medium text-gray-900">{{ cust.name }}</p>
+                    <p class="truncate text-xs text-gray-500">{{ cust.email }}</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    class="shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-red-500" 
+                    @click="removeCustomerIndividual(idx)"
+                  >
                     <Trash2 class="h-4 w-4" />
                   </button>
                 </div>

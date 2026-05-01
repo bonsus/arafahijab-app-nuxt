@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
-  Plus, Search, Pencil, Trash2, Eye,
-  ChevronLeft, ChevronRight, Loader2, EllipsisVertical,
+  Plus, Search, Pencil, Trash2, Eye, RefreshCw,
   ToggleLeft, ToggleRight, Tag, Calendar, Ticket,
 } from 'lucide-vue-next'
 
@@ -51,19 +50,18 @@ const perPage = ref(20)
 const totalPage = ref(1)
 const total = ref(0)
 const search = ref('')
-const filterStatus = ref('')
+const filterStatus = ref<string[]>([])
 
-const statusTabs = [
-  { key: '', label: 'Semua' },
-  { key: 'active', label: 'Aktif' },
-  { key: 'inactive', label: 'Nonaktif' },
-  { key: 'draft', label: 'Draft' },
+const statusOptions = [
+  { value: 'active', label: 'Aktif' },
+  { value: 'inactive', label: 'Nonaktif' },
+  { value: 'draft', label: 'Draft' },
 ]
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  active: { label: 'Aktif', color: 'bg-green-100 text-green-700' },
-  inactive: { label: 'Nonaktif', color: 'bg-gray-100 text-gray-500' },
-  draft: { label: 'Draft', color: 'bg-yellow-100 text-yellow-700' },
+const statusConfig: Record<string, { label: string; bg: string }> = {
+  active: { label: 'Aktif', bg: 'bg-green-50 text-green-700 ring-1 ring-green-200' },
+  inactive: { label: 'Nonaktif', bg: 'bg-gray-50 text-gray-500 ring-1 ring-gray-200' },
+  draft: { label: 'Draft', bg: 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200' },
 }
 
 async function fetchPromotions() {
@@ -75,7 +73,7 @@ async function fetchPromotions() {
       type: props.type,
     }
     if (search.value) params.search = search.value
-    if (filterStatus.value) params.status = filterStatus.value
+    if (filterStatus.value.length) params.status = filterStatus.value.join(',')
 
     const res = await api.get<{ data: PaginatedPromotions }>('/sales/promotions/index', params)
     promotions.value = res.data?.data || []
@@ -99,15 +97,20 @@ function onSearch() {
   }, 300)
 }
 
-function onStatusFilter(status: string) {
-  filterStatus.value = status
+function onStatusFilter(val: string | string[]) {
+  filterStatus.value = val as string[]
   page.value = 1
   fetchPromotions()
 }
 
-function goPage(p: number) {
-  if (p < 1 || p > totalPage.value) return
+function onPageChange(p: number) {
   page.value = p
+  fetchPromotions()
+}
+
+function onPerPageChange(pp: number) {
+  perPage.value = pp
+  page.value = 1
   fetchPromotions()
 }
 
@@ -161,254 +164,218 @@ async function toggleStatus(promo: Promotion) {
   }
 }
 
-// Action menu
-const openMenuId = ref<string | null>(null)
-function toggleMenu(id: string) {
-  openMenuId.value = openMenuId.value === id ? null : id
-}
-function closeMenu() {
-  openMenuId.value = null
-}
-
-// Pagination
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const start = Math.max(1, page.value - 2)
-  const end = Math.min(totalPage.value, page.value + 2)
-  for (let i = start; i <= end; i++) pages.push(i)
-  return pages
-})
-
-onMounted(() => {
-  fetchPromotions()
-  document.addEventListener('click', closeMenu)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', closeMenu)
-})
+onMounted(fetchPromotions)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <!-- Header -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">{{ title }}</h1>
-        <p class="mt-1 text-sm text-gray-500">{{ total }} promosi</p>
+        <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">{{ title }}</h1>
+        <p class="mt-0.5 text-sm text-gray-500">Kelola promosi dan penawaran spesial</p>
       </div>
       <NuxtLink
         :to="createRoute"
-        class="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+        class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
       >
         <Plus class="h-4 w-4" />
-        Tambah Promosi
+        Buat Promosi
       </NuxtLink>
     </div>
 
     <!-- Filters -->
-    <div class="space-y-3">
-      <!-- Status tabs -->
-      <div class="flex gap-1 overflow-x-auto pb-1">
-        <button
-          v-for="tab in statusTabs"
-          :key="tab.key"
-          class="shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="filterStatus === tab.key
-            ? 'bg-primary-600 text-white'
-            : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'"
-          @click="onStatusFilter(tab.key)"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-
-      <!-- Search -->
-      <div class="relative">
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="relative min-w-[220px] flex-1">
         <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           v-model="search"
           type="text"
           placeholder="Cari nama promosi, kode kupon..."
-          class="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 sm:max-w-md"
+          class="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
           @input="onSearch"
         />
       </div>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-      <div v-for="i in 5" :key="i" class="flex animate-pulse items-center gap-4 border-b border-gray-100 px-4 py-3.5 last:border-b-0">
-        <div class="h-10 w-10 rounded-lg bg-gray-200" />
-        <div class="flex-1 space-y-2">
-          <div class="h-4 w-48 rounded bg-gray-200" />
-          <div class="h-3 w-32 rounded bg-gray-200" />
-        </div>
-        <div class="h-6 w-16 rounded-full bg-gray-200" />
-      </div>
-    </div>
-
-    <!-- Empty -->
-    <div v-else-if="!promotions.length" class="rounded-xl bg-white p-12 text-center shadow-sm ring-1 ring-gray-200">
-      <Tag class="mx-auto mb-3 h-10 w-10 text-gray-300" />
-      <p class="text-gray-500">
-        {{ search || filterStatus ? 'Tidak ada promosi yang cocok' : 'Belum ada promosi.' }}
-      </p>
-    </div>
-
-    <!-- Promotion list -->
-    <div v-else class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-      <div
-        v-for="promo in promotions"
-        :key="promo.id"
-        class="border-b border-gray-100 last:border-b-0"
+      <AppFilterSelect
+        :model-value="filterStatus"
+        :options="statusOptions"
+        :searchable="false"
+        multiple
+        placeholder="Status"
+        @update:model-value="onStatusFilter"
+      />
+      <button
+        class="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 text-gray-500 transition-colors hover:bg-gray-50"
+        :disabled="loading"
+        @click="fetchPromotions()"
       >
-        <div class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50/50 sm:gap-4">
-          <!-- Icon -->
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 ring-1 ring-primary-100">
-            <Tag class="h-5 w-5 text-primary-600" />
-          </div>
+        <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+      </button>
+    </div>
 
-          <!-- Info -->
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <NuxtLink
-                :to="`/promotion/${promo.id}`"
-                class="text-sm font-semibold text-gray-900 hover:text-primary-600 sm:truncate"
-              >
-                {{ promo.name }}
-              </NuxtLink>
-              <span
-                class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="statusConfig[promo.status]?.color || 'bg-gray-100 text-gray-500'"
-              >
-                {{ statusConfig[promo.status]?.label || promo.status }}
-              </span>
-              <span
-                v-if="isExpired(promo) && promo.status === 'active'"
-                class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
-              >
-                Expired
-              </span>
-              <span
-                v-else-if="isUpcoming(promo)"
-                class="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
-              >
-                Upcoming
-              </span>
-            </div>
-            <div class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
-              <span v-if="promo.coupon_code" class="flex items-center gap-1">
-                <Ticket class="h-3 w-3" />
-                {{ promo.coupon_code }}
-              </span>
-              <span class="flex items-center gap-1">
-                <Calendar class="h-3 w-3" />
-                {{ formatDate(promo.start_date) }} – {{ formatDate(promo.end_date) }}
-              </span>
-              <span v-if="promo.discount_value">
-                {{ promo.discount_type === 'percentage' ? `${promo.discount_value}%` : `Rp ${formatPrice(promo.discount_value)}` }}
-                <template v-if="promo.max_discount_value && promo.discount_type === 'percentage'">
-                  (maks Rp {{ formatPrice(promo.max_discount_value) }})
-                </template>
-              </span>
-              <span v-if="promo.min_spend">Min. Rp {{ formatPrice(promo.min_spend) }}</span>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex shrink-0 items-center gap-0.5 sm:gap-1">
-            <button
-              class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-              title="Toggle Status"
-              @click="toggleStatus(promo)"
-            >
-              <ToggleRight v-if="promo.status === 'active'" class="h-5 w-5 text-green-500" />
-              <ToggleLeft v-else class="h-5 w-5 text-gray-400" />
-            </button>
-            <div class="relative">
-              <button
-                class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                @click.stop="toggleMenu(promo.id)"
-              >
-                <EllipsisVertical class="h-4 w-4" />
-              </button>
-              <Transition
-                enter-active-class="transition duration-100 ease-out"
-                enter-from-class="scale-95 opacity-0"
-                enter-to-class="scale-100 opacity-100"
-                leave-active-class="transition duration-75 ease-in"
-                leave-from-class="scale-100 opacity-100"
-                leave-to-class="scale-95 opacity-0"
-              >
-                <div
-                  v-if="openMenuId === promo.id"
-                  class="absolute right-0 top-full z-20 mt-1 w-40 overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-gray-200"
+    <!-- Table -->
+    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th class="px-4 py-3 text-left">Promosi</th>
+              <th class="px-4 py-3 text-left">Periode</th>
+              <th class="px-4 py-3 text-left">Diskon</th>
+              <th class="px-4 py-3 text-center">Status</th>
+              <th class="px-4 py-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody v-if="loading">
+            <tr v-for="i in 8" :key="i" class="border-b border-gray-100">
+              <td v-for="j in 5" :key="j" class="px-4 py-3">
+                <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 1 ? 'w-48' : 'w-20'" />
+              </td>
+            </tr>
+          </tbody>
+          <tbody v-else-if="!promotions.length">
+            <tr>
+              <td colspan="5" class="px-4 py-16 text-center">
+                <Tag class="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                <p class="text-sm text-gray-500">Belum ada promosi</p>
+                <NuxtLink
+                  :to="createRoute"
+                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
                 >
+                  <Plus class="h-3.5 w-3.5" />
+                  Buat Pertama
+                </NuxtLink>
+              </td>
+            </tr>
+          </tbody>
+          <tbody v-else>
+            <tr
+              v-for="promo in promotions"
+              :key="promo.id"
+              class="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/50"
+            >
+              <!-- Promosi -->
+              <td class="px-4 py-3">
+                <div class="flex items-start gap-3">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 ring-1 ring-primary-100">
+                    <Tag class="h-4 w-4 text-primary-600" />
+                  </div>
+                  <div class="min-w-0">
+                    <NuxtLink
+                      :to="`/promotion/${promo.id}`"
+                      class="font-semibold text-gray-900 hover:text-primary-600"
+                    >
+                      {{ promo.name }}
+                    </NuxtLink>
+                    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
+                      <span v-if="promo.coupon_code" class="flex items-center gap-1">
+                        <Ticket class="h-3 w-3" />
+                        {{ promo.coupon_code }}
+                      </span>
+                      <span v-if="promo.min_spend">Min. Rp{{ formatPrice(promo.min_spend) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Periode -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                <div class="flex items-center gap-1.5 text-gray-600">
+                  <Calendar class="h-3.5 w-3.5 text-gray-400" />
+                  <div class="text-xs">
+                    <div>{{ formatDate(promo.start_date) }}</div>
+                    <div class="text-gray-400">{{ formatDate(promo.end_date) }}</div>
+                  </div>
+                </div>
+                <div class="mt-1">
+                  <span
+                    v-if="isExpired(promo) && promo.status === 'active'"
+                    class="inline-flex rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200"
+                  >
+                    Expired
+                  </span>
+                  <span
+                    v-else-if="isUpcoming(promo)"
+                    class="inline-flex rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200"
+                  >
+                    Upcoming
+                  </span>
+                </div>
+              </td>
+
+              <!-- Diskon -->
+              <td class="px-4 py-3 whitespace-nowrap text-gray-700">
+                <span v-if="promo.discount_value" class="font-medium">
+                  {{ promo.discount_type === 'percentage' ? `${promo.discount_value}%` : `Rp${formatPrice(promo.discount_value)}` }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
+                <div
+                  v-if="promo.max_discount_value && promo.discount_type === 'percentage'"
+                  class="text-xs text-gray-500"
+                >
+                  Maks Rp{{ formatPrice(promo.max_discount_value) }}
+                </div>
+              </td>
+
+              <!-- Status -->
+              <td class="px-4 py-3 text-center">
+                <span
+                  class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  :class="statusConfig[promo.status]?.bg || 'bg-gray-50 text-gray-500'"
+                >
+                  {{ statusConfig[promo.status]?.label || promo.status }}
+                </span>
+              </td>
+
+              <!-- Aksi -->
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1">
                   <NuxtLink
                     :to="`/promotion/${promo.id}`"
-                    class="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    @click="closeMenu"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    title="Detail"
                   >
-                    <Eye class="h-3.5 w-3.5" />
-                    Lihat Detail
+                    <Eye class="h-4 w-4" />
                   </NuxtLink>
                   <NuxtLink
                     :to="`/promotion/${promo.id}/edit`"
-                    class="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    @click="closeMenu"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    title="Edit"
                   >
-                    <Pencil class="h-3.5 w-3.5" />
-                    Edit
+                    <Pencil class="h-4 w-4" />
                   </NuxtLink>
                   <button
-                    class="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                    @click="handleDelete(promo); closeMenu()"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    :title="promo.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'"
+                    @click="toggleStatus(promo)"
                   >
-                    <Trash2 class="h-3.5 w-3.5" />
-                    Hapus
+                    <ToggleRight v-if="promo.status === 'active'" class="h-4 w-4 text-green-500" />
+                    <ToggleLeft v-else class="h-4 w-4" />
+                  </button>
+                  <button
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                    title="Hapus"
+                    @click="handleDelete(promo)"
+                  >
+                    <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
-              </Transition>
-            </div>
-          </div>
-        </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
 
-    <!-- Pagination -->
-    <div
-      v-if="totalPage > 1"
-      class="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
-    >
-      <p class="text-sm text-gray-500">
-        Halaman {{ page }} dari {{ totalPage }} ({{ total }} promosi)
-      </p>
-      <div class="flex items-center gap-1">
-        <button
-          :disabled="page <= 1"
-          class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-40"
-          @click="goPage(page - 1)"
-        >
-          <ChevronLeft class="h-4 w-4" />
-        </button>
-        <button
-          v-for="p in visiblePages"
-          :key="p"
-          class="min-w-[36px] rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="p === page ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'"
-          @click="goPage(p)"
-        >
-          {{ p }}
-        </button>
-        <button
-          :disabled="page >= totalPage"
-          class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-40"
-          @click="goPage(page + 1)"
-        >
-          <ChevronRight class="h-4 w-4" />
-        </button>
-      </div>
+      <!-- Pagination -->
+      <AppPagination
+        :page="page"
+        :total-page="totalPage"
+        :total="total"
+        :per-page="perPage"
+        :loading="loading"
+        @update:page="onPageChange"
+        @update:per-page="onPerPageChange"
+      />
     </div>
   </div>
-</template>
+</template> 
