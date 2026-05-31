@@ -6,6 +6,8 @@ const { setRef } = useConfirm()
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
-  <AppToast />
-  <AppConfirm :ref="(el: any) => setRef(el)" />
+  <ClientOnly>
+    <AppToast />
+    <AppConfirm :ref="(el: any) => setRef(el)" />
+  </ClientOnly>
 </template>

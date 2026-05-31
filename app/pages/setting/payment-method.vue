@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   CreditCard, ToggleLeft, ToggleRight, GripVertical,
-  Wallet, Building2, QrCode, Landmark,
+  Wallet, Building2, QrCode, Landmark, Settings, X, Check,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -15,6 +15,9 @@ interface PaymentMethod {
   sort: number
   status: string
   is_active: boolean
+  admin_fee?: number
+  unique_code?: number
+  unique_type?: 'plus' | 'minus'
 }
 
 interface Provider {
@@ -31,6 +34,15 @@ const loading = ref(true)
 const providers = ref<Provider[]>([])
 const activeTab = ref('')
 const togglingIds = ref<Set<string>>(new Set())
+
+// Edit settings state
+const editingMethodId = ref<string | null>(null)
+const editForm = reactive({
+  admin_fee: 0,
+  unique_code: 0,
+  unique_type: 'plus' as 'plus' | 'minus',
+})
+const savingSettings = ref(false)
 
 // Drag sort state
 const dragState = reactive<{
@@ -90,6 +102,61 @@ async function toggleMethodStatus(method: PaymentMethod) {
     toast.error(err.message || 'Gagal mengubah status')
   } finally {
     togglingIds.value.delete(method.id)
+  }
+}
+
+// Edit settings
+function openEditSettings(method: PaymentMethod) {
+  editingMethodId.value = method.id
+  editForm.admin_fee = method.admin_fee || 0
+  editForm.unique_code = method.unique_code || 0
+  editForm.unique_type = method.unique_type || 'plus'
+}
+
+function cancelEditSettings() {
+  editingMethodId.value = null
+}
+
+async function saveSettings(method: PaymentMethod) {
+  const prov = activeProvider.value
+  if (!prov) return
+  
+  savingSettings.value = true
+  try {
+    const payload: any = {
+      provider: prov.provider,
+      payment_method_id: method.id,
+      status: method.is_active ? 'active' : 'inactive',
+    }
+    
+    // Add admin_fee if not internal provider
+    if (prov.provider !== 'internal') {
+      payload.admin_fee = editForm.admin_fee
+    }
+    
+    // Add unique_code and unique_type if bank_transfer
+    if (method.category === 'bank_transfer') {
+      payload.unique_code = editForm.unique_code
+      payload.unique_type = editForm.unique_type
+    }
+    
+    await api.put('/payment-methods/update-status', payload)
+    
+    // Update local data
+    if (prov.provider !== 'internal') {
+      method.admin_fee = editForm.admin_fee
+    }
+    if (method.category === 'bank_transfer') {
+      method.unique_code = editForm.unique_code
+      method.unique_type = editForm.unique_type
+    }
+    
+    toast.success('Pengaturan berhasil diperbarui')
+    editingMethodId.value = null
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal menyimpan pengaturan')
+  } finally {
+    savingSettings.value = false
   }
 }
 
@@ -208,7 +275,7 @@ onMounted(() => fetchProviders())
           v-for="(method, idx) in activeProvider.payment_method"
           :key="method.id"
           draggable="true"
-          class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 transition-all"
+          class="rounded-xl bg-white shadow-sm ring-1 transition-all"
           :class="[
             dragState.overIndex === idx ? 'ring-primary-400 shadow-md' : 'ring-gray-200',
             dragState.fromIndex === idx ? 'opacity-50' : 'hover:shadow-md',
@@ -219,40 +286,141 @@ onMounted(() => fetchProviders())
           @drop="onDrop(idx)"
           @dragend="resetDrag"
         >
-          <!-- Drag handle -->
-          <GripVertical class="h-4 w-4 shrink-0 cursor-grab text-gray-300" />
+          <!-- Main row -->
+          <div class="flex items-center gap-3 px-4 py-3">
+            <!-- Drag handle -->
+            <GripVertical class="h-4 w-4 shrink-0 cursor-grab text-gray-300" />
 
-          <!-- Method info -->
-          <div class="min-w-0 flex-1">
-            <span class="text-sm font-medium text-gray-900">{{ method.name }}</span>
-            <div class="mt-0.5 flex items-center gap-2">
-              <span
-                class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1"
-                :class="getCategoryInfo(method.category).color"
-              >
-                <component :is="getCategoryInfo(method.category).icon" class="h-2.5 w-2.5" />
-                {{ getCategoryInfo(method.category).label }}
-              </span>
-              <span class="font-mono text-[10px] text-gray-400">{{ method.code }}</span>
+            <!-- Method info -->
+            <div class="min-w-0 flex-1">
+              <span class="text-sm font-medium text-gray-900">{{ method.name }}</span>
+              <div class="mt-0.5 flex items-center gap-2">
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1"
+                  :class="getCategoryInfo(method.category).color"
+                >
+                  <component :is="getCategoryInfo(method.category).icon" class="h-2.5 w-2.5" />
+                  {{ getCategoryInfo(method.category).label }}
+                </span>
+                <span class="font-mono text-[10px] text-gray-400">{{ method.code }}</span>
+                <span v-if="activeProvider.provider !== 'internal' && method.admin_fee" class="text-[10px] text-gray-500">
+                  Fee: Rp{{ method.admin_fee.toLocaleString('id-ID') }}
+                </span>
+                <span v-if="method.category === 'bank_transfer' && method.unique_code" class="rounded bg-yellow-100 px-1.5 py-0.5 text-[9px] font-medium text-yellow-700">
+                  Unique {{ method.unique_type }} ({{ method.unique_code }})
+                </span>
+              </div>
             </div>
+
+            <!-- Settings button -->
+            <button
+              v-if="editingMethodId !== method.id"
+              type="button"
+              class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              @click="openEditSettings(method)"
+            >
+              <Settings class="h-4 w-4" />
+            </button>
+
+            <!-- Toggle -->
+            <button
+              type="button"
+              class="flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              :disabled="togglingIds.has(method.id)"
+              @click="toggleMethodStatus(method)"
+            >
+              <span
+                class="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                :class="method.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+              >
+                {{ method.is_active ? 'Aktif' : 'Nonaktif' }}
+              </span>
+              <ToggleRight v-if="method.is_active" class="h-5 w-5 text-green-600" />
+              <ToggleLeft v-else class="h-5 w-5 text-gray-400" />
+            </button>
           </div>
 
-          <!-- Toggle -->
-          <button
-            type="button"
-            class="flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            :disabled="togglingIds.has(method.id)"
-            @click="toggleMethodStatus(method)"
-          >
-            <span
-              class="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-              :class="method.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
-            >
-              {{ method.is_active ? 'Aktif' : 'Nonaktif' }}
-            </span>
-            <ToggleRight v-if="method.is_active" class="h-5 w-5 text-green-600" />
-            <ToggleLeft v-else class="h-5 w-5 text-gray-400" />
-          </button>
+          <!-- Edit form -->
+          <div v-if="editingMethodId === method.id" class="border-t border-gray-100 bg-gray-50 px-4 py-3">
+            <div class="space-y-3">
+              <!-- Admin Fee (not for internal) -->
+              <div v-if="activeProvider.provider !== 'internal'" class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-gray-600">Admin Fee</label>
+                  <div class="relative">
+                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
+                    <input
+                      v-model.number="editForm.admin_fee"
+                      type="number"
+                      min="0"
+                      class="w-full rounded-lg border border-gray-300 py-2 pl-7 pr-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Unique Code (bank_transfer only) -->
+              <div v-if="method.code === 'bank_transfer'" class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-gray-600">Kode Unik Maksimal</label>
+                  <input
+                    v-model.number="editForm.unique_code"
+                    type="number"
+                    min="0"
+                    max="999"
+                    class="w-full rounded-lg border border-gray-300 py-2 px-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    placeholder="999"
+                  />
+                  <p class="mt-0.5 text-[10px] text-gray-500">Contoh: 999 = random 111-999</p>
+                </div>
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-gray-600">Tipe Kode Unik</label>
+                  <div class="flex gap-2">
+                    <label class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 transition-colors" :class="editForm.unique_type === 'plus' ? 'border-primary-500 bg-primary-50' : 'hover:border-gray-400'">
+                      <input
+                        v-model="editForm.unique_type"
+                        type="radio"
+                        value="plus"
+                        class="text-primary-600 focus:ring-2 focus:ring-primary-500/20"
+                      />
+                      <span class="text-sm">Ditambah (+)</span>
+                    </label>
+                    <label class="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 transition-colors" :class="editForm.unique_type === 'minus' ? 'border-primary-500 bg-primary-50' : 'hover:border-gray-400'">
+                      <input
+                        v-model="editForm.unique_type"
+                        type="radio"
+                        value="minus"
+                        class="text-primary-600 focus:ring-2 focus:ring-primary-500/20"
+                      />
+                      <span class="text-sm">Dikurangi (-)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                  @click="cancelEditSettings"
+                >
+                  <X class="h-3.5 w-3.5" />
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  :disabled="savingSettings"
+                  class="flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+                  @click="saveSettings(method)"
+                >
+                  <Check class="h-3.5 w-3.5" />
+                  {{ savingSettings ? 'Menyimpan...' : 'Simpan' }}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

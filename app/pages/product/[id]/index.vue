@@ -2,7 +2,7 @@
 import {
   ArrowLeft, Pencil, Package, Image as ImageIcon,
   ToggleLeft, ToggleRight, Loader2, ChevronDown,
-  X, ChevronLeft, ChevronRight,
+  X, ChevronLeft, ChevronRight, Link2, Plus, Trash2,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -39,6 +39,7 @@ interface SkuItem {
   status: string
   image : string | null
   image_media: MediaFile[] | null
+  binding_count: number
   prices: {
     id: string
     customer_category_id: string
@@ -76,10 +77,29 @@ interface CustomerCategory {
   name: string
 }
 
+interface Binding {
+  id: string
+  sku_id: string
+  store_id: string
+  mp_product_id: string
+  mp_product_name: string
+  mp_sku_id: string
+  mp_sku: string
+  mp_warehouse_id: string
+  mp_variants: Record<string, string>
+  status: string
+  store: {
+    id: string
+    name: string
+    source: string
+  }
+}
+
 const route = useRoute()
 const api = useApi()
 const toast = useToast()
 const router = useRouter()
+const { confirm } = useConfirm()
 
 const productId = route.params.id as string
 const loadingPage = ref(true)
@@ -89,6 +109,25 @@ const product = ref<ProductDetail | null>(null)
 const skus = ref<SkuItem[]>([])
 const showSkus = ref(true)
 const customerCategories = ref<CustomerCategory[]>([])
+
+// Binding state
+const bindingData = ref<Record<string, Binding[]>>({})
+const bindingLoading = ref<Set<string>>(new Set())
+const expandedBindings = ref<Set<string>>(new Set())
+const togglingBinding = ref<Set<string>>(new Set())
+
+// Binding modal
+const showBindingModal = ref(false)
+const bindingModalSkuId = ref('')
+const bindingModalSkuCode = ref('')
+
+const sourceLabels: Record<string, string> = {
+  tiktok: 'TikTok',
+  shopee: 'Shopee',
+  lazada: 'Lazada',
+  website: 'Website',
+  internal: 'Internal',
+}
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   active: { label: 'Aktif', color: 'bg-green-100 text-green-700' },
@@ -235,6 +274,92 @@ async function toggleStatus() {
 
 function getCategoryName(catId: string): string {
   return customerCategories.value.find(c => c.id === catId)?.name || catId
+}
+
+// Binding functions
+async function toggleBindings(sku: SkuItem) {
+  if (expandedBindings.value.has(sku.id)) {
+    expandedBindings.value.delete(sku.id)
+    return
+  }
+  expandedBindings.value.add(sku.id)
+  if (!bindingData.value[sku.id]) {
+    await loadBindings(sku.id)
+  }
+}
+
+async function loadBindings(skuId: string) {
+  bindingLoading.value.add(skuId)
+  try {
+    const res = await api.get<{ data: Binding[] | null }>(`/products/bindings/${skuId}`)
+    bindingData.value[skuId] = res.data || []
+  }
+  catch {
+    bindingData.value[skuId] = []
+  }
+  finally {
+    bindingLoading.value.delete(skuId)
+  }
+}
+
+function openBindingModal(sku: SkuItem) {
+  bindingModalSkuId.value = sku.id
+  bindingModalSkuCode.value = sku.sku
+  showBindingModal.value = true
+}
+
+function onBindingAdded() {
+  const sku = skus.value.find(s => s.id === bindingModalSkuId.value)
+  if (sku) sku.binding_count = (sku.binding_count || 0) + 1
+  delete bindingData.value[bindingModalSkuId.value]
+  if (expandedBindings.value.has(bindingModalSkuId.value)) {
+    loadBindings(bindingModalSkuId.value)
+  }
+}
+
+function onBindingDeleted(skuId: string) {
+  const sku = skus.value.find(s => s.id === skuId)
+  if (sku && sku.binding_count > 0) sku.binding_count--
+  if (expandedBindings.value.has(skuId)) {
+    loadBindings(skuId)
+  }
+}
+
+async function toggleBindingStatus(binding: Binding) {
+  if (togglingBinding.value.has(binding.id)) return
+  const newStatus = binding.status === 'active' ? 'inactive' : 'active'
+  togglingBinding.value.add(binding.id)
+  try {
+    await api.put(`/products/bindings/${binding.id}/update-status`, { status: newStatus })
+    binding.status = newStatus
+    toast.success(`Binding ${newStatus === 'active' ? 'diaktifkan' : 'dinonaktifkan'}`)
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mengubah status binding')
+  }
+  finally {
+    togglingBinding.value.delete(binding.id)
+  }
+}
+
+async function deleteBinding(binding: Binding, skuId: string) {
+  const ok = await confirm({
+    title: 'Hapus Binding',
+    message: `Hapus binding untuk SKU marketplace "${binding.mp_sku || binding.mp_sku_id}"?`,
+    confirmText: 'Hapus',
+    variant: 'danger',
+  })
+  if (!ok) return
+  try {
+    await api.delete(`/products/bindings/${binding.id}`)
+    bindingData.value[skuId] = bindingData.value[skuId]?.filter(b => b.id !== binding.id) || []
+    const sku = skus.value.find(s => s.id === skuId)
+    if (sku && sku.binding_count > 0) sku.binding_count--
+    toast.success('Binding berhasil dihapus')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal menghapus binding')
+  }
 }
 
 onMounted(() => {
@@ -575,70 +700,200 @@ watch(() => product.value?.description, () => {
                   </th>
                   <th class="whitespace-nowrap px-4 py-2.5 font-medium text-gray-600">Status</th>
                   <th class="whitespace-nowrap px-4 py-2.5 font-medium text-gray-600">PO</th>
+                  <th class="whitespace-nowrap px-4 py-2.5 font-medium text-gray-600">Binding</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
-                <tr v-for="sku in skus" :key="sku.id" class="group/row hover:bg-gray-50/50">
-                  <td
-                    class="sticky left-0 z-10 min-w-[120px] whitespace-nowrap bg-white px-4 py-2.5 font-mono text-xs text-gray-900 group-hover/row:bg-gray-50/50"
-                    :class="!product.variant1 ? 'sku-shadow' : ''"
-                  >
-                    {{ sku.sku }}
-                  </td>
-                  <td
-                    v-if="product.variant1"
-                    class="sticky z-10 min-w-[100px] bg-white px-4 py-2.5 group-hover/row:bg-gray-50/50"
-                    :style="{ left: '120px' }"
-                    :class="!product.variant2 ? 'sku-shadow' : ''"
-                  >
-                    <span class="inline-block rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                      {{ sku.variants?.[0]?.value || '-' }}
-                    </span>
-                  </td>
-                  <td
-                    v-if="product.variant2"
-                    class="sticky z-10 min-w-[100px] bg-white px-4 py-2.5 group-hover/row:bg-gray-50/50 sku-shadow"
-                    :style="{ left: '220px' }"
-                  >
-                    <span class="inline-block rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                      {{ sku.variants?.[1]?.value || '-' }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-2.5">
-                    <div v-if="sku.image_media?.length" class="h-10 w-10 overflow-hidden rounded bg-gray-50 ring-1 ring-gray-200">
-                      <img :src="sku.image_media.find(f => f.size === 'small')?.file_url || sku.image_media[0]?.file_url" alt="" class="h-full w-full object-cover" />
-                    </div>
-                    <span v-else class="text-xs text-gray-400">-</span>
-                  </td>
-                  <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.weight ? `${sku.weight}g` : '-' }}</td>
-                  <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.buffer_stock || '-' }}</td>
-                  <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.rewards_point || '-' }}</td>
-                  <td
-                    v-for="cc in customerCategories"
-                    :key="cc.id"
-                    class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-700"
-                  >
-                    <template v-if="sku.prices?.find(p => p.customer_category_id === cc.id)">
-                      Rp {{ formatPrice(sku.prices.find(p => p.customer_category_id === cc.id)!.price) }}
-                    </template>
-                    <span v-else class="text-gray-400">-</span>
-                  </td>
-                  <td class="px-4 py-2.5">
-                    <span
-                      class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                      :class="sku.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+              <tbody>
+                <template v-for="sku in skus" :key="sku.id">
+                  <tr class="group/row hover:bg-gray-50/50">
+                    <td
+                      class="sticky left-0 z-10 min-w-[120px] whitespace-nowrap bg-white px-4 py-2.5 font-mono text-xs text-gray-900 group-hover/row:bg-gray-50/50"
+                      :class="!product.variant1 ? 'sku-shadow' : ''"
                     >
-                      {{ sku.status === 'active' ? 'Aktif' : 'Nonaktif' }}
-                    </span>
-                  </td>
-                  <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.is_preorder ? 'Ya' : '-' }}</td>
-                </tr>
+                      {{ sku.sku }}
+                    </td>
+                    <td
+                      v-if="product.variant1"
+                      class="sticky z-10 min-w-[100px] bg-white px-4 py-2.5 group-hover/row:bg-gray-50/50"
+                      :style="{ left: '120px' }"
+                      :class="!product.variant2 ? 'sku-shadow' : ''"
+                    >
+                      <span class="inline-block rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
+                        {{ sku.variants?.[0]?.value || '-' }}
+                      </span>
+                    </td>
+                    <td
+                      v-if="product.variant2"
+                      class="sticky z-10 min-w-[100px] bg-white px-4 py-2.5 group-hover/row:bg-gray-50/50 sku-shadow"
+                      :style="{ left: '220px' }"
+                    >
+                      <span class="inline-block rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
+                        {{ sku.variants?.[1]?.value || '-' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-2.5">
+                      <div v-if="sku.image_media?.length" class="h-10 w-10 overflow-hidden rounded bg-gray-50 ring-1 ring-gray-200">
+                        <img :src="sku.image_media.find(f => f.size === 'small')?.file_url || sku.image_media[0]?.file_url" alt="" class="h-full w-full object-cover" />
+                      </div>
+                      <span v-else class="text-xs text-gray-400">-</span>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.weight ? `${sku.weight}g` : '-' }}</td>
+                    <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.buffer_stock || '-' }}</td>
+                    <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.rewards_point || '-' }}</td>
+                    <td
+                      v-for="cc in customerCategories"
+                      :key="cc.id"
+                      class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-700"
+                    >
+                      <template v-if="sku.prices?.find(p => p.customer_category_id === cc.id)">
+                        Rp {{ formatPrice(sku.prices.find(p => p.customer_category_id === cc.id)!.price) }}
+                      </template>
+                      <span v-else class="text-gray-400">-</span>
+                    </td>
+                    <td class="px-4 py-2.5">
+                      <span
+                        class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                        :class="sku.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                      >
+                        {{ sku.status === 'active' ? 'Aktif' : 'Nonaktif' }}
+                      </span>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-2.5 text-xs text-gray-600">{{ sku.is_preorder ? 'Ya' : '-' }}</td>
+                    <!-- Binding column -->
+                    <td class="whitespace-nowrap px-4 py-2.5">
+                      <div class="flex items-center gap-1.5">
+                        <button
+                          class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors"
+                          :class="sku.binding_count > 0
+                            ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100'
+                            : 'bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100'"
+                          @click="toggleBindings(sku)"
+                        >
+                          <Link2 class="h-3 w-3" />
+                          {{ sku.binding_count || 0 }}
+                          <ChevronDown
+                            class="h-3 w-3 transition-transform duration-150"
+                            :class="expandedBindings.has(sku.id) ? 'rotate-180' : ''"
+                          />
+                        </button>
+                        <button
+                          class="rounded p-1 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          title="Tambah Binding"
+                          @click="openBindingModal(sku)"
+                        >
+                          <Plus class="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- Binding expand row -->
+                  <tr v-if="expandedBindings.has(sku.id)" class="bg-blue-50/30">
+                    <td :colspan="6 + (product.variant1 ? 1 : 0) + (product.variant2 ? 1 : 0) + customerCategories.length + 3" class="px-4 py-3">
+                      <!-- Loading -->
+                      <div v-if="bindingLoading.has(sku.id)" class="flex items-center gap-2 py-2 text-sm text-gray-400">
+                        <Loader2 class="h-4 w-4 animate-spin" />
+                        Memuat binding...
+                      </div>
+                      <!-- Empty -->
+                      <div v-else-if="!bindingData[sku.id]?.length" class="flex items-center justify-between">
+                        <p class="text-sm text-gray-400">Belum ada binding untuk SKU ini.</p>
+                        <button
+                          class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                          @click="openBindingModal(sku)"
+                        >
+                          <Plus class="h-3.5 w-3.5" />
+                          Tambah Binding
+                        </button>
+                      </div>
+                      <!-- Binding list -->
+                      <div v-else>
+                        <div class="mb-2 flex items-center justify-between">
+                          <span class="text-xs font-medium text-gray-600">{{ bindingData[sku.id].length }} binding marketplace</span>
+                          <button
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                            @click="openBindingModal(sku)"
+                          >
+                            <Plus class="h-3.5 w-3.5" />
+                            Tambah
+                          </button>
+                        </div>
+                        <div class="overflow-x-auto rounded-lg border border-blue-100 bg-white">
+                          <table class="w-full text-left text-xs">
+                            <thead class="border-b border-blue-100 bg-blue-50/60">
+                              <tr>
+                                <th class="whitespace-nowrap px-3 py-2 font-medium text-gray-500">Toko</th>
+                                <th class="whitespace-nowrap px-3 py-2 font-medium text-gray-500">Platform</th>
+                                <th class="whitespace-nowrap px-3 py-2 font-medium text-gray-500">Produk MP</th>
+                                <th class="whitespace-nowrap px-3 py-2 font-medium text-gray-500">SKU MP</th>
+                                <th class="whitespace-nowrap px-3 py-2 font-medium text-gray-500">ID SKU MP</th>
+                                <th class="whitespace-nowrap px-3 py-2 font-medium text-gray-500">Status</th>
+                                <th class="whitespace-nowrap px-3 py-2 font-medium text-gray-500" />
+                              </tr>
+                            </thead>
+                            <tbody class="divide-y divide-blue-50">
+                              <tr v-for="binding in bindingData[sku.id]" :key="binding.id" class="hover:bg-blue-50/30">
+                                <td class="whitespace-nowrap px-3 py-2 font-medium text-gray-800">{{ binding.store?.name || '-' }}</td>
+                                <td class="whitespace-nowrap px-3 py-2">
+                                  <span class="inline-flex rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-gray-600">
+                                    {{ sourceLabels[binding.store?.source] || binding.store?.source || '-' }}
+                                  </span>
+                                </td>
+                                <td class="max-w-[160px] truncate px-3 py-2 text-gray-700">{{ binding.mp_product_name || binding.mp_product_id || '-' }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 font-mono text-gray-700">{{ binding.mp_sku || '-' }}</td>
+                                <td class="whitespace-nowrap px-3 py-2 font-mono text-gray-500">{{ binding.mp_sku_id || '-' }}</td>
+                                <td class="whitespace-nowrap px-3 py-2">
+                                  <span
+                                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                                    :class="binding.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'"
+                                  >
+                                    <span class="h-1 w-1 rounded-full" :class="binding.status === 'active' ? 'bg-green-500' : 'bg-gray-400'" />
+                                    {{ binding.status === 'active' ? 'Aktif' : 'Nonaktif' }}
+                                  </span>
+                                </td>
+                                <td class="whitespace-nowrap px-3 py-2">
+                                  <div class="flex items-center gap-1">
+                                    <button
+                                      :disabled="togglingBinding.has(binding.id)"
+                                      class="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+                                      title="Toggle Status"
+                                      @click="toggleBindingStatus(binding)"
+                                    >
+                                      <Loader2 v-if="togglingBinding.has(binding.id)" class="h-3.5 w-3.5 animate-spin" />
+                                      <ToggleRight v-else-if="binding.status === 'active'" class="h-3.5 w-3.5 text-green-500" />
+                                      <ToggleLeft v-else class="h-3.5 w-3.5 text-gray-400" />
+                                    </button>
+                                    <button
+                                      class="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                      title="Hapus Binding"
+                                      @click="deleteBinding(binding, sku.id)"
+                                    >
+                                      <Trash2 class="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
               </tbody>
             </table>
           </div>
         </div>
       </div>
     </template>
+
+    <AppBindingModal
+      v-model="showBindingModal"
+      :product-id="productId"
+      :sku-id="bindingModalSkuId"
+      :sku-code="bindingModalSkuCode"
+      @binding-added="onBindingAdded"
+      @binding-deleted="onBindingDeleted"
+    />
 
     <!-- Image Preview Lightbox -->
     <Teleport to="body">

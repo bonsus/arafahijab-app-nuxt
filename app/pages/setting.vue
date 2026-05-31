@@ -10,12 +10,14 @@ const settingMenus = [
   { label: 'Staff', to: '/setting/staff' },
   { label: 'Gudang', to: '/setting/warehouse' },
   { label: 'Kategori Pelanggan', to: '/setting/customer-category' },
+  { label: 'Toko', to: '/setting/store' },
   { label: 'Integrasi', to: '/setting/integration' },
   { label: 'Kurir', to: '/setting/courier' },
   { label: 'Dompet', to: '/setting/wallets' },
   { label: 'Metode Pembayaran', to: '/setting/payment-method' },
   { label: 'Rekening Bank', to: '/setting/bank' },
   { label: 'Nomor Transaksi', to: '/setting/transaction-number' },
+  { label: 'Sumber Penjualan', to: '/setting/sales-source' },
 ]
 </script>
 

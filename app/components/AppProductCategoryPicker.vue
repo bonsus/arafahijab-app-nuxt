@@ -6,6 +6,7 @@ export interface ProductCategory {
   name: string
   parent_id: string | null
   parent_name: string | null
+  qty: number
 }
 
 const props = defineProps<{
@@ -37,6 +38,12 @@ async function fetchCategories(search: string = '') {
   try {
     const res = await api.get<{ data: ProductCategory[] }>('/products/categories/index', { search })
     results.value = res.data || []
+    if (results.value.length){
+        results.value = results.value.map(category => ({
+            ...category,
+            qty: 1,
+        }))
+    }
     open.value = true
   }
   catch {
@@ -85,10 +92,10 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
       <input
         v-model="query"
         type="text"
-        placeholder="Cari atau pilih kategori produk..."
-        class="input-base pl-10 pr-10"
+        placeholder="Cari atau pilih kategori produk..." 
         @input="onSearch(query)"
         @focus="onFocus"
+        class="w-full pl-10 rounded-md border border-gray-300 bg-white px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
       />
       <button
         v-if="query"

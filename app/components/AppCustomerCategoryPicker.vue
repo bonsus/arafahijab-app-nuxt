@@ -84,10 +84,10 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
       <input
         v-model="query"
         type="text"
-        placeholder="Cari atau pilih kategori customer..."
-        class="input-base pl-10 pr-10"
+        placeholder="Cari atau pilih kategori customer..." 
         @input="onSearch(query)"
         @focus="onFocus"
+        class="w-full pl-10 rounded-md border border-gray-300 bg-white px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
       />
       <button
         v-if="query"

@@ -1,28 +1,37 @@
 <script setup lang="ts">
-import { ArrowLeft, Loader2, Percent, DollarSign, Package, Box, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, Loader2, Percent, Package, Box, Trash2, ToggleRight, ToggleLeft } from 'lucide-vue-next'
+import { convertIsoToDatetimeLocal, formatDateTimeForApi } from '~/composables/useFormatters'
 import type { PromotionProduct } from '~/components/AppPromotionProductPicker.vue'
 import type { PromotionSku } from '~/components/AppPromotionSkuPicker.vue'
 
 definePageMeta({ middleware: 'auth' })
 
+const route = useRoute()
 const router = useRouter()
 const api = useApi()
 const toast = useToast()
 
+// Edit mode detection
+const editId = computed(() => route.query.edit as string | undefined)
+const isEditMode = computed(() => !!editId.value)
+
+const loading = ref(false)
 const saving = ref(false)
 const formErrors = ref<Record<string, string[]>>({})
 
 // Form
 const form = reactive({
   name: '',
+  note: '',
   date_start: '',
   date_end: '',
+  tags: '',
   discount_type: 'percentage' as string,
   item_type: 'product' as string,
   status: 'draft' as string,
-  internal_visibility: false,
-  web_visibility: false,
-  app_visibility: false,
+  internal_visibility: 'inactive' as string,
+  web_visibility: 'inactive' as string,
+  app_visibility: 'inactive' as string,
 })
 
 // Product items
@@ -30,16 +39,18 @@ interface ProductItem {
   product_id: string
   product_name: string
   product_thumbnail: string
+  min_qty: number
+  max_qty: number
+  status: string
   prices: ProductPrice[]
 }
 
 interface ProductPrice {
   customer_category_id: string
   customer_category_name: string
+  price_min: string
+  price_max: string
   discount_value: number | null
-  min_qty: number
-  max_qty: number
-  status: string
 }
 
 const productItems = ref<ProductItem[]>([])
@@ -56,13 +67,15 @@ function addProduct(product: PromotionProduct) {
     product_id: product.id,
     product_name: product.name,
     product_thumbnail: product.thumbnail,
+    min_qty: 0,
+    max_qty: 0,
+    status: 'active',
     prices: product.prices.map(p => ({
       customer_category_id: p.customer_category_id,
       customer_category_name: p.customer_category_name,
+      price_min: p.price_min,
+      price_max: p.price_max,
       discount_value: null,
-      min_qty: 0,
-      max_qty: 0,
-      status: 'active',
     })),
   })
 }
@@ -79,16 +92,17 @@ interface SkuItem {
   sku_code: string
   sku_thumbnail: string
   sku_variants: Record<string, string>
+  min_qty: number
+  max_qty: number
+  status: string
   prices: SkuPrice[]
 }
 
 interface SkuPrice {
   customer_category_id: string
   customer_category_name: string
+  price: string
   discount_value: number | null
-  min_qty: number
-  max_qty: number
-  status: string
 }
 
 const skuItems = ref<SkuItem[]>([])
@@ -108,13 +122,14 @@ function addSku(productId: string, productName: string, sku: PromotionSku) {
     sku_code: sku.sku,
     sku_thumbnail: sku.thumbnail,
     sku_variants: sku.variants,
+    min_qty: 0,
+    max_qty: 0,
+    status: 'active',
     prices: sku.prices.map(p => ({
       customer_category_id: p.customer_category_id,
       customer_category_name: p.customer_category_name,
+      price: p.price,
       discount_value: null,
-      min_qty: 0,
-      max_qty: 0,
-      status: 'active',
     })),
   })
 }
@@ -126,14 +141,16 @@ const addedSkuIds = computed(() => skuItems.value.map(s => s.sku_id))
 
 // Bulk discount values per category
 const bulkDiscountValues = ref<Record<string, number | null>>({})
+const bulkMinQty = ref<number | null>(null)
+const bulkMaxQty = ref<number | null>(null)
 
 function applyBulkDiscount() {
   const hasValues = Object.values(bulkDiscountValues.value).some(v => v !== null && v !== undefined)
   
-  if (!hasValues) {
-    toast.error('Masukkan minimal satu nilai diskon')
-    return
-  }
+  // if (!hasValues) {
+  //   toast.error('Masukkan minimal satu nilai diskon')
+  //   return
+  // }
   
   // Validate values
   for (const [categoryId, value] of Object.entries(bulkDiscountValues.value)) {
@@ -161,8 +178,15 @@ function applyBulkDiscount() {
           appliedCount++
         }
       })
+      // Apply min/max qty if set
+      if (bulkMinQty.value !== null && bulkMinQty.value !== undefined) {
+        item.min_qty = bulkMinQty.value
+      }
+      if (bulkMaxQty.value !== null && bulkMaxQty.value !== undefined) {
+        item.max_qty = bulkMaxQty.value
+      }
     })
-    toast.success(`Diskon diterapkan ke ${appliedCount} item`)
+    toast.success(`Diskon diterapkan`)
   } else {
     skuItems.value.forEach(item => {
       item.prices.forEach(price => {
@@ -172,16 +196,45 @@ function applyBulkDiscount() {
           appliedCount++
         }
       })
+      // Apply min/max qty if set
+      if (bulkMinQty.value !== null && bulkMinQty.value !== undefined) {
+        item.min_qty = bulkMinQty.value
+      }
+      if (bulkMaxQty.value !== null && bulkMaxQty.value !== undefined) {
+        item.max_qty = bulkMaxQty.value
+      }
     })
-    toast.success(`Diskon diterapkan ke ${appliedCount} item`)
+    toast.success(`Diskon diterapkan`)
   }
   
   // Reset bulk values
   bulkDiscountValues.value = {}
+  bulkMinQty.value = null
+  bulkMaxQty.value = null
 }
 
-function formatVariants(variants: Record<string, string>): string {
-  return Object.values(variants).join(' / ')
+function formatVariants(variants: any): string {
+  if (!variants) return '-'
+  
+  // Handle array format: [{ name: "Warna", value: "Cappuccino" }]
+  if (Array.isArray(variants)) {
+    if (variants.length === 0) return '-'
+    return variants.map(v => v.value || v.name || String(v)).join(' / ')
+  }
+  
+  // Handle object format: { "Warna": "Cappuccino" }
+  if (typeof variants === 'object') {
+    const entries = Object.entries(variants)
+    if (entries.length === 0) return '-'
+    return entries.map(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+        return (value as any).value || (value as any).name || String(value)
+      }
+      return String(value)
+    }).join(' / ')
+  }
+  
+  return String(variants)
 }
 
 function formatPrice(price: string): string {
@@ -192,18 +245,152 @@ function getFieldError(field: string): string | undefined {
   return formErrors.value[field]?.[0]
 }
 
-async function handleSubmit() {
+function parseItemErrors(errors: Record<string, string[]>): string[] {
+  const messages: string[] = []
+  
+  for (const [key, value] of Object.entries(errors)) {
+    // Match patterns like "items[0].prices[6].discount_value"
+    const itemMatch = key.match(/items\[(\d+)\]/)
+    const priceMatch = key.match(/prices\[(\d+)\]/)
+    const fieldMatch = key.match(/\.([^.]+)$/)
+    
+    if (itemMatch && itemMatch[1] && value.length > 0) {
+      const itemIndex = parseInt(itemMatch[1])
+      const errorMsg = value[0]
+      
+      if (form.item_type === 'product') {
+        const item = productItems.value[itemIndex]
+        if (item) {
+          if (priceMatch && priceMatch[1]) {
+            const priceIndex = parseInt(priceMatch[1])
+            const price = item.prices[priceIndex]
+            messages.push(`${item.product_name} - ${price?.customer_category_name || 'Kategori'}: ${errorMsg}`)
+          } else {
+            messages.push(`${item.product_name}: ${errorMsg}`)
+          }
+        } else {
+          messages.push(`Item ${itemIndex + 1}: ${errorMsg}`)
+        }
+      } else {
+        const item = skuItems.value[itemIndex]
+        if (item) {
+          if (priceMatch && priceMatch[1]) {
+            const priceIndex = parseInt(priceMatch[1])
+            const price = item.prices[priceIndex]
+            messages.push(`${item.sku_code} - ${price?.customer_category_name || 'Kategori'}: ${errorMsg}`)
+          } else {
+            messages.push(`${item.sku_code}: ${errorMsg}`)
+          }
+        } else {
+          messages.push(`Item ${itemIndex + 1}: ${errorMsg}`)
+        }
+      }
+    } else if (value.length > 0 && value[0]) {
+      // General field errors
+      messages.push(value[0])
+    }
+  }
+  
+  return messages
+}
+
+async function loadDiscount() {
+  loading.value = true
+  
+  try {
+    const response: any = await api.get(`/promotions/discounts/${editId.value}`)
+    const data = response.data
+    
+    // Populate form
+    form.name = data.name || ''
+    form.note = data.note || ''
+    form.date_start = convertIsoToDatetimeLocal(data.date_start)
+    form.date_end = convertIsoToDatetimeLocal(data.date_end)
+    form.tags = data.tags
+    form.discount_type = data.discount_type || 'percentage'
+    form.item_type = data.item_type || 'product'
+    form.status = data.status || 'draft'
+    form.internal_visibility = data.internal_visibility || 'inactive'
+    form.web_visibility = data.web_visibility || 'inactive'
+    form.app_visibility = data.app_visibility || 'inactive'
+    
+    // Populate items based on type
+    if (data.item_type === 'product' && data.item_products) {
+      productItems.value = data.item_products.map((item: any) => ({
+        product_id: item.product_id,
+        product_name: item.name || item.product_name || '',
+        product_thumbnail: item.thumbnail || '',
+        min_qty: item.prices?.[0]?.min_qty || 0,
+        max_qty: item.prices?.[0]?.max_qty || 0,
+        status: item.prices?.[0]?.status || 'active',
+        price_min: item.price_min || '0',
+        price_max: item.price_max || '0',
+        prices: (item.prices || []).map((p: any) => ({
+          customer_category_id: p.customer_category_id,
+          customer_category_name: p.customer_category_name || p.name || '',
+          price_min: item.price_min || '0',
+          price_max: item.price_max || '0',
+          discount_value: p.discount_value || null,
+        })),
+      }))
+    }
+    else if (data.item_type === 'sku' && data.item_products) {
+      // Flatten SKU items from grouped structure
+      const allSkus: SkuItem[] = []
+      data.item_products.forEach((productGroup: any) => {
+        const productId = productGroup.product_id
+        const productName = productGroup.product_name || productGroup.name || ''
+        
+        if (productGroup.skus) {
+          productGroup.skus.forEach((sku: any) => {
+            allSkus.push({
+              product_id: productId,
+              product_name: productName,
+              sku_id: sku.sku_id || sku.id,
+              sku_code: sku.sku_code || sku.sku || sku.code || '',
+              sku_thumbnail: sku.thumbnail || '',
+              sku_variants: sku.variants || {},
+              min_qty: sku.prices?.[0]?.min_qty || 0,
+              max_qty: sku.prices?.[0]?.max_qty || 0,
+              status: sku.prices?.[0]?.status || 'active',
+              prices: (sku.prices || []).map((p: any) => ({
+                customer_category_id: p.customer_category_id,
+                customer_category_name: p.customer_category_name || p.name || '',
+                price: p.price || '0',
+                discount_value: p.discount_value || null,
+              })),
+            })
+          })
+        }
+      })
+      skuItems.value = allSkus
+    }
+    
+    toast.success('Data diskon berhasil dimuat')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal memuat data diskon')
+    router.push('/promotion/discount')
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+async function handleSubmit(status: 'draft' | 'upcoming' | 'active') {
   saving.value = true
   formErrors.value = {}
   
   try {
     const body: Record<string, any> = {
       name: form.name,
-      date_start: form.date_start,
-      date_end: form.date_end,
+      note: form.note,
+      date_start: formatDateTimeForApi(form.date_start),
+      date_end: formatDateTimeForApi(form.date_end),
+      tags: form.tags,
       discount_type: form.discount_type,
       item_type: form.item_type,
-      status: form.status,
+      status: status,
       internal_visibility: form.internal_visibility,
       web_visibility: form.web_visibility,
       app_visibility: form.app_visibility,
@@ -220,9 +407,9 @@ async function handleSubmit() {
         prices: item.prices.map(p => ({
           customer_category_id: p.customer_category_id,
           discount_value: p.discount_value || 0,
-          min_qty: p.min_qty || 0,
-          max_qty: p.max_qty || 0,
-          status: p.status,
+          min_qty: item.min_qty || 0,
+          max_qty: item.max_qty || 0,
+          status: item.status,
         })),
       }))
     }
@@ -248,23 +435,37 @@ async function handleSubmit() {
           prices: sku.prices.map(p => ({
             customer_category_id: p.customer_category_id,
             discount_value: p.discount_value || 0,
-            min_qty: p.min_qty || 0,
-            max_qty: p.max_qty || 0,
-            status: p.status,
+            min_qty: sku.min_qty || 0,
+            max_qty: sku.max_qty || 0,
+            status: sku.status,
           })),
         })),
       }))
     }
 
-    await api.post('/promotions/discounts/create', body)
-    toast.success('Promosi diskon berhasil dibuat')
+    if (isEditMode.value) {
+      await api.put(`/promotions/discounts/${editId.value}`, body)
+      toast.success('Promosi diskon berhasil diperbarui')
+    } else {
+      await api.post('/promotions/discounts/create', body)
+      toast.success('Promosi diskon berhasil dibuat')
+    }
     router.push('/promotion/discount')
   }
   catch (err: any) {
     if (err.errors) {
       formErrors.value = err.errors
+      
+      // Parse and display item-specific errors
+      const itemErrors = parseItemErrors(err.errors)
+      if (itemErrors.length > 0) {
+        itemErrors.forEach(msg => toast.error(msg))
+      } else {
+        toast.error(err.message || 'Gagal membuat promosi diskon')
+      }
+    } else {
+      toast.error(err.message || 'Gagal membuat promosi diskon')
     }
-    toast.error(err.message || 'Gagal membuat promosi diskon')
   }
   finally {
     saving.value = false
@@ -300,6 +501,25 @@ const groupedSkuItems = computed(() => {
   return grouped
 })
 
+// Parse errors to check if specific item/price has error
+function hasItemError(itemIndex: number, priceIndex?: number): boolean {
+  const prefix = `items[${itemIndex}]`
+  
+  for (const key of Object.keys(formErrors.value)) {
+    if (priceIndex !== undefined) {
+      if (key.startsWith(`${prefix}.prices[${priceIndex}]`)) {
+        return true
+      }
+    } else {
+      if (key.startsWith(prefix)) {
+        return true
+      }
+    }
+  }
+  
+  return false
+}
+
 function removeProduct(productId: string) {
   // Remove all SKUs for this product
   skuItems.value = skuItems.value.filter(sku => sku.product_id !== productId)
@@ -311,6 +531,13 @@ function removeSingleSku(skuId: string) {
     skuItems.value.splice(index, 1)
   }
 }
+
+// Load discount on mount if in edit mode
+onMounted(() => {
+  if (isEditMode.value) {
+    loadDiscount()
+  }
+})
 </script>
 
 <template>
@@ -323,13 +550,22 @@ function removeSingleSku(skuId: string) {
       >
         <ArrowLeft class="h-5 w-5" />
       </NuxtLink>
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Buat Diskon Produk</h1>
-        <p class="mt-0.5 text-sm text-gray-500">Tambah promosi diskon baru untuk produk atau SKU</p>
+      <div v-if="!loading">
+        <h1 class="text-2xl font-bold text-gray-900">{{ isEditMode ? 'Edit Diskon Produk' : 'Buat Diskon Produk' }}</h1>
+        <p class="mt-0.5 text-sm text-gray-500">{{ isEditMode ? 'Ubah promosi diskon untuk produk atau SKU' : 'Tambah promosi diskon baru untuk produk atau SKU' }}</p>
+      </div>
+      <div v-else class="h-9 w-64 animate-pulse rounded-lg bg-gray-200" />
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="text-center">
+        <Loader2 class="mx-auto h-8 w-8 animate-spin text-primary-600" />
+        <p class="mt-2 text-sm text-gray-500">Memuat data...</p>
       </div>
     </div>
 
-    <form @submit.prevent="handleSubmit">
+    <div v-else>
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- LEFT: Main form (2/3) -->
         <div class="space-y-6 lg:col-span-2">
@@ -350,29 +586,59 @@ function removeSingleSku(skuId: string) {
                 <p v-if="getFieldError('name')" class="mt-1 text-xs text-red-600">{{ getFieldError('name') }}</p>
               </div>
 
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Catatan Internal</label>
+                <input
+                  v-model="form.note"
+                  type="text"
+                  class="form-input"
+                  placeholder="Catatan untuk tim internal"
+                />
+                <p v-if="getFieldError('note')" class="mt-1 text-xs text-red-600">{{ getFieldError('note') }}</p>
+              </div>
+
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">
-                    Tanggal Mulai <span class="text-red-500">*</span>
+                    Tanggal & Waktu Mulai <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="form.date_start"
-                    type="date"
+                    type="datetime-local"
                     class="form-input"
                   />
                   <p v-if="getFieldError('date_start')" class="mt-1 text-xs text-red-600">{{ getFieldError('date_start') }}</p>
                 </div>
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">
-                    Tanggal Berakhir <span class="text-red-500">*</span>
+                    Tanggal & Waktu Berakhir <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="form.date_end"
-                    type="date"
+                    type="datetime-local"
                     class="form-input"
                   />
                   <p v-if="getFieldError('date_end')" class="mt-1 text-xs text-red-600">{{ getFieldError('date_end') }}</p>
                 </div>
+              </div>
+
+              <!-- tags -->
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">
+                  Tags
+                </label>
+                <input
+                  v-model="form.tags"
+                  type="text"
+                  class="form-input"
+                  placeholder="ramadan,flash-sale,promo"
+                >
+                <p v-if="getFieldError('tags')" class="mt-1 text-xs text-red-600">
+                  {{ getFieldError('tags') }}
+                </p>
+                <p v-else class="mt-1 text-xs text-gray-500">
+                  Pisahkan dengan koma
+                </p>
               </div>
 
               <!-- Discount Type Radio Card -->
@@ -401,7 +667,7 @@ function removeSingleSku(skuId: string) {
                       : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
                     @click="form.discount_type = 'fixed'"
                   >
-                    <DollarSign class="h-5 w-5" />
+                    <span class="text-lg font-bold">Rp</span>
                     <div class="text-left">
                       <p class="text-sm font-semibold">Nominal</p>
                       <p class="text-xs opacity-70">Diskon tetap Rp</p>
@@ -421,11 +687,11 @@ function removeSingleSku(skuId: string) {
                       form.item_type === 'product' 
                         ? 'border-primary-500 bg-primary-50 text-primary-700' 
                         : 'border-gray-200 bg-white text-gray-600',
-                      (productItems.length > 0 || skuItems.length > 0) 
+                      (isEditMode || productItems.length > 0 || skuItems.length > 0) 
                         ? 'cursor-not-allowed opacity-50' 
                         : 'hover:border-gray-300 hover:bg-gray-50'
                     ]"
-                    :disabled="productItems.length > 0 || skuItems.length > 0"
+                    :disabled="isEditMode || productItems.length > 0 || skuItems.length > 0"
                     @click="form.item_type = 'product'; productItems = []; skuItems = []"
                   >
                     <Package class="h-5 w-5" />
@@ -441,11 +707,11 @@ function removeSingleSku(skuId: string) {
                       form.item_type === 'sku' 
                         ? 'border-primary-500 bg-primary-50 text-primary-700' 
                         : 'border-gray-200 bg-white text-gray-600',
-                      (productItems.length > 0 || skuItems.length > 0) 
+                      (isEditMode || productItems.length > 0 || skuItems.length > 0) 
                         ? 'cursor-not-allowed opacity-50' 
                         : 'hover:border-gray-300 hover:bg-gray-50'
                     ]"
-                    :disabled="productItems.length > 0 || skuItems.length > 0"
+                    :disabled="isEditMode || productItems.length > 0 || skuItems.length > 0"
                     @click="form.item_type = 'sku'; productItems = []; skuItems = []"
                   >
                     <Box class="h-5 w-5" />
@@ -455,7 +721,10 @@ function removeSingleSku(skuId: string) {
                     </div>
                   </button>
                 </div>
-                <p v-if="productItems.length > 0 || skuItems.length > 0" class="mt-1.5 text-xs text-gray-500">
+                <p v-if="isEditMode" class="mt-1.5 text-xs text-gray-500">
+                  Tipe item tidak dapat diubah saat edit
+                </p>
+                <p v-else-if="productItems.length > 0 || skuItems.length > 0" class="mt-1.5 text-xs text-gray-500">
                   Hapus semua item terlebih dahulu untuk mengganti tipe
                 </p>
               </div>
@@ -464,16 +733,7 @@ function removeSingleSku(skuId: string) {
         </div>
 
         <!-- RIGHT: Sidebar (1/3) -->
-        <div class="space-y-6">
-          <!-- Status -->
-          <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-            <h2 class="mb-4 text-base font-semibold text-gray-900">Status</h2>
-            <select v-model="form.status" class="form-input">
-              <option value="draft">Draft</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Tidak Aktif</option>
-            </select>
-          </div>
+        <div class="space-y-6"> 
 
           <!-- Visibility -->
           <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
@@ -481,25 +741,28 @@ function removeSingleSku(skuId: string) {
             <div class="space-y-3">
               <label class="flex cursor-pointer items-center gap-3">
                 <input
-                  v-model="form.internal_visibility"
+                  :checked="form.internal_visibility === 'active'"
                   type="checkbox"
                   class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  @change="form.internal_visibility = ($event.target as HTMLInputElement).checked ? 'active' : 'inactive'"
                 />
                 <span class="text-sm font-medium text-gray-700">Internal</span>
               </label>
               <label class="flex cursor-pointer items-center gap-3">
                 <input
-                  v-model="form.web_visibility"
+                  :checked="form.web_visibility === 'active'"
                   type="checkbox"
                   class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  @change="form.web_visibility = ($event.target as HTMLInputElement).checked ? 'active' : 'inactive'"
                 />
                 <span class="text-sm font-medium text-gray-700">Website</span>
               </label>
               <label class="flex cursor-pointer items-center gap-3">
                 <input
-                  v-model="form.app_visibility"
+                  :checked="form.app_visibility === 'active'"
                   type="checkbox"
                   class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  @change="form.app_visibility = ($event.target as HTMLInputElement).checked ? 'active' : 'inactive'"
                 />
                 <span class="text-sm font-medium text-gray-700">Mobile App</span>
               </label>
@@ -568,16 +831,19 @@ function removeSingleSku(skuId: string) {
 
               <div v-else class="space-y-4">
                 <div class="overflow-x-auto">
-                <table class="w-full min-w-[900px] text-left text-sm">
+                <table class="w-full min-w-[1200px] text-left text-sm">
                   <thead>
                     <tr class="border-b-2 border-gray-200 bg-gray-50">
                       <th class="sticky left-0 z-10 min-w-[200px] bg-gray-50 px-3 py-3 font-semibold text-gray-700">Produk</th>
+                      <th class="px-3 py-3 text-center font-semibold text-gray-700 text-nowrap">Range Harga</th>
                       <th v-for="cat in customerCategories" :key="cat.id" class="px-3 py-3 text-center font-semibold text-gray-700">
                         <div class="flex flex-col">
                           <span>{{ cat.name }}</span>
                           <span class="text-xs font-normal text-gray-500">Diskon {{ form.discount_type === 'percentage' ? '(%)' : '(Rp)' }}</span>
                         </div>
                       </th>
+                      <th class="px-3 py-3 text-center font-semibold text-gray-700">Min. Pembelian</th>
+                      <th class="px-3 py-3 text-center font-semibold text-gray-700">Max. Pembelian</th> 
                       <th class="w-16 px-3 py-3"></th>
                     </tr>
                     <!-- Bulk Edit Row -->
@@ -587,6 +853,7 @@ function removeSingleSku(skuId: string) {
                           <span class="text-xs font-semibold text-gray-700">Edit Massal</span>
                         </div>
                       </td>
+                      <td class="px-3 py-3"></td>
                       <td v-for="cat in customerCategories" :key="cat.id" class="px-3 py-2">
                         <div class="relative">
                           <span v-if="form.discount_type==='fixed'" class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
@@ -596,12 +863,32 @@ function removeSingleSku(skuId: string) {
                             min="0"
                             :step="form.discount_type === 'percentage' ? '0.01' : '1'"
                             :max="form.discount_type === 'percentage' ? '100' : undefined"
-                            :placeholder="form.discount_type === 'percentage' ? '10' : '50000'"
+                            :placeholder="form.discount_type === 'percentage' ? '0' : '0'"
                             :class="form.discount_type == 'percentage' ? 'pl-1 pr-5 w-24' : 'pl-6 pr-1 w-28'"
                             class="rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
                           />
                           <span v-if="form.discount_type==='percentage'" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
                         </div>
+                      </td>
+                      <!-- Bulk Min Qty -->
+                      <td class="px-3 py-2">
+                        <input
+                          v-model.number="bulkMinQty"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                        />
+                      </td>
+                      <!-- Bulk Max Qty -->
+                      <td class="px-3 py-2">
+                        <input
+                          v-model.number="bulkMaxQty"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                        />
                       </td>
                       <td class="px-3 py-3">
                         <button
@@ -632,6 +919,12 @@ function removeSingleSku(skuId: string) {
                           </div>
                         </div>
                       </td>
+                      <td class="px-3 py-3">
+                        <p class="text-xs text-gray-600">
+                          Rp {{ formatPrice(Math.min(...item.prices.map(p => Number(p.price_min))).toString()) }} - <br/>
+                          Rp {{ formatPrice(Math.max(...item.prices.map(p => Number(p.price_max))).toString()) }}
+                        </p>
+                      </td>
                       <td v-for="price in item.prices" :key="price.customer_category_id" class="px-3 py-2">
                         <div class="relative">
                           <span v-if="form.discount_type==='fixed'" class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
@@ -641,13 +934,36 @@ function removeSingleSku(skuId: string) {
                             min="0"
                             :step="form.discount_type === 'percentage' ? '0.01' : '1'"
                             :max="form.discount_type === 'percentage' ? '100' : undefined"
-                            :placeholder="form.discount_type === 'percentage' ? '10' : '50000'"
-                            :class="form.discount_type == 'percentage' ? 'pl-1 pr-5 w-24' : 'pl-6 pr-1 w-28'"
+                            :placeholder="form.discount_type === 'percentage' ? '0' : '0'"
+                            :class="[
+                              form.discount_type == 'percentage' ? 'pl-1 pr-5 w-24' : 'pl-6 pr-1 w-28',
+                              hasItemError(idx, item.prices.indexOf(price)) ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+                            ]"
                             class="rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
                           />
                           <span v-if="form.discount_type==='percentage'" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
-                        </div> 
+                        </div>
                       </td>
+                      <!-- Min Qty -->
+                      <td class="px-3 py-2">
+                        <input
+                          v-model.number="item.min_qty"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                        />
+                      </td>
+                      <!-- Max Qty -->
+                      <td class="px-3 py-2">
+                        <input
+                          v-model.number="item.max_qty"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                        />
+                      </td> 
                       <td class="px-3 py-3">
                         <button
                           type="button"
@@ -673,25 +989,28 @@ function removeSingleSku(skuId: string) {
 
               <div v-else class="space-y-4">
                 <div class="overflow-x-auto">
-                <table class="w-full min-w-[900px] text-left text-sm">
+                <table class="w-full min-w-[1200px] text-left text-sm">
                   <thead>
                     <tr class="border-b-2 border-gray-200 bg-gray-50">
                       <th class="sticky left-0 z-10 min-w-[200px] bg-gray-50 px-3 py-3 font-semibold text-gray-700">Produk / SKU</th>
+                      <th class="px-3 py-3 text-center font-semibold text-gray-700 text-nowrap">Range Harga</th>
                       <th v-for="cat in customerCategories" :key="cat.id" class="px-3 py-3 text-center font-semibold text-gray-700">
                         <div class="flex flex-col">
                           <span>{{ cat.name }}</span>
                           <span class="text-xs font-normal text-gray-500">Diskon {{ form.discount_type === 'percentage' ? '(%)' : '(Rp)' }}</span>
                         </div>
                       </th>
-                      <th class="w-16 px-3 py-3"></th>
+                      <th class="px-3 py-3 text-center font-semibold text-gray-700">Min. Pembelian</th>
+                      <th class="px-3 py-3 text-center font-semibold text-gray-700">Max. Pembelian</th>
+                      <th class="px-3 py-3 text-center font-semibold text-gray-700">Status</th> 
                     </tr>
                     <!-- Bulk Edit Row -->
                     <tr class="border-b border-gray-300 bg-primary-50">
-                      <td class="sticky left-0 z-10 bg-primary-50 px-3 py-3">
+                      <td class="sticky left-0 z-10 bg-primary-50 px-3 py-3" colspan="2">
                         <div class="flex items-center gap-2">
                           <span class="text-xs font-semibold text-gray-700">Edit Massal</span>
                         </div>
-                      </td>
+                      </td> 
                       <td v-for="cat in customerCategories" :key="cat.id" class="px-3 py-2">
                         <div class="relative">
                           <span v-if="form.discount_type==='fixed'" class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
@@ -701,13 +1020,33 @@ function removeSingleSku(skuId: string) {
                             min="0"
                             :step="form.discount_type === 'percentage' ? '0.01' : '1'"
                             :max="form.discount_type === 'percentage' ? '100' : undefined"
-                            :placeholder="form.discount_type === 'percentage' ? '10' : '50000'"
+                            :placeholder="form.discount_type === 'percentage' ? '0' : '0'"
                             :class="form.discount_type == 'percentage' ? 'pl-1 pr-5 w-24' : 'pl-6 pr-1 w-28'"
                             class="rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
                           />
                           <span v-if="form.discount_type==='percentage'" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
                         </div>
                       </td>
+                      <!-- Bulk Min Qty -->
+                      <td class="px-3 py-2">
+                        <input
+                          v-model.number="bulkMinQty"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                        />
+                      </td>
+                      <!-- Bulk Max Qty -->
+                      <td class="px-3 py-2">
+                        <input
+                          v-model.number="bulkMaxQty"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                        />
+                      </td> 
                       <td class="px-3 py-3">
                         <button
                           type="button"
@@ -723,24 +1062,26 @@ function removeSingleSku(skuId: string) {
                     <template v-for="(skus, productId) in groupedSkuItems" :key="productId">
                       <!-- Product Parent Row -->
                       <tr class="border-b border-gray-200 bg-gray-100">
-                        <td class="sticky left-0 z-10 bg-gray-100 px-3 py-2.5" colspan="100">
+                        <td class="sticky left-0 z-10 bg-gray-100 px-3 py-2.5" colspan="2">
                           <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                               <Package class="h-4 w-4 text-gray-600" />
                               <span class="font-semibold text-gray-900">{{ skus[0]?.product_name || 'Produk' }}</span>
-                              <span class="rounded-full bg-gray-300 px-2 py-0.5 text-xs font-medium text-gray-700">
+                              <span class="rounded-full bg-gray-300 px-2 py-0.5 text-xs font-medium text-gray-700 text-nowrap">
                                 {{ skus.length }} SKU
                               </span>
                             </div>
-                            <button
-                              type="button"
-                              class="rounded p-1 text-gray-400 hover:bg-gray-300 hover:text-red-500"
-                              @click="removeProduct(productId)"
-                              title="Hapus semua SKU produk ini"
-                            >
-                              <Trash2 class="h-4 w-4" />
-                            </button>
                           </div>
+                        </td>
+                        <td :colspan="customerCategories.length + 3" class="text-right pr-5">
+                          <button
+                            type="button"
+                            class="rounded p-1 text-gray-400 hover:bg-gray-300 hover:text-red-500"
+                            @click="removeProduct(productId)"
+                            title="Hapus semua SKU produk ini"
+                          >
+                            <Trash2 class="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                       <!-- SKU Child Rows -->
@@ -757,10 +1098,16 @@ function removeSingleSku(skuId: string) {
                               class="h-10 w-10 rounded bg-gray-100 object-cover"
                             />
                             <div class="min-w-0">
-                              <p class="truncate font-medium text-gray-900">{{ item.sku_code }}</p>
+                              <p class="truncate font-medium text-gray-900">{{ item.sku_code }}</p> 
                               <p class="truncate text-xs text-gray-500">{{ formatVariants(item.sku_variants) }}</p>
                             </div>
                           </div>
+                        </td>
+                        <td class="px-3 py-3">
+                          <p class="text-xs text-gray-600">
+                            Rp {{ formatPrice(Math.min(...item.prices.map(p => Number(p.price))).toString()) }} - <br/>
+                            Rp {{ formatPrice(Math.max(...item.prices.map(p => Number(p.price))).toString()) }}
+                          </p>
                         </td>
                         <td v-for="price in item.prices" :key="price.customer_category_id" class="px-3 py-2">
                           <div class="relative">
@@ -772,22 +1119,48 @@ function removeSingleSku(skuId: string) {
                               :step="form.discount_type === 'percentage' ? '0.01' : '1'"
                               :max="form.discount_type === 'percentage' ? '100' : undefined"
                               :placeholder="form.discount_type === 'percentage' ? '10' : '50000'"
-                              :class="form.discount_type == 'percentage' ? 'pl-1 pr-5 w-24' : 'pl-6 pr-1 w-28'"
+                              :class="[
+                                form.discount_type == 'percentage' ? 'pl-1 pr-5 w-24' : 'pl-6 pr-1 w-28',
+                                hasItemError(skuItems.indexOf(item), item.prices.indexOf(price)) ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''
+                              ]"
                               class="rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
                             />
                             <span v-if="form.discount_type==='percentage'" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
                           </div>
                         </td>
-                        <td class="px-3 py-3">
-                          <button
-                            type="button"
-                            class="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500"
-                            @click="removeSingleSku(item.sku_id)"
-                            title="Hapus SKU ini"
-                          >
-                            <Trash2 class="h-4 w-4" />
-                          </button>
+                        <!-- Min Qty -->
+                        <td class="px-3 py-2">
+                          <input
+                            v-model.number="item.min_qty"
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                          />
                         </td>
+                        <!-- Max Qty -->
+                        <td class="px-3 py-2">
+                          <input
+                            v-model.number="item.max_qty"
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            class="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-center text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                          />
+                        </td>
+                        <!-- Status Toggle -->
+                        <td class="px-3 py-2">
+                          <div class="flex justify-center">
+                            <button
+                              type="button"
+                              class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                              @click="item.status = item.status === 'active' ? 'inactive' : 'active'"
+                            >
+                              <ToggleRight v-if="item.status === 'active'" class="h-5 w-5 text-green-500" />
+                              <ToggleLeft v-else class="h-5 w-5 text-gray-400" />
+                            </button>
+                          </div>
+                        </td> 
                       </tr>
                     </template>
                   </tbody>
@@ -809,16 +1182,26 @@ function removeSingleSku(skuId: string) {
             Batal
           </NuxtLink>
           <button
+            type="button"
+            :disabled="saving"
+            @click="handleSubmit('draft')"
+            class="flex items-center gap-2 rounded-lg bg-gray-500 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Loader2 v-if="saving" class="h-4 w-4 animate-spin" />
+            {{ saving ? 'Menyimpan...' : 'Simpan Draft' }}
+          </button>
+          <button
             type="submit"
             :disabled="saving"
+            @click="handleSubmit('active')"
             class="flex items-center gap-2 rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Loader2 v-if="saving" class="h-4 w-4 animate-spin" />
             {{ saving ? 'Menyimpan...' : 'Simpan' }}
           </button>
         </div>
-      </div>
-    </form>
+      </div> 
+    </div>
   </div>
 </template>
 

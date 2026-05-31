@@ -13,6 +13,7 @@ export interface PromotionProduct {
   name: string
   thumbnail: string
   stock: number
+  qty: number
   prices: CustomerCategoryPrice[]
 }
 
@@ -37,6 +38,8 @@ function openModal() {
   showModal.value = true
   query.value = ''
   results.value = []
+  // Load initial data immediately
+  fetchProducts('')
 }
 
 function closeModal() {
@@ -48,10 +51,7 @@ function closeModal() {
 function onSearch(val: string) {
   query.value = val
   clearTimeout(timer)
-  // if (val.length < 2) {
-  //   results.value = []
-  //   return
-  // }
+  // Allow search with any length, filter results immediately
   timer = setTimeout(() => fetchProducts(val), 300)
 }
 
@@ -60,6 +60,13 @@ async function fetchProducts(search: string) {
   try {
     const res = await api.get<{ data: PromotionProduct[] }>('/promotions/products/index', { search })
     results.value = res.data || []
+    // add default qty = 1 to each product
+    if (results.value.length) {
+      results.value = results.value.map(product => ({
+        ...product,
+        qty: 1,
+      }))
+    }
   }
   catch {
     results.value = []
@@ -140,12 +147,8 @@ function formatPrice(price: string): string {
                 <Loader2 class="h-5 w-5 animate-spin" /> Memuat produk...
               </div>
 
-              <div v-else-if="!query" class="py-12 text-center text-sm text-gray-400">
-                Ketik minimal 2 karakter untuk mencari produk
-              </div>
-
               <div v-else-if="!results.length" class="py-12 text-center text-sm text-gray-400">
-                Tidak ada produk ditemukan
+                {{ query ? 'Tidak ada produk ditemukan' : 'Tidak ada produk tersedia' }}
               </div>
 
               <div v-else class="space-y-3">

@@ -15,6 +15,7 @@ export interface PromotionSku {
   variants: Record<string, string>
   stock: number
   prices: SkuPrice[]
+  qty: number 
 }
 
 export interface PromotionProductWithSkus {
@@ -46,6 +47,8 @@ function openModal() {
   showModal.value = true
   query.value = ''
   results.value = []
+  // Load initial data immediately
+  fetchSkus('')
 }
 
 function closeModal() {
@@ -57,10 +60,7 @@ function closeModal() {
 function onSearch(val: string) {
   query.value = val
   clearTimeout(timer)
-  if (val.length < 2) {
-    results.value = []
-    return
-  }
+  // Allow search with any length, filter results immediately
   timer = setTimeout(() => fetchSkus(val), 300)
 }
 
@@ -69,6 +69,16 @@ async function fetchSkus(search: string) {
   try {
     const res = await api.get<{ data: PromotionProductWithSkus[] }>('/promotions/products/skus', { search })
     results.value = res.data || []
+    // add qty 
+    if (results.value.length) {
+      results.value = results.value.map(product => ({
+        ...product,
+        skus: product.skus.map(sku => ({
+          ...sku,
+          qty: 1, 
+        }))
+      }))
+    }
   }
   catch {
     results.value = []
@@ -102,8 +112,29 @@ function formatPrice(price: string): string {
   return new Intl.NumberFormat('id-ID').format(Number(price))
 }
 
-function formatVariants(variants: Record<string, string>): string {
-  return Object.values(variants).join(' / ')
+
+function formatVariants(variants: any): string {
+  if (!variants) return '-'
+  
+  // Handle array format: [{ name: "Warna", value: "Cappuccino" }]
+  if (Array.isArray(variants)) {
+    if (variants.length === 0) return '-'
+    return variants.map(v => v.value || v.name || String(v)).join(' / ')
+  }
+  
+  // Handle object format: { "Warna": "Cappuccino" }
+  if (typeof variants === 'object') {
+    const entries = Object.entries(variants)
+    if (entries.length === 0) return '-'
+    return entries.map(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+        return (value as any).value || (value as any).name || String(value)
+      }
+      return String(value)
+    }).join(' / ')
+  }
+  
+  return String(variants)
 }
 </script>
 
@@ -148,7 +179,7 @@ function formatVariants(variants: Record<string, string>): string {
                   v-model="query"
                   type="text"
                   placeholder="Cari produk / SKU..."
-                  class="input-base pl-11 pr-10"
+                  class="input-base pl-11 pr-10" style="padding-left: 2.20rem;"
                   @input="onSearch(query)"
                 />
                 <button
@@ -168,114 +199,70 @@ function formatVariants(variants: Record<string, string>): string {
                 <Loader2 class="h-5 w-5 animate-spin" /> Memuat SKU...
               </div>
 
-              <div v-else-if="!query" class="py-12 text-center text-sm text-gray-400">
-                Ketik minimal 2 karakter untuk mencari SKU
-              </div>
-
               <div v-else-if="!results.length" class="py-12 text-center text-sm text-gray-400">
-                Tidak ada SKU ditemukan
+                {{ query ? 'Tidak ada SKU ditemukan' : 'Tidak ada SKU tersedia' }}
               </div>
 
-              <div v-else class="space-y-4">
-                <div
-                  v-for="product in results"
-                  :key="product.id"
-                  class="rounded-lg border border-gray-200"
-                >
-                  <!-- Product header -->
-                  <div class="flex items-center gap-3 border-b border-gray-100 bg-gray-50/50 px-4 py-3">
-                    <img
-                      v-if="product.thumbnail"
-                      :src="product.thumbnail"
-                      :alt="product.name"
-                      class="h-10 w-10 shrink-0 rounded-lg bg-gray-100 object-cover"
-                    />
-                    <div v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-                      <Package class="h-5 w-5 text-gray-400" />
+              <div v-else class="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                <template v-for="product in results" :key="product.id">
+                  <!-- Product header row -->
+                  <div class="flex items-center gap-2 bg-gray-50 px-4 py-2">
+                    <div class="h-6 w-6 shrink-0 overflow-hidden rounded bg-white ring-1 ring-gray-200">
+                      <img v-if="product.thumbnail" :src="product.thumbnail" :alt="product.name" class="h-full w-full object-cover" />
+                      <Package v-else class="h-full w-full p-1 text-gray-400" />
                     </div>
+                    <p class="text-xs font-semibold text-gray-700">{{ product.name }}</p>
+                    <span class="ml-auto text-[10px] text-gray-400">{{ product.skus?.length || 0 }} SKU</span>
+                  </div>
+
+                  <!-- Individual SKU rows -->
+                  <div
+                    v-for="sku in product.skus"
+                    :key="sku.id"
+                    class="flex items-center gap-3 px-4 py-3 transition-colors"
+                    :class="addedSkuIds?.includes(sku.id) ? 'bg-gray-50 opacity-60' : 'hover:bg-primary-50'"
+                  >
+                    <!-- SKU thumbnail -->
+                    <div class="h-9 w-9 shrink-0 overflow-hidden rounded bg-gray-100 ring-1 ring-gray-200">
+                      <img v-if="sku.thumbnail" :src="sku.thumbnail" class="h-full w-full object-cover" />
+                      <Package v-else class="h-full w-full p-2 text-gray-400" />
+                    </div>
+
+                    <!-- SKU info -->
                     <div class="min-w-0 flex-1">
-                      <p class="truncate text-sm font-semibold text-gray-900">{{ product.name }}</p>
-                      <p class="text-xs text-gray-500">
-                        Stock: {{ product.stock }} &middot; {{ product.skus?.length || 0 }} SKU
-                      </p>
+                      <p class="font-mono text-sm text-gray-900">{{ sku.sku }}</p>
+                      <p class="text-xs text-gray-500">{{ formatVariants(sku.variants) }}</p>
                     </div>
-                    
-                    <!-- Add All Button -->
-                    <div class="shrink-0">
-                      <button
-                        v-if="!isProductFullyAdded(product)"
-                        type="button"
-                        class="flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700"
-                        @click="selectAllSkus(product)"
-                      >
-                        <Plus class="h-3.5 w-3.5" />
-                        Tambah Semua SKU
-                      </button>
-                      <span
-                        v-else
-                        class="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500"
-                      >
-                        Semua Ditambahkan
-                      </span>
-                    </div>
-                  </div>
 
-                  <!-- SKU list -->
-                  <div v-if="product.skus?.length" class="divide-y divide-gray-100">
-                    <div
-                      v-for="sku in product.skus"
-                      :key="sku.id"
-                      class="flex gap-4 p-4 transition-all"
-                      :class="addedSkuIds?.includes(sku.id) ? 'bg-gray-50 opacity-60' : ''"
+                    <!-- Stock -->
+                    <span class="hidden shrink-0 text-xs text-gray-400 sm:block">Stok: {{ sku.stock }}</span>
+
+                    <!-- Add button -->
+                    <button
+                      v-if="!addedSkuIds?.includes(sku.id)"
+                      type="button"
+                      class="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700"
+                      @click="selectSku(product, sku)"
                     >
-                      <div class="shrink-0">
-                        <img
-                          v-if="sku.thumbnail"
-                          :src="sku.thumbnail"
-                          class="h-14 w-14 rounded-lg bg-gray-100 object-cover"
-                        />
-                        <div v-else class="flex h-14 w-14 items-center justify-center rounded-lg bg-gray-100">
-                          <Package class="h-6 w-6 text-gray-400" />
-                        </div>
-                      </div>
-                      
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2">
-                          <p class="text-sm font-semibold text-gray-900">{{ sku.sku }}</p>
-                          <span class="text-xs text-gray-400">{{ formatVariants(sku.variants) }}</span>
-                        </div>
-                        <p class="mt-1 text-xs text-gray-500">Stock: {{ sku.stock }}</p>
-                        
-                        <!-- Price Range -->
-                        <div v-if="sku.prices.length" class="mt-2">
-                          <p class="text-xs text-gray-500">
-                            Range Harga: 
-                            <span class="font-medium text-gray-700">
-                              {{ formatPrice(Math.min(...sku.prices.map(p => Number(p.price))).toString()) }} - 
-                              {{ formatPrice(Math.max(...sku.prices.map(p => Number(p.price))).toString()) }}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <!-- Status Badge -->
-                      <div v-if="addedSkuIds?.includes(sku.id)" class="shrink-0 self-center">
-                        <span class="inline-flex items-center rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
-                          ✓
-                        </span>
-                      </div>
-                    </div>
+                      <Plus class="h-3.5 w-3.5" />
+                      Tambah
+                    </button>
+                    <span
+                      v-else
+                      class="inline-flex shrink-0 items-center rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500"
+                    >
+                      Ditambahkan
+                    </span>
                   </div>
-                  <div v-else class="px-4 py-3 text-center text-xs text-gray-400">Tidak ada SKU</div>
-                </div>
+                </template>
               </div>
             </div>
 
             <!-- Modal Footer -->
-            <div class="border-t border-gray-200 px-6 py-4">
+            <div class="border-t border-gray-200 px-6 py-4 text-right">
               <button
                 type="button"
-                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 @click="closeModal"
               >
                 Tutup

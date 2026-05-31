@@ -259,22 +259,33 @@ const userInitials = computed(() => {
 
     <!-- User Profile (bottom) -->
     <div class="border-t border-gray-200 px-4 py-3">
-      <div class="flex items-center gap-2.5">
-        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
-          {{ userInitials }}
+      <ClientOnly>
+        <div class="flex items-center gap-2.5">
+          <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+            {{ userInitials }}
+          </div>
+          <div class="flex-1 overflow-hidden">
+            <p class="truncate text-xs font-medium text-gray-900">{{ authStore.user?.name || 'User' }}</p>
+            <p class="truncate text-[11px] leading-tight text-gray-500">{{ authStore.user?.email || '' }}</p>
+          </div>
+          <button
+            class="shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+            title="Logout"
+            @click="authStore.logout()"
+          >
+            <LogOut class="h-4 w-4" />
+          </button>
         </div>
-        <div class="flex-1 overflow-hidden">
-          <p class="truncate text-xs font-medium text-gray-900">{{ authStore.user?.name || 'User' }}</p>
-          <p class="truncate text-[11px] leading-tight text-gray-500">{{ authStore.user?.email || '' }}</p>
-        </div>
-        <button
-          class="shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-          title="Logout"
-          @click="authStore.logout()"
-        >
-          <LogOut class="h-4 w-4" />
-        </button>
-      </div>
+        <template #fallback>
+          <div class="flex items-center gap-2.5">
+            <div class="h-7 w-7 shrink-0 rounded-full bg-gray-100" />
+            <div class="flex-1 space-y-1.5">
+              <div class="h-3 w-20 rounded bg-gray-100" />
+              <div class="h-2.5 w-28 rounded bg-gray-100" />
+            </div>
+          </div>
+        </template>
+      </ClientOnly>
     </div>
   </aside>
 </template>

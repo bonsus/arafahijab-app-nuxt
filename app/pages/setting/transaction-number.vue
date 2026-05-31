@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Hash, ChevronDown, ChevronRight, Info } from 'lucide-vue-next'
+import { Hash, ChevronDown, ChevronRight } from 'lucide-vue-next'
 
 definePageMeta({
   middleware: 'auth',
@@ -11,19 +11,10 @@ const toast = useToast()
 const saving = ref(false)
 const loading = ref(false)
 
-// Format tokens
-const formatTokens = [
-  { label: 'YYYY', value: '{YYYY}', desc: 'Tahun 4 digit (2026)' },
-  { label: 'YY', value: '{YY}', desc: 'Tahun 2 digit (26)' },
-  { label: 'MM', value: '{MM}', desc: 'Bulan (01-12)' },
-  { label: 'DD', value: '{DD}', desc: 'Tanggal (01-31)' },
-  { label: 'NO', value: '{NO}', desc: 'Nomor urut otomatis' },
-]
-
 interface TransactionField {
   key: string
   label: string
-  default: string
+  defaultPrefix: string
 }
 
 interface TransactionGroup {
@@ -37,113 +28,84 @@ const groups: TransactionGroup[] = [
     key: 'penjualan',
     label: 'Penjualan',
     fields: [
-      { key: 'sales_order', label: 'Nomor Order', default: 'SO{YY}{NO}' },
-      { key: 'sales_payment', label: 'Nomor Pembayaran', default: 'SP{YY}{NO}' },
-      { key: 'sales_return', label: 'Nomor Retur', default: 'SR{YY}{NO}' },
-      { key: 'sales_refund', label: 'Nomor Refund', default: 'SRF{YY}{NO}' },
-      { key: 'sales_non_sales', label: 'Penjualan Non-Sales', default: 'NS{YY}{NO}' },
+      { key: 'sales_order', label: 'Nomor Order', defaultPrefix: 'SO' },
+      { key: 'sales_payment', label: 'Nomor Pembayaran', defaultPrefix: 'SP' },
+      { key: 'sales_return', label: 'Nomor Retur', defaultPrefix: 'SR' },
+      { key: 'sales_refund', label: 'Nomor Refund', defaultPrefix: 'SRF' },
+      { key: 'sales_non_sales', label: 'Penjualan Non-Sales', defaultPrefix: 'NS' },
     ],
   },
   {
     key: 'pembelian',
     label: 'Pembelian',
     fields: [
-      { key: 'purchase_order', label: 'Purchase Order', default: 'PO{YY}{NO}' },
-      { key: 'purchase_payment', label: 'Pembayaran PO', default: 'PP{YY}{NO}' },
-      { key: 'purchase_receipt', label: 'Penerimaan', default: 'PR{YY}{NO}' },
-      { key: 'purchase_receipt_payment', label: 'Penerimaan Pembayaran', default: 'PRP{YY}{NO}' },
-      { key: 'purchase_return', label: 'Retur', default: 'PTR{YY}{NO}' },
-      { key: 'purchase_refund', label: 'Refund', default: 'PRF{YY}{NO}' },
+      { key: 'purchase_order', label: 'Purchase Order', defaultPrefix: 'PO' },
+      { key: 'purchase_payment', label: 'Pembayaran PO', defaultPrefix: 'PP' },
+      { key: 'purchase_receipt', label: 'Penerimaan', defaultPrefix: 'PR' },
+      { key: 'purchase_receipt_payment', label: 'Penerimaan Pembayaran', defaultPrefix: 'PRP' },
+      { key: 'purchase_return', label: 'Retur', defaultPrefix: 'PTR' },
+      { key: 'purchase_refund', label: 'Refund', defaultPrefix: 'PRF' },
     ],
   },
   {
     key: 'inventory',
     label: 'Inventory',
     fields: [
-      { key: 'stock_adjustment', label: 'Stock Adjustment', default: 'SA{YY}{NO}' },
-      { key: 'stock_conversion', label: 'Conversion Stock', default: 'SC{YY}{NO}' },
-      { key: 'stock_transfer', label: 'Transfer Stock', default: 'ST{YY}{NO}' },
-      { key: 'stock_opname', label: 'Stock Opname', default: 'SOP{YY}{NO}' },
+      { key: 'stock_adjustment', label: 'Stock Adjustment', defaultPrefix: 'SA' },
+      { key: 'stock_conversion', label: 'Conversion Stock', defaultPrefix: 'SC' },
+      { key: 'stock_transfer', label: 'Transfer Stock', defaultPrefix: 'ST' },
+      { key: 'stock_opname', label: 'Stock Opname', defaultPrefix: 'SOP' },
     ],
   },
   {
     key: 'other',
     label: 'Transaksi Lain',
     fields: [
-      { key: 'income', label: 'Income', default: 'INC{YY}{NO}' },
-      { key: 'expense', label: 'Expense', default: 'EXP{YY}{NO}' },
+      { key: 'income', label: 'Income', defaultPrefix: 'INC' },
+      { key: 'expense', label: 'Expense', defaultPrefix: 'EXP' },
     ],
   },
 ]
 
-// Form values keyed by field key
-const form = reactive<Record<string, string>>({})
+interface FieldValue {
+  prefix: string
+  start_no: number
+}
+
+const form = reactive<Record<string, FieldValue>>({})
 const expandedGroups = reactive<Record<string, boolean>>({})
+const errors = reactive<Record<string, string>>({})
 
 // Initialize defaults
 groups.forEach((g) => {
   expandedGroups[g.key] = true
   g.fields.forEach((f) => {
-    form[f.key] = f.default
+    form[f.key] = { prefix: f.defaultPrefix, start_no: 1 }
   })
 })
 
-const errors = reactive<Record<string, string>>({})
-
-function getPreview(format: string): string {
-  const now = new Date()
-  return format
-    .replace('{YYYY}', String(now.getFullYear()))
-    .replace('{YY}', String(now.getFullYear()).slice(-2))
-    .replace('{MM}', String(now.getMonth() + 1).padStart(2, '0'))
-    .replace('{DD}', String(now.getDate()).padStart(2, '0'))
-    .replace('{NO}', '00001')
-}
-
-const allTokens = ['{YYYY}', '{YY}', '{MM}', '{DD}', '{NO}']
-
-function getPrefix(value: string): string {
-  // prefix = everything before the first token
-  let firstIdx = value.length
-  for (const t of allTokens) {
-    const idx = value.indexOf(t)
-    if (idx !== -1 && idx < firstIdx) firstIdx = idx
-  }
-  return value.slice(0, firstIdx)
-}
-
-function validate(): boolean {
-  let valid = true
-  groups.forEach((g) => {
-    g.fields.forEach((f) => {
-      const val = form[f.key] || ''
-      const prefix = getPrefix(val)
-      if (!prefix) {
-        errors[f.key] = 'Harus diawali dengan prefix (contoh: SO, PO, dll)'
-        valid = false
-      } else if (!val.endsWith('{NO}')) {
-        errors[f.key] = 'Harus diakhiri dengan {NO}'
-        valid = false
-      } else {
-        errors[f.key] = ''
-      }
-    })
-  })
-  return valid
-}
-
-function insertToken(fieldKey: string, token: string) {
-  form[fieldKey] = (form[fieldKey] || '') + token
+function getPreview(prefix: string, startNo: number): string {
+  const yy = String(new Date().getFullYear()).slice(-2)
+  const padded = String(startNo || 1).padStart(7, '0')
+  return `${prefix || '??'}${yy}${padded}`
 }
 
 async function fetchSettings() {
   loading.value = true
   try {
-    const res = await api.get<{ data: Record<string, string> }>('/options/transaction-number')
-    const values = res.data || {}
+    const res = await api.get<{ data: Record<string, any> }>('/options/transaction-number')
+    const values = (res.data as any)?.value ?? res.data ?? {}
     Object.keys(form).forEach((key) => {
-      if (key in values && values[key]) {
-        form[key] = values[key]
+      const val = values[key]
+      if (!val) return
+      if (typeof val === 'object' && 'prefix' in val) {
+        form[key]!.prefix = val.prefix ?? form[key]!.prefix
+        form[key]!.start_no = Number(val.start_no) || 1
+      }
+      // legacy: if stored as string like 'SO{YY}{NO}', extract prefix
+      else if (typeof val === 'string') {
+        const match = val.match(/^([A-Z]+)/i)
+        if (match) form[key]!.prefix = match[1]!.toUpperCase()
       }
     })
   }
@@ -155,14 +117,42 @@ async function fetchSettings() {
   }
 }
 
+function validate(): boolean {
+  let valid = true
+  groups.forEach((g) => {
+    g.fields.forEach((f) => {
+      const val = form[f.key]!
+      if (!val.prefix.trim()) {
+        errors[f.key] = 'Prefix tidak boleh kosong'
+        valid = false
+      }
+      else if (!/^[A-Z0-9]+$/i.test(val.prefix.trim())) {
+        errors[f.key] = 'Hanya huruf dan angka'
+        valid = false
+      }
+      else {
+        errors[f.key] = ''
+      }
+    })
+  })
+  return valid
+}
+
 async function handleSave() {
   if (!validate()) {
-    toast.error('Format tidak valid, periksa kembali')
+    toast.error('Ada input yang tidak valid, periksa kembali')
     return
   }
   saving.value = true
+  const payload: Record<string, FieldValue> = {}
+  Object.keys(form).forEach((key) => {
+    payload[key] = {
+      prefix: form[key]!.prefix.trim().toUpperCase(),
+      start_no: Number(form[key]!.start_no) || 1,
+    }
+  })
   try {
-    await api.put('/options/transaction-number', { value: { ...form } })
+    await api.put('/options/transaction-number', { value: payload })
     toast.success('Format nomor transaksi berhasil disimpan')
   }
   catch (err: any) {
@@ -173,17 +163,16 @@ async function handleSave() {
   }
 }
 
-onMounted(() => {
-  fetchSettings()
-})
+onMounted(() => fetchSettings())
 </script>
 
 <template>
   <div class="space-y-6">
+    <!-- Header -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Nomor Transaksi</h1>
-        <p class="mt-1 text-sm text-gray-500">Atur format penomoran otomatis untuk setiap jenis transaksi</p>
+        <p class="mt-1 text-sm text-gray-500">Atur prefix dan nomor awal untuk setiap jenis transaksi</p>
       </div>
       <button
         :disabled="saving"
@@ -194,34 +183,37 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- Format guide -->
+    <!-- Format info -->
     <div class="rounded-xl bg-blue-50 p-4 ring-1 ring-blue-200">
       <div class="flex items-start gap-3">
-        <Info class="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
-        <div>
-          <p class="text-sm font-medium text-blue-900">Format yang tersedia</p>
-          <div class="mt-2 flex flex-wrap gap-2">
-            <span
-              v-for="t in formatTokens"
-              :key="t.value"
-              class="inline-flex items-center gap-1.5 rounded-md bg-blue-100 px-2 py-1 text-xs font-mono text-blue-800"
-            >
-              {{ t.value }}
-              <span class="font-sans text-blue-600">{{ t.desc }}</span>
-            </span>
+        <Hash class="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
+        <div class="space-y-1.5">
+          <p class="text-sm font-semibold text-blue-900">Format nomor transaksi</p>
+          <div class="flex flex-wrap items-center gap-1.5 font-mono text-sm">
+            <span class="rounded bg-blue-200 px-2 py-0.5 font-semibold text-blue-900">PREFIX</span>
+            <span class="text-blue-400">+</span>
+            <span class="rounded bg-blue-200 px-2 py-0.5 font-semibold text-blue-900">YY</span>
+            <span class="text-blue-400">+</span>
+            <span class="rounded bg-blue-200 px-2 py-0.5 font-semibold text-blue-900">0000001</span>
           </div>
+          <p class="text-xs text-blue-600">
+            Contoh: <span class="font-mono font-semibold">SO260000001</span>,
+            <span class="font-mono font-semibold">PO260000001</span>
+          </p>
         </div>
       </div>
     </div>
 
-    <!-- Loading -->
+    <!-- Loading skeleton -->
     <div v-if="loading" class="space-y-4">
       <div v-for="i in 4" :key="i" class="animate-pulse rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
         <div class="h-5 w-32 rounded bg-gray-200" />
         <div class="mt-4 space-y-3">
-          <div v-for="j in 3" :key="j" class="flex items-center gap-4">
-            <div class="h-4 w-40 rounded bg-gray-200" />
-            <div class="h-9 flex-1 rounded bg-gray-200" />
+          <div v-for="j in 3" :key="j" class="grid grid-cols-4 gap-4">
+            <div class="h-4 rounded bg-gray-200" />
+            <div class="h-9 rounded bg-gray-200" />
+            <div class="h-9 rounded bg-gray-200" />
+            <div class="h-4 w-28 rounded bg-gray-200" />
           </div>
         </div>
       </div>
@@ -245,50 +237,62 @@ onMounted(() => {
           />
           <Hash class="h-4 w-4 text-primary-500" />
           <span class="text-sm font-semibold text-gray-900">{{ group.label }}</span>
-          <span class="text-xs text-gray-400">({{ group.fields.length }} format)</span>
+          <span class="text-xs text-gray-400">({{ group.fields.length }} nomor)</span>
         </button>
 
         <!-- Fields -->
         <div v-show="expandedGroups[group.key]" class="border-t border-gray-100 px-6 py-4">
-          <div class="space-y-4">
-            <div v-for="field in group.fields" :key="field.key">
-              <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <label class="w-48 shrink-0 text-sm font-medium text-gray-700">
-                  {{ field.label }}
-                </label>
-                <div class="flex-1">
-                  <div class="flex gap-2">
-                    <input
-                      v-model="form[field.key]"
-                      type="text"
-                      :class="[
-                        'w-full rounded-lg border px-3 py-2 font-mono text-sm text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:ring-2',
-                        errors[field.key]
-                          ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                          : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500/20',
-                      ]"
-                      :placeholder="field.default"
-                      @input="errors[field.key] = ''"
-                    />
-                  </div>
-                  <p v-if="errors[field.key]" class="mt-1 text-xs text-red-500">{{ errors[field.key] }}</p>
-                  <!-- Token buttons -->
-                  <div class="mt-1.5 flex flex-wrap gap-1">
-                    <button
-                      v-for="t in formatTokens"
-                      :key="t.value"
-                      type="button"
-                      class="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-[10px] text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-                      @click="insertToken(field.key, t.value)"
-                    >
-                      {{ t.value }}
-                    </button>
-                  </div>
-                  <!-- Preview -->
-                  <p class="mt-1 text-xs text-gray-400">
-                    Preview: <span class="font-mono text-gray-600">{{ getPreview(form[field.key] || field.default) }}</span>
-                  </p>
-                </div>
+          <div class="space-y-3">
+            <!-- Column headers -->
+            <div class="hidden grid-cols-[1fr_120px_160px_1fr] gap-4 border-b border-gray-100 pb-2 sm:grid">
+              <div class="text-xs font-medium uppercase tracking-wider text-gray-400">Jenis Transaksi</div>
+              <div class="text-xs font-medium uppercase tracking-wider text-gray-400">Prefix</div>
+              <div class="text-xs font-medium uppercase tracking-wider text-gray-400">Mulai Nomor</div>
+              <div class="text-xs font-medium uppercase tracking-wider text-gray-400">Preview</div>
+            </div>
+
+            <div
+              v-for="field in group.fields"
+              :key="field.key"
+              class="grid grid-cols-1 gap-3 rounded-lg bg-gray-50/60 p-3 sm:grid-cols-[1fr_120px_160px_1fr] sm:items-center sm:gap-4 sm:rounded-none sm:bg-transparent sm:p-0"
+            >
+              <!-- Label -->
+              <label class="text-sm font-medium text-gray-700">{{ field.label }}</label>
+
+              <!-- Prefix -->
+              <div>
+                <input
+                  v-if="form[field.key]"
+                  v-model="form[field.key]!.prefix"
+                  type="text"
+                  maxlength="10"
+                  class="w-full rounded-lg border px-3 py-2 font-mono text-sm uppercase tracking-wider text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2"
+                  :class="errors[field.key]
+                    ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
+                    : 'border-gray-300 bg-white focus:border-primary-500 focus:ring-primary-500/20'"
+                  placeholder="SO"
+                  @input="errors[field.key] = ''; if (form[field.key]) form[field.key]!.prefix = form[field.key]!.prefix.toUpperCase()"
+                />
+                <p v-if="errors[field.key]" class="mt-1 text-xs text-red-500">{{ errors[field.key] }}</p>
+              </div>
+
+              <!-- Start number -->
+              <div>
+                <input
+                  v-if="form[field.key]"
+                  v-model.number="form[field.key]!.start_no"
+                  type="number"
+                  min="1"
+                  class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  placeholder="1"
+                />
+              </div>
+
+              <!-- Preview -->
+              <div class="flex items-center">
+                <span class="font-mono text-sm font-medium text-gray-700">
+                  {{ form[field.key] ? getPreview(form[field.key]!.prefix, form[field.key]!.start_no) : '' }}
+                </span>
               </div>
             </div>
           </div>

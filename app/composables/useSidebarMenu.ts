@@ -11,9 +11,11 @@ export function useSidebarMenu(): MenuItem[] {
       label: 'Penjualan',
       icon: 'shopping-cart',
       children: [
-        { label: 'Order', to: '/penjualan/order' },
-        { label: 'Retur', to: '/penjualan/retur' },
-        { label: 'Non-Sales', to: '/penjualan/non-sales' },
+        { label: 'Order', to: '/sales/order' },
+        { label: 'Pembayaran', to: '/sales/payments' },
+        { label: 'Retur', to: '/sales/retur' },
+        { label: 'Non-Sales', to: '/sales/non-sales' },
+        { label: 'Order Marketplace', to: '/sales/marketplace' },
       ],
     },
     {
@@ -31,8 +33,8 @@ export function useSidebarMenu(): MenuItem[] {
       icon: 'box',
       children: [
         { label: 'Master Produk', to: '/product/masters' },
-        { label: 'Kategori Produk', to: '/product/categories' },
-        { label: 'Produk Binding', to: '/product/binding' },
+        { label: 'Kategori Produk', to: '/product/categories' }, 
+        { label: 'Produk Marketplace', to: '/product/marketplace' },
         { label: 'Produk Integrations', to: '/product/integrations' },
       ],
     },
@@ -51,8 +53,8 @@ export function useSidebarMenu(): MenuItem[] {
         children: [
           { label: 'Diskon Produk', to: '/promotion/discount' },
           { label: 'Diskon Checkout', to: '/promotion/checkout' },
-          { label: 'Produk Gratis', to: '/promotion/free-product' },
           { label: 'Diskon Ongkir', to: '/promotion/shipping' },
+          { label: 'Produk Gratis', to: '/promotion/free-product' },
         ],
     },
     {
@@ -101,7 +103,7 @@ export function useSidebarMenu(): MenuItem[] {
     {
       label: 'Pengaturan',
       icon: 'settings',
-      to: '/setting/general' 
+      to: '/setting/general', 
     },
   ]
 }

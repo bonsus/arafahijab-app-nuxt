@@ -2,8 +2,8 @@
 import {
   Plus, Search, Pencil, Trash2, Package, Eye,
   Image as ImageIcon,
-  ToggleLeft, ToggleRight, Loader2, EllipsisVertical, Filter,
-  X,
+  ToggleLeft, ToggleRight, Loader2, EllipsisVertical,
+  X, Link2, ChevronDown,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -36,6 +36,7 @@ interface Product {
   type: string
   status: string
   sku_count: number
+  binding_count: number
   stock_available: number
   price_min: number
   price_max: number
@@ -53,6 +54,7 @@ interface SkuItem {
   buffer_stock: number
   rewards_point: string
   stock_available: number
+  binding_count: number
   status: string
   prices: {
     id: string
@@ -79,6 +81,14 @@ interface CategoryOption {
 const api = useApi()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+// Binding modal state
+const showBindingModal = ref(false)
+const bindingModalProductId = ref('')
+const bindingModalSkuId = ref('')
+const bindingModalSkuCode = ref('')
+const bindingModalProductName = ref('')
+const bindingModalVariants = ref<{ name: string; value: string }[]>([])
 
 // List state
 const loading = ref(true)
@@ -381,6 +391,35 @@ function getThumb(product: Product): string {
     || product.thumbnail_media?.[0]?.file_url || ''
 }
 
+function openBindingModal(productId: string, sku: SkuItem) {
+  bindingModalProductId.value = productId
+  bindingModalSkuId.value = sku.id
+  bindingModalSkuCode.value = sku.sku
+  bindingModalProductName.value = products.value.find(p => p.id === productId)?.name || ''
+  bindingModalVariants.value = sku.variants
+  showBindingModal.value = true
+}
+
+function onBindingAdded() {
+  const skuList = skuData.value[bindingModalProductId.value]
+  if (skuList) {
+    const s = skuList.find(x => x.id === bindingModalSkuId.value)
+    if (s) s.binding_count = (s.binding_count || 0) + 1
+  }
+  const prod = products.value.find(p => p.id === bindingModalProductId.value)
+  if (prod) prod.binding_count = (prod.binding_count || 0) + 1
+}
+
+function onBindingDeleted() {
+  const skuList = skuData.value[bindingModalProductId.value]
+  if (skuList) {
+    const s = skuList.find(x => x.id === bindingModalSkuId.value)
+    if (s && s.binding_count > 0) s.binding_count--
+  }
+  const prod = products.value.find(p => p.id === bindingModalProductId.value)
+  if (prod && prod.binding_count > 0) prod.binding_count--
+}
+
 onMounted(() => {
   fetchProducts()
   fetchCategories()
@@ -622,7 +661,16 @@ onUnmounted(() => {
 
             <!-- SKU count cell -->
             <div class="hidden md:block cursor-pointer" @click="toggleSkus(product)">
-              <span class="text-sm text-gray-700">{{ product.sku_count }}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm text-gray-700">{{ product.sku_count }}</span>
+                <span
+                  v-if="product.binding_count > 0"
+                  class="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200"
+                  title="Jumlah binding marketplace"
+                >
+                  {{ product.binding_count }} binding
+                </span>
+              </div>
             </div>
 
             <!-- Stok cell -->
@@ -787,6 +835,7 @@ onUnmounted(() => {
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Reward</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Stok</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Harga</th>
+                    <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Binding</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500">Status</th>
                     <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-500" />
                   </tr>
@@ -845,6 +894,23 @@ onUnmounted(() => {
                       <span v-else class="text-gray-400">-</span>
                     </td>
                     <td class="whitespace-nowrap px-4 py-2.5">
+                      <div class="flex items-center gap-1.5">
+                        <span
+                          v-if="sku.binding_count > 0"
+                          class="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200"
+                        >
+                          {{ sku.binding_count }}
+                        </span>
+                        <button
+                          class="rounded p-1 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          title="Tambah Binding"
+                          @click.stop="openBindingModal(product.id, sku)"
+                        >
+                          <Link2 class="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-2.5">
                       <span
                         class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
                         :class="sku.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'"
@@ -883,4 +949,15 @@ onUnmounted(() => {
       />
     </div>
   </div>
+
+  <AppBindingModal
+    v-model="showBindingModal"
+    :product-id="bindingModalProductId"
+    :sku-id="bindingModalSkuId"
+    :sku-code="bindingModalSkuCode"
+    :product-name="bindingModalProductName"
+    :variants="bindingModalVariants"
+    @binding-added="onBindingAdded"
+    @binding-deleted="onBindingDeleted"
+  />
 </template>

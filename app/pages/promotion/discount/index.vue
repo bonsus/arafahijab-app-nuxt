@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import {
   Plus, Search, Pencil, Trash2, Eye, RefreshCw,
-  ToggleLeft, ToggleRight, Tag, Calendar,
+  ToggleLeft, ToggleRight, Tag, Calendar, Clock,
+  Percent, Package, Box, AlertCircle,
+  CheckCircle, Globe, Smartphone, Building2,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
 const api = useApi()
 const toast = useToast()
+const { confirm: showConfirm } = useConfirm()
 
 interface PromotionDiscount {
   id: string
@@ -17,9 +20,10 @@ interface PromotionDiscount {
   discount_type: string
   item_type: string
   status: string
-  internal_visibility: boolean
-  web_visibility: boolean
-  app_visibility: boolean
+  status_label: string
+  internal_visibility: string
+  web_visibility: string
+  app_visibility: string
   created_at: string
   updated_at: string
 }
@@ -40,20 +44,20 @@ const statusOptions = [
   { label: 'Draft', value: 'draft', color: 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200' },
 ]
 
-const statusConfig: Record<string, { label: string; bg: string }> = {
-  active: { label: 'Aktif', bg: 'bg-green-50 text-green-700 ring-1 ring-green-200' },
-  inactive: { label: 'Tidak Aktif', bg: 'bg-gray-50 text-gray-700 ring-1 ring-gray-200' },
-  draft: { label: 'Draft', bg: 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200' },
+const statusConfig: Record<string, { label: string; bg: string; icon: any }> = {
+  active: { label: 'Aktif', bg: 'bg-green-50 text-green-700 ring-1 ring-green-200', icon: CheckCircle },
+  inactive: { label: 'Tidak Aktif', bg: 'bg-gray-50 text-gray-700 ring-1 ring-gray-200', icon: AlertCircle },
+  draft: { label: 'Draft', bg: 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200', icon: Clock },
 }
 
-const itemTypeConfig: Record<string, { label: string; bg: string }> = {
-  product: { label: 'Produk', bg: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' },
-  sku: { label: 'SKU', bg: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200' },
+const itemTypeConfig: Record<string, { label: string; bg: string; icon: any }> = {
+  product: { label: 'Produk', bg: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200', icon: Package },
+  sku: { label: 'SKU', bg: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200', icon: Box },
 }
 
-const discountTypeConfig: Record<string, string> = {
-  percentage: 'Persentase',
-  fixed: 'Nominal',
+const discountTypeConfig: Record<string, { label: string; icon: any }> = {
+  percentage: { label: 'Persentase', icon: Percent },
+  fixed: { label: 'Nominal', icon: null }, // Custom Rp icon
 }
 
 let searchTimer: ReturnType<typeof setTimeout>
@@ -83,6 +87,22 @@ function onPerPageChange(pp: number) {
   fetchPromotions()
 }
 
+function statusLabel(promo: PromotionDiscount): string {
+  if (promo.status === 'inactive') return 'Tidak Aktif'
+  else if (promo.status === 'active') {
+    if (new Date(promo.date_end) < new Date()) {
+      return 'Berakhir'
+    }
+    else if (new Date(promo.date_start) > new Date()) {
+      return 'Akan Datang'
+    }
+    else if (new Date(promo.date_start) <= new Date() && new Date(promo.date_end) >= new Date()) {
+      return 'Berlangsung'
+    }
+  }
+  return promo.status || '-'
+}
+
 async function fetchPromotions() {
   loading.value = true
   try {
@@ -96,6 +116,12 @@ async function fetchPromotions() {
     const res = await api.get<{ data: any }>('/promotions/discounts/index', params)
     const data = res.data?.data || res.data || []
     promotions.value = Array.isArray(data) ? data : (data.data || [])
+    
+    // Set status_label untuk setiap promo
+    promotions.value.forEach(promo => {
+      promo.status_label = statusLabel(promo)
+    })
+    
     page.value = res.data?.page || 1
     perPage.value = res.data?.per_page || 20
     totalPage.value = res.data?.total_page || 0
@@ -122,7 +148,15 @@ async function toggleStatus(promo: PromotionDiscount) {
 }
 
 async function handleDelete(promo: PromotionDiscount) {
-  if (!confirm(`Yakin ingin menghapus promosi "${promo.name}"?`)) return
+  const confirmed = await showConfirm({
+    title: 'Hapus Diskon',
+    message: `Yakin ingin menghapus promosi "${promo.name}"? Aksi ini tidak dapat dibatalkan.`,
+    confirmText: 'Hapus',
+    cancelText: 'Batal',
+    variant: 'danger'
+  })
+  
+  if (!confirmed) return
   
   try {
     await api.delete(`/promotions/discounts/${promo.id}`)
@@ -132,13 +166,7 @@ async function handleDelete(promo: PromotionDiscount) {
   catch (err: any) {
     toast.error(err.message || 'Gagal menghapus promosi')
   }
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(d)
-}
+} 
 
 function isExpired(promo: PromotionDiscount): boolean {
   if (!promo.date_end) return false
@@ -148,6 +176,53 @@ function isExpired(promo: PromotionDiscount): boolean {
 function isUpcoming(promo: PromotionDiscount): boolean {
   if (!promo.date_start) return false
   return new Date(promo.date_start) > new Date()
+}
+
+function isActive(promo: PromotionDiscount): boolean {
+  const now = new Date()
+  const start = promo.date_start ? new Date(promo.date_start) : null
+  const end = promo.date_end ? new Date(promo.date_end) : null
+  
+  if (start && end) {
+    return now >= start && now <= end
+  }
+  return false
+}
+
+function getRelativeTime(dateStr: string): string {
+  if (!dateStr) return '-'
+  
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = date.getTime() - now.getTime()
+  const days = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24))
+  const hours = Math.floor(Math.abs(diff) / (1000 * 60 * 60))
+  
+  if (diff > 0) {
+    // Future
+    if (days > 7) return `${Math.floor(days / 7)} minggu lagi`
+    if (days > 0) return `${days} hari lagi`
+    if (hours > 0) return `${hours} jam lagi`
+    return 'Segera'
+  } else {
+    // Past
+    if (days > 7) return `${Math.floor(days / 7)} minggu yang lalu`
+    if (days > 0) return `${days} hari yang lalu`
+    if (hours > 0) return `${hours} jam yang lalu`
+    return 'Baru saja'
+  }
+}
+
+function formatDateTime(dateStr: string): string {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 onMounted(() => {
@@ -202,37 +277,84 @@ onMounted(() => {
     </div>
 
     <!-- Table -->
-    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
+    <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200/60">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[640px] text-sm">
+        <table class="w-full min-w-[800px] text-sm">
           <thead>
-            <tr class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
-              <th class="px-4 py-3 text-left">Promosi</th>
-              <th class="px-4 py-3 text-left">Periode</th>
-              <th class="px-4 py-3 text-center">Tipe</th>
-              <th class="px-4 py-3 text-center">Visibilitas</th>
-              <th class="px-4 py-3 text-center">Status</th>
-              <th class="px-4 py-3 text-right">Aksi</th>
+            <tr class="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-50/50">
+              <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                Promosi
+              </th>
+              <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                Periode & Status
+              </th> 
+              <th class="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-600">
+                Visibilitas
+              </th>
+              <th class="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-600">
+                Status
+              </th>
+              <th class="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">
+                Aksi
+              </th>
             </tr>
           </thead>
           <tbody v-if="loading">
-            <tr v-for="i in 8" :key="i" class="border-b border-gray-100">
-              <td v-for="j in 6" :key="j" class="px-4 py-3">
-                <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 1 ? 'w-48' : 'w-20'" />
+            <tr v-for="i in 5" :key="i" class="border-b border-gray-100">
+              <td class="px-4 py-4">
+                <div class="flex items-start gap-3">
+                  <div class="h-11 w-11 animate-pulse rounded-xl bg-gray-200" />
+                  <div class="flex-1 space-y-2">
+                    <div class="h-4 w-48 animate-pulse rounded bg-gray-200" />
+                    <div class="flex gap-2">
+                      <div class="h-5 w-20 animate-pulse rounded bg-gray-200" />
+                      <div class="h-5 w-16 animate-pulse rounded bg-gray-200" />
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-4">
+                <div class="space-y-2">
+                  <div class="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                  <div class="h-5 w-24 animate-pulse rounded bg-gray-200" />
+                </div>
+              </td>
+              <td class="px-4 py-4">
+                <div class="mx-auto h-6 w-20 animate-pulse rounded-full bg-gray-200" />
+              </td>
+              <td class="px-4 py-4">
+                <div class="mx-auto flex justify-center gap-1">
+                  <div class="h-5 w-12 animate-pulse rounded bg-gray-200" />
+                  <div class="h-5 w-12 animate-pulse rounded bg-gray-200" />
+                </div>
+              </td>
+              <td class="px-4 py-4">
+                <div class="mx-auto h-6 w-20 animate-pulse rounded-full bg-gray-200" />
+              </td>
+              <td class="px-4 py-4">
+                <div class="flex justify-end gap-1">
+                  <div class="h-8 w-8 animate-pulse rounded-lg bg-gray-200" />
+                  <div class="h-8 w-8 animate-pulse rounded-lg bg-gray-200" />
+                  <div class="h-8 w-8 animate-pulse rounded-lg bg-gray-200" />
+                  <div class="h-8 w-8 animate-pulse rounded-lg bg-gray-200" />
+                </div>
               </td>
             </tr>
           </tbody>
           <tbody v-else-if="!promotions.length">
             <tr>
-              <td colspan="6" class="px-4 py-16 text-center">
-                <Tag class="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                <p class="text-sm text-gray-500">Belum ada promosi diskon</p>
+              <td colspan="6" class="px-4 py-20 text-center">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
+                  <Tag class="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 class="mt-4 text-base font-semibold text-gray-900">Belum ada promosi diskon</h3>
+                <p class="mt-1 text-sm text-gray-500">Mulai buat promosi diskon untuk meningkatkan penjualan</p>
                 <NuxtLink
                   to="/promotion/discount/create"
-                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
+                  class="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700"
                 >
-                  <Plus class="h-3.5 w-3.5" />
-                  Buat Pertama
+                  <Plus class="h-4 w-4" />
+                  Buat Diskon Pertama
                 </NuxtLink>
               </td>
             </tr>
@@ -241,24 +363,60 @@ onMounted(() => {
             <tr
               v-for="promo in promotions"
               :key="promo.id"
-              class="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/50"
+              class="group border-b border-gray-100 transition-all last:border-b-0 hover:bg-primary-50/30"
             >
               <!-- Promosi -->
-              <td class="px-4 py-3">
+              <td class="px-4 py-4">
                 <div class="flex items-start gap-3">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 ring-1 ring-primary-100">
-                    <Tag class="h-4 w-4 text-primary-600" />
-                  </div>
-                  <div class="min-w-0">
-                    <NuxtLink
-                      :to="`/promotion/discount/${promo.id}`"
-                      class="font-semibold text-gray-900 hover:text-primary-600"
+                  <div 
+                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-all"
+                    :class="[
+                      promo.status_label === 'Berakhir' ? 'bg-red-50 ring-1 ring-red-200' :
+                      promo.status_label === 'Berlangsung' ? 'bg-green-50 ring-1 ring-green-200' :
+                      promo.status_label === 'Akan Datang' ? 'bg-blue-50 ring-1 ring-blue-200' :
+                      'bg-gray-50 ring-1 ring-gray-200'
+                    ]"
+                  >
+                    <component 
+                      v-if="discountTypeConfig[promo.discount_type]?.icon"
+                      :is="discountTypeConfig[promo.discount_type]?.icon" 
+                      class="h-5 w-5"
+                      :class="[
+                        promo.status_label === 'Berakhir' ? 'text-red-600' :
+                        promo.status_label === 'Berlangsung' ? 'text-green-600' :
+                        promo.status_label === 'Akan Datang' ? 'text-blue-600' :
+                        'text-gray-500'
+                      ]"
+                    />
+                    <span
+                      v-else
+                      class="text-sm font-bold"
+                      :class="[
+                        promo.status_label === 'Berakhir' ? 'text-red-600' :
+                        promo.status_label === 'Berlangsung' ? 'text-green-600' :
+                        promo.status_label === 'Akan Datang' ? 'text-blue-600' :
+                        'text-gray-500'
+                      ]"
                     >
-                      {{ promo.name }}
-                    </NuxtLink>
-                    <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
-                      <span class="inline-flex rounded px-1.5 py-0.5" :class="discountTypeConfig[promo.discount_type] ? 'bg-gray-100 text-gray-600' : ''">
-                        {{ discountTypeConfig[promo.discount_type] || promo.discount_type }}
+                      Rp
+                    </span>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start gap-2">
+                      <NuxtLink
+                        :to="`/promotion/discount/${promo.id}`"
+                        class="font-semibold text-gray-900 transition-colors group-hover:text-primary-600"
+                      >
+                        {{ promo.name }}
+                      </NuxtLink>
+                    </div>
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5"> 
+                      <span 
+                        class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
+                        :class="itemTypeConfig[promo.item_type]?.bg || 'bg-gray-50 text-gray-500'"
+                      >
+                        <component :is="itemTypeConfig[promo.item_type]?.icon || Box" class="h-3 w-3" />
+                        {{ itemTypeConfig[promo.item_type]?.label || promo.item_type }}
                       </span>
                     </div>
                   </div>
@@ -266,105 +424,98 @@ onMounted(() => {
               </td>
 
               <!-- Periode -->
-              <td class="px-4 py-3 whitespace-nowrap">
-                <div class="flex items-center gap-1.5 text-gray-600">
-                  <Calendar class="h-3.5 w-3.5 text-gray-400" />
-                  <div class="text-xs">
-                    <div>{{ formatDate(promo.date_start) }}</div>
-                    <div class="text-gray-400">{{ formatDate(promo.date_end) }}</div>
-                  </div>
+              <td class="px-4 py-4">
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2">
+                    <Calendar class="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                    <div class="text-xs">
+                      <div class="font-medium text-gray-900">{{ formatDateTime(promo.date_start) }}</div>
+                      <div class="text-gray-500">{{ formatDateTime(promo.date_end) }}</div>
+                    </div>
+                  </div> 
                 </div>
-                <div class="mt-1">
-                  <span
-                    v-if="isExpired(promo) && promo.status === 'active'"
-                    class="inline-flex rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-red-200"
-                  >
-                    Expired
-                  </span>
-                  <span
-                    v-else-if="isUpcoming(promo)"
-                    class="inline-flex rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200"
-                  >
-                    Upcoming
-                  </span>
-                </div>
-              </td>
-
-              <!-- Tipe -->
-              <td class="px-4 py-3 text-center">
-                <span
-                  class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium"
-                  :class="itemTypeConfig[promo.item_type]?.bg || 'bg-gray-50 text-gray-500'"
-                >
-                  {{ itemTypeConfig[promo.item_type]?.label || promo.item_type }}
-                </span>
-              </td>
+              </td> 
 
               <!-- Visibilitas -->
-              <td class="px-4 py-3 text-center">
-                <div class="flex items-center justify-center gap-1">
+              <td class="px-4 py-4">
+                <div class="flex items-center justify-center gap-1.5">
                   <span
-                    v-if="promo.internal_visibility"
-                    class="inline-flex rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
+                    v-if="promo.internal_visibility === 'active'"
+                    class="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-700"
                     title="Internal"
                   >
+                    <Building2 class="h-3 w-3" />
                     INT
                   </span>
                   <span
-                    v-if="promo.web_visibility"
-                    class="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600"
+                    v-if="promo.web_visibility === 'active'"
+                    class="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-700"
                     title="Website"
                   >
+                    <Globe class="h-3 w-3" />
                     WEB
                   </span>
                   <span
-                    v-if="promo.app_visibility"
-                    class="inline-flex rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-600"
+                    v-if="promo.app_visibility === 'active'"
+                    class="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700"
                     title="Mobile App"
                   >
+                    <Smartphone class="h-3 w-3" />
                     APP
                   </span>
-                  <span v-if="!promo.internal_visibility && !promo.web_visibility && !promo.app_visibility" class="text-xs text-gray-400">-</span>
+                  <span v-if="promo.internal_visibility !== 'active' && promo.web_visibility !== 'active' && promo.app_visibility !== 'active'" class="text-xs text-gray-400">-</span>
                 </div>
               </td>
 
               <!-- Status -->
-              <td class="px-4 py-3 text-center">
-                <span
-                  class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium"
-                  :class="statusConfig[promo.status]?.bg || 'bg-gray-50 text-gray-500'"
+              <td class="px-4 py-4 text-center">
+                <div 
+                  v-if="promo.status_label"
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
+                  :class="{
+                    'bg-green-50 text-green-700 ring-1 ring-green-200': promo.status_label === 'Berlangsung',
+                    'bg-red-50 text-red-700 ring-1 ring-red-200': promo.status_label === 'Berakhir',
+                    'bg-blue-50 text-blue-700 ring-1 ring-blue-200': promo.status_label === 'Akan Datang',
+                    'bg-gray-50 text-gray-700 ring-1 ring-gray-200': promo.status_label === 'Tidak Aktif'
+                  }"
                 >
-                  {{ statusConfig[promo.status]?.label || promo.status }}
-                </span>
+                  <component 
+                    :is="promo.status_label === 'Berlangsung' ? CheckCircle : promo.status_label === 'Berakhir' ? AlertCircle : promo.status_label === 'Akan Datang' ? Clock : AlertCircle" 
+                    class="h-3 w-3" 
+                  />
+                  {{ promo.status_label }}
+                  <span v-if="promo.status_label === 'Berlangsung' && promo.date_end" class="ml-0.5 text-[10px] opacity-75">
+                    ({{ getRelativeTime(promo.date_end) }})
+                  </span>
+                  <span v-else-if="promo.status_label === 'Akan Datang' && promo.date_start" class="ml-0.5 text-[10px] opacity-75">
+                    ({{ getRelativeTime(promo.date_start) }})
+                  </span>
+                </div>
               </td>
 
               <!-- Aksi -->
-              <td class="px-4 py-3">
-                <div class="flex items-center justify-end gap-1">
+              <td class="px-4 py-4">
+                <div class="flex items-center justify-end gap-1"> 
                   <NuxtLink
-                    :to="`/promotion/discount/${promo.id}`"
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                    title="Detail"
-                  >
-                    <Eye class="h-4 w-4" />
-                  </NuxtLink>
-                  <NuxtLink
-                    :to="`/promotion/discount/${promo.id}/edit`"
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    :to="`/promotion/discount/create?edit=${promo.id}`"
+                    class="rounded-lg p-2 text-gray-400 transition-all hover:bg-primary-50 hover:text-primary-600"
                     title="Edit"
                   >
                     <Pencil class="h-4 w-4" />
                   </NuxtLink>
                   <button
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    class="rounded-lg p-2 transition-all"
+                    :class="promo.status === 'active' 
+                      ? 'text-green-500 hover:bg-green-50 hover:text-green-600' 
+                      : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'"
                     :title="promo.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'"
                     @click="toggleStatus(promo)"
                   >
-                    <ToggleRight v-if="promo.status === 'active'" class="h-4 w-4 text-green-500" />
+                    <ToggleRight v-if="promo.status === 'active'" class="h-4 w-4" />
                     <ToggleLeft v-else class="h-4 w-4" />
                   </button>
                   <button
-                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                    class="rounded-lg p-2 text-gray-400 transition-all hover:bg-red-50 hover:text-red-600"
                     title="Hapus"
                     @click="handleDelete(promo)"
                   >

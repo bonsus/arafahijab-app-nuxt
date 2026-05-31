@@ -19,6 +19,19 @@ export default defineEventHandler(async (event) => {
     ? await readBody(event)
     : undefined
 
+  
+  const contentType = getHeader(event, 'content-type') || ''
+  // multipart/form-data
+  if (contentType.includes('multipart/form-data')) {
+    if (token) {
+      event.node.req.headers.authorization = `Bearer ${token}`
+    }
+
+    return proxyRequest(
+      event,
+      `${config.apiBaseUrl}/${path}`,
+    )
+  }
   // ofetch only auto-serializes plain objects, not arrays.
   // Stringify arrays explicitly so the backend receives valid JSON.
   const body = Array.isArray(rawBody) ? JSON.stringify(rawBody) : rawBody
