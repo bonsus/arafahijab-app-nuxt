@@ -1,63 +1,26 @@
 <script setup lang="ts">
 import {
-  Search, RefreshCw, X, Package, Layers, ArrowDownToLine,
-  ArrowUpFromLine, Boxes, Lock, PackageCheck, Inbox, ImageOff, ArrowUpRight,
+  Search, RefreshCw, X, Package, ArrowLeft, ImageOff, PackageCheck,
+  Layers, Boxes, CheckCircle2, Clock, Wallet,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
 interface VariantPair { name: string; value: string }
 
-interface MovementFifo {
-  id: string
-  stock_in: number
-  stock_out: number
-  stock_balance: number
-  stock_locked: number
-  price: string
-}
-
-interface MovementRef {
-  id: string
-  name?: string
-  code?: string
-  primary?: boolean
-}
-
-interface Movement {
-  id: string
+interface PickingItem {
   product_id: string
-  image: string
   product_name: string
+  image: string
   sku_id: string
   sku: string
   variants: VariantPair[] | null
   variant: string
-  stock_change: number
+  qty: number
+  qty_picked: number
+  qty_to_pick: number
   price: string
-  total: string
-  reference_type: string
-  reference_id: string
-  created_at: string
-  fifo: MovementFifo | null
-  zone: MovementRef | null
-  rack: MovementRef | null
-  bin: MovementRef | null
-  warehouse: MovementRef | null
-}
-
-interface MovementMetric { qty: number; value: string }
-
-interface MovementSummary {
-  product_count: number
-  sku_count: number
-  stock_in: MovementMetric
-  stock_out: MovementMetric
-  stock_available: MovementMetric
-  stock_locked: MovementMetric
-  picking_area: MovementMetric
-  picked_area: MovementMetric
-  receiving_area: MovementMetric
+  value: string
 }
 
 interface Paginated<T> {
@@ -68,12 +31,21 @@ interface Paginated<T> {
   total: number
 }
 
+interface PickingSummary {
+  product_count: number
+  sku_count: number
+  qty: number
+  qty_picked: number
+  qty_to_pick: number
+  value: string
+}
+
 const api = useApi()
 
 const loading = ref(true)
 const loadingSummary = ref(true)
-const movements = ref<Movement[]>([])
-const summary = ref<MovementSummary | null>(null)
+const items = ref<PickingItem[]>([])
+const summary = ref<PickingSummary | null>(null)
 const page = ref(1)
 const perPage = ref(20)
 const totalPage = ref(1)
@@ -83,8 +55,12 @@ const search = ref('')
 const filterWarehouseIds = ref<string[]>([])
 const filterProductIds = ref<string[]>([])
 const filterSkuIds = ref<string[]>([])
-const filterType = ref('')
-const filterDate = ref({ from: '', to: '' })
+const filterPickedStatus = ref('')
+
+const pickedStatusOptions = [
+  { value: 'not_picked', label: 'Belum Dipick' },
+  { value: 'picked', label: 'Sudah Dipick' },
+]
 
 const warehouses = ref<{ id: string; name: string }[]>([])
 const loadingWarehouses = ref(false)
@@ -100,10 +76,8 @@ const skuOptions = ref<FilterOption[]>([])
 const loadingProducts = ref(false)
 const loadingSkus = ref(false)
 
-// Maps each sku_id to its parent product_id so SKU options can be scoped.
 const skuProductMap = ref<Record<string, string>>({})
 
-// When products are selected, only show SKUs that belong to them.
 const visibleSkuOptions = computed(() => {
   if (!filterProductIds.value.length) return skuOptions.value
   return skuOptions.value.filter(o =>
@@ -111,7 +85,6 @@ const visibleSkuOptions = computed(() => {
   )
 })
 
-// Keep labels of currently-selected options so they persist across remote searches.
 const selectedProductOptions = ref<FilterOption[]>([])
 const selectedSkuOptions = ref<FilterOption[]>([])
 
@@ -120,38 +93,11 @@ function mergeSelected(fresh: FilterOption[], selected: FilterOption[], selected
   return [...kept, ...fresh]
 }
 
-const typeOptions = [
-  { value: 'stock_in', label: 'Stok Masuk' },
-  { value: 'stock_out', label: 'Stok Keluar' },
-]
-
-const referenceTypeLabels: Record<string, string> = {
-  stock_adjustment: 'Penyesuaian Stok',
-  order: 'Pesanan',
-  purchase: 'Pembelian',
-  transfer: 'Transfer',
-  return: 'Retur',
-  receipt: 'Penerimaan',
-}
-
 const hasFilter = computed(() =>
   !!search.value || filterWarehouseIds.value.length > 0
   || filterProductIds.value.length > 0 || filterSkuIds.value.length > 0
-  || !!filterType.value || !!filterDate.value.from || !!filterDate.value.to,
+  || !!filterPickedStatus.value,
 )
-
-function referenceLabel(type: string): string {
-  return referenceTypeLabels[type] || type
-}
-
-const pickingTotalQty = computed(() =>
-  (summary.value?.picking_area.qty ?? 0) + (summary.value?.picked_area.qty ?? 0),
-)
-const pickedPercent = computed(() => {
-  const total = pickingTotalQty.value
-  if (!total) return 0
-  return Math.round(((summary.value?.picked_area.qty ?? 0) / total) * 100)
-})
 
 function buildParams(): Record<string, string> {
   const params: Record<string, string> = {}
@@ -159,17 +105,21 @@ function buildParams(): Record<string, string> {
   if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
   if (filterProductIds.value.length) params.product_id = filterProductIds.value.join(',')
   if (filterSkuIds.value.length) params.sku_id = filterSkuIds.value.join(',')
-  if (filterType.value) params.type = filterType.value
-  if (filterDate.value.from) params.date_from = filterDate.value.from
-  if (filterDate.value.to) params.date_to = filterDate.value.to
+  if (filterPickedStatus.value) params.picked_status = filterPickedStatus.value
   return params
 }
+
+const summaryPickedPercent = computed(() => {
+  const qty = summary.value?.qty ?? 0
+  if (!qty) return 0
+  return Math.round(((summary.value?.qty_picked ?? 0) / qty) * 100)
+})
 
 async function fetchSummary() {
   loadingSummary.value = true
   try {
-    const res = await api.get<{ data: MovementSummary }>(
-      '/inventories/reports/stock-movements/summary',
+    const res = await api.get<{ data: PickingSummary }>(
+      '/inventories/reports/picking-area/summary',
       buildParams(),
     )
     summary.value = res.data
@@ -178,7 +128,7 @@ async function fetchSummary() {
   finally { loadingSummary.value = false }
 }
 
-async function fetchMovements() {
+async function fetchItems() {
   loading.value = true
   try {
     const params: Record<string, string> = {
@@ -186,21 +136,21 @@ async function fetchMovements() {
       per_page: String(perPage.value),
       ...buildParams(),
     }
-    const res = await api.get<{ data: Paginated<Movement> }>(
-      '/inventories/reports/stock-movements',
+    const res = await api.get<{ data: Paginated<PickingItem> }>(
+      '/inventories/reports/picking-area',
       params,
     )
-    movements.value = res.data?.data || []
+    items.value = res.data?.data || []
     totalPage.value = res.data?.total_page || 1
     total.value = res.data?.total || 0
   }
-  catch { movements.value = [] }
+  catch { items.value = [] }
   finally { loading.value = false }
 }
 
 function refreshAll() {
   fetchSummary()
-  fetchMovements()
+  fetchItems()
 }
 
 let searchTimer: ReturnType<typeof setTimeout>
@@ -217,7 +167,6 @@ function onWarehouseFilter(val: string | string[]) {
 function onProductFilter(val: string | string[]) {
   filterProductIds.value = val as string[]
   selectedProductOptions.value = productOptions.value.filter(o => filterProductIds.value.includes(o.value))
-  // Drop selected SKUs that no longer belong to any selected product.
   if (filterProductIds.value.length) {
     filterSkuIds.value = filterSkuIds.value.filter(id =>
       filterProductIds.value.includes(skuProductMap.value[id] || ''),
@@ -233,25 +182,20 @@ function onSkuFilter(val: string | string[]) {
   page.value = 1; refreshAll()
 }
 
-function onTypeFilter(val: string | string[]) {
-  filterType.value = val as string
-  page.value = 1; refreshAll()
-}
-
-function onDateFilter(val: { from: string; to: string }) {
-  filterDate.value = val
+function onPickedStatusFilter(val: string | string[]) {
+  filterPickedStatus.value = val as string
   page.value = 1; refreshAll()
 }
 
 function onPageChange(p: number) {
   page.value = p
-  fetchMovements()
+  fetchItems()
 }
 
 function onPerPageChange(pp: number) {
   perPage.value = pp
   page.value = 1
-  fetchMovements()
+  fetchItems()
 }
 
 async function fetchWarehouseOptions(searchText?: string) {
@@ -307,21 +251,21 @@ function resetFilters() {
   filterWarehouseIds.value = []
   filterProductIds.value = []
   filterSkuIds.value = []
+  filterPickedStatus.value = ''
   selectedProductOptions.value = []
   selectedSkuOptions.value = []
-  filterType.value = ''
-  filterDate.value = { from: '', to: '' }
   page.value = 1
   refreshAll()
 }
 
-function locationText(m: Movement): string {
-  return [m.zone?.code, m.rack?.code, m.bin?.code].filter(Boolean).join(' / ') || '-'
+function pickedPercent(item: PickingItem): number {
+  if (!item.qty) return 0
+  return Math.round((item.qty_picked / item.qty) * 100)
 }
 
 onMounted(() => {
   fetchSummary()
-  fetchMovements()
+  fetchItems()
   fetchWarehouseOptions()
   fetchProductSkuOptions()
 })
@@ -330,15 +274,24 @@ onMounted(() => {
 <template>
   <div class="space-y-4">
     <!-- Header -->
-    <div>
-      <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Riwayat Stock Movement</h1>
-      <p class="text-sm text-gray-500">Pergerakan stok masuk dan keluar di seluruh gudang.</p>
+    <div class="flex items-center gap-3">
+      <NuxtLink
+        to="/inventory/movement"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+        title="Kembali ke Stock Movement"
+      >
+        <ArrowLeft class="h-4 w-4" />
+      </NuxtLink>
+      <div>
+        <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Area Picking</h1>
+        <p class="text-sm text-gray-500">Daftar produk yang berada di area picking.</p>
+      </div>
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <template v-if="loadingSummary">
-        <div v-for="i in 8" :key="i" class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
+        <div v-for="i in 6" :key="i" class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
           <div class="h-3 w-16 animate-pulse rounded bg-gray-200" />
           <div class="mt-2 h-7 w-20 animate-pulse rounded bg-gray-100" />
         </div>
@@ -353,51 +306,26 @@ onMounted(() => {
           <p class="mt-1.5 text-2xl font-bold text-gray-900">{{ summary?.sku_count ?? '-' }}</p>
         </div>
         <div class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
-          <p class="flex items-center gap-1.5 text-xs text-green-600"><ArrowDownToLine class="h-3.5 w-3.5" /> Stok Masuk</p>
-          <p class="mt-1.5 text-2xl font-bold text-green-600">{{ summary?.stock_in.qty ?? '-' }}</p>
-          <p class="text-[10px] text-gray-400">Rp{{ formatCurrency(summary?.stock_in.value ?? 0) }}</p>
+          <p class="flex items-center gap-1.5 text-xs text-blue-600"><Boxes class="h-3.5 w-3.5" /> Total Qty</p>
+          <p class="mt-1.5 text-2xl font-bold text-gray-900">{{ summary?.qty ?? '-' }}</p>
         </div>
         <div class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
-          <p class="flex items-center gap-1.5 text-xs text-red-600"><ArrowUpFromLine class="h-3.5 w-3.5" /> Stok Keluar</p>
-          <p class="mt-1.5 text-2xl font-bold text-red-600">{{ summary?.stock_out.qty ?? '-' }}</p>
-          <p class="text-[10px] text-gray-400">Rp{{ formatCurrency(summary?.stock_out.value ?? 0) }}</p>
-        </div>
-        <div class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
-          <p class="flex items-center gap-1.5 text-xs text-blue-600"><Boxes class="h-3.5 w-3.5" /> Stok Tersedia</p>
-          <p class="mt-1.5 text-2xl font-bold text-gray-900">{{ summary?.stock_available.qty ?? '-' }}</p>
-          <p class="text-[10px] text-gray-400">Rp{{ formatCurrency(summary?.stock_available.value ?? 0) }}</p>
-        </div>
-        <div class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
-          <p class="flex items-center gap-1.5 text-xs text-yellow-600"><Lock class="h-3.5 w-3.5" /> Stok Terkunci</p>
-          <p class="mt-1.5 text-2xl font-bold text-yellow-600">{{ summary?.stock_locked.qty ?? '-' }}</p>
-          <p class="text-[10px] text-gray-400">Rp{{ formatCurrency(summary?.stock_locked.value ?? 0) }}</p>
-        </div>
-        <NuxtLink
-          to="/inventory/picking-area"
-          class="group rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200 transition-colors hover:ring-purple-300"
-        >
-          <p class="flex items-center gap-1.5 text-xs text-purple-600">
-            <PackageCheck class="h-3.5 w-3.5" /> Area Picking
-            <ArrowUpRight class="ml-auto h-3.5 w-3.5 text-gray-300 transition-colors group-hover:text-purple-500" />
-          </p>
+          <p class="flex items-center gap-1.5 text-xs text-teal-600"><CheckCircle2 class="h-3.5 w-3.5" /> Dipick</p>
           <div class="mt-1.5 flex items-baseline justify-between">
-            <p class="text-2xl font-bold text-gray-900">
-              {{ summary?.picked_area.qty ?? 0 }}<span class="text-sm font-medium text-gray-400"> / {{ pickingTotalQty }}</span>
-            </p>
-            <p class="text-xs font-semibold text-teal-600">{{ pickedPercent }}%</p>
+            <p class="text-2xl font-bold text-gray-900">{{ summary?.qty_picked ?? 0 }}</p>
+            <p class="text-xs font-semibold text-teal-600">{{ summaryPickedPercent }}%</p>
           </div>
           <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-            <div class="h-full rounded-full bg-teal-500 transition-all" :style="{ width: pickedPercent + '%' }" />
+            <div class="h-full rounded-full bg-teal-500 transition-all" :style="{ width: summaryPickedPercent + '%' }" />
           </div>
-          <div class="mt-2 flex items-center justify-between text-[10px] text-gray-400">
-            <span>Dipick: Rp{{ formatCurrency(summary?.picked_area.value ?? 0) }}</span>
-            <span>Sisa: {{ summary?.picking_area.qty ?? 0 }}</span>
-          </div>
-        </NuxtLink>
+        </div>
         <div class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
-          <p class="flex items-center gap-1.5 text-xs text-gray-500"><Inbox class="h-3.5 w-3.5" /> Area Receiving</p>
-          <p class="mt-1.5 text-2xl font-bold text-gray-900">{{ summary?.receiving_area.qty ?? '-' }}</p>
-          <p class="text-[10px] text-gray-400">Rp{{ formatCurrency(summary?.receiving_area.value ?? 0) }}</p>
+          <p class="flex items-center gap-1.5 text-xs text-yellow-600"><Clock class="h-3.5 w-3.5" /> Belum Dipick</p>
+          <p class="mt-1.5 text-2xl font-bold text-yellow-600">{{ summary?.qty_to_pick ?? '-' }}</p>
+        </div>
+        <div class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">
+          <p class="flex items-center gap-1.5 text-xs text-purple-600"><Wallet class="h-3.5 w-3.5" /> Nilai</p>
+          <p class="mt-1.5 text-xl font-bold text-gray-900">Rp{{ formatCurrency(summary?.value ?? 0) }}</p>
         </div>
       </template>
     </div>
@@ -448,13 +376,12 @@ onMounted(() => {
             @search="fetchProductSkuOptions"
           />
           <AppFilterSelect
-            :model-value="filterType"
-            :options="typeOptions"
+            :model-value="filterPickedStatus"
+            :options="pickedStatusOptions"
             :searchable="false"
-            placeholder="Tipe"
-            @update:model-value="onTypeFilter"
+            placeholder="Status Pick"
+            @update:model-value="onPickedStatusFilter"
           />
-          <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
           <button
             class="flex shrink-0 rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
             :disabled="loading"
@@ -470,43 +397,41 @@ onMounted(() => {
           >
             <X class="h-4 w-4" />
           </button>
-        </div> 
+        </div>
       </div>
     </div>
 
     <!-- Table -->
     <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[900px] text-sm">
+        <table class="w-full min-w-[800px] text-sm">
           <thead class="border-b border-gray-200 bg-gray-50/80 text-xs font-medium uppercase tracking-wider text-gray-500 text-nowrap">
             <tr>
               <th class="px-4 py-2.5 text-left">Produk</th>
-              <th class="px-4 py-2.5 text-left w-40">Referensi</th>
-              <th class="px-4 py-2.5 text-left w-32">Lokasi</th>
-              <th class="px-4 py-2.5 text-right w-24">Perubahan</th>
+              <th class="px-4 py-2.5 text-right w-24">Qty</th>
+              <th class="px-4 py-2.5 text-left w-48">Progress Pick</th>
+              <th class="px-4 py-2.5 text-right w-24">Sisa</th>
               <th class="px-4 py-2.5 text-right w-28">Harga</th>
-              <th class="px-4 py-2.5 text-right w-32">Total</th>
-              <th class="px-4 py-2.5 text-right w-24">Saldo FIFO</th>
-              <th class="px-4 py-2.5 text-left w-40">Waktu</th>
+              <th class="px-4 py-2.5 text-right w-32">Nilai</th>
             </tr>
           </thead>
 
           <!-- Loading -->
           <tbody v-if="loading">
             <tr v-for="i in 8" :key="i" class="border-b border-gray-100">
-              <td v-for="j in 8" :key="j" class="px-4 py-3">
+              <td v-for="j in 6" :key="j" class="px-4 py-3">
                 <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 1 ? 'w-40' : 'w-20'" />
               </td>
             </tr>
           </tbody>
 
           <!-- Empty -->
-          <tbody v-else-if="!movements.length">
+          <tbody v-else-if="!items.length">
             <tr>
-              <td colspan="8" class="px-4 py-16 text-center">
-                <Package class="mx-auto mb-3 h-12 w-12 text-gray-300" />
+              <td colspan="6" class="px-4 py-16 text-center">
+                <PackageCheck class="mx-auto mb-3 h-12 w-12 text-gray-300" />
                 <p class="text-sm text-gray-500">
-                  {{ hasFilter ? 'Tidak ada pergerakan stok yang cocok dengan filter.' : 'Belum ada riwayat pergerakan stok.' }}
+                  {{ hasFilter ? 'Tidak ada produk yang cocok dengan filter.' : 'Tidak ada produk di area picking.' }}
                 </p>
               </td>
             </tr>
@@ -514,78 +439,58 @@ onMounted(() => {
 
           <!-- Rows -->
           <tbody v-else class="divide-y divide-gray-100">
-            <tr v-for="m in movements" :key="m.id" class="hover:bg-gray-50/60">
+            <tr v-for="item in items" :key="item.sku_id" class="hover:bg-gray-50/60">
               <!-- Produk -->
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
                   <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200">
                     <img
-                      v-if="m.image"
-                      :src="m.image"
-                      :alt="m.product_name"
+                      v-if="item.image"
+                      :src="item.image"
+                      :alt="item.product_name"
                       class="h-full w-full object-cover"
                       @error="($event.target as HTMLImageElement).style.display = 'none'"
                     />
                     <ImageOff v-else class="h-3 w-3 text-gray-300" />
                   </div>
                   <div class="min-w-0">
-                    <p class="truncate font-medium text-gray-900">{{ m.product_name }} {{ m.variant ? " - " + m.variant : "" }}</p>
-                    <div class="mt-0.5 flex flex-wrap items-center gap-1.5">
-                      <span class="font-mono text-xs text-gray-500">{{ m.sku }}</span> 
-                    </div>
+                    <p class="truncate font-medium text-gray-900">
+                      {{ item.product_name }}{{ item.variant ? ' - ' + item.variant : '' }}
+                    </p>
+                    <span class="font-mono text-xs text-gray-500">{{ item.sku }}</span>
                   </div>
                 </div>
               </td>
 
-              <!-- Referensi -->
+              <!-- Qty -->
+              <td class="px-4 py-3 text-right font-medium text-gray-900">{{ item.qty_picked }}</td>
+
+              <!-- Progress -->
               <td class="px-4 py-3">
-                <span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 text-nowrap">
-                  {{ referenceLabel(m.reference_type) }}
-                </span>
-                <!-- <p class="mt-1 truncate font-mono text-[10px] text-gray-400" :title="m.reference_id">
-                  {{ m.reference_id }}
-                </p> -->
+                <div class="flex items-center justify-between text-[11px] text-gray-500">
+                  <span>{{ item.qty_picked }} / {{ item.qty }}</span>
+                  <span class="font-semibold text-teal-600">{{ pickedPercent(item) }}%</span>
+                </div>
+                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div class="h-full rounded-full bg-teal-500 transition-all" :style="{ width: pickedPercent(item) + '%' }" />
+                </div>
               </td>
 
-              <!-- Lokasi -->
-              <td class="px-4 py-3">
-                <p class="text-xs font-medium text-gray-700">{{ m.warehouse?.name || '-' }}</p>
-                <p class="mt-0.5 font-mono text-[10px] text-gray-400">{{ locationText(m) }}</p>
-              </td>
-
-              <!-- Perubahan -->
+              <!-- Sisa -->
               <td class="px-4 py-3 text-right">
                 <span
-                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-                  :class="m.stock_change >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+                  class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
+                  :class="item.qty_to_pick > 0 ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'"
                 >
-                  <ArrowDownToLine v-if="m.stock_change >= 0" class="h-3 w-3" />
-                  <ArrowUpFromLine v-else class="h-3 w-3" />
-                  {{ m.stock_change >= 0 ? '+' : '' }}{{ m.stock_change }}
+                  {{ item.qty_to_pick }}
                 </span>
               </td>
 
               <!-- Harga -->
-              <td class="px-4 py-3 text-right text-gray-700">Rp{{ formatCurrency(m.price) }}</td>
+              <td class="px-4 py-3 text-right text-gray-700">Rp{{ formatCurrency(item.price) }}</td>
 
-              <!-- Total -->
-              <td
-                class="px-4 py-3 text-right font-medium"
-                :class="Number(m.total) >= 0 ? 'text-gray-900' : 'text-red-600'"
-              >
-                Rp{{ formatCurrency(m.total) }}
-              </td>
-
-              <!-- Saldo FIFO -->
-              <td class="px-4 py-3 text-right">
-                <span class="font-medium text-gray-900">{{ m.fifo?.stock_balance ?? '-' }}</span>
-                <p v-if="m.fifo" class="mt-0.5 text-[10px] text-gray-400">
-                  kunci {{ m.fifo.stock_locked }}
-                </p>
-              </td>
-
-              <!-- Waktu -->
-              <td class="px-4 py-3 text-xs text-gray-500">{{ formatDateTime(m.created_at) }}</td>
+              <!-- Nilai -->
+              <td class="px-4 py-3 text-right font-medium text-gray-900">Rp{{ formatCurrency(item.value) }}</td>
             </tr>
           </tbody>
         </table>

@@ -20,6 +20,8 @@ interface SkuRow {
   id?: string
   sku: string
   image: string
+  image_small: string
+  image_medium: string
   image_thumb: string
   variant_1: string
   variant_2: string
@@ -52,7 +54,9 @@ interface ProductBasic {
     buffer_stock: number
     rewards_point: string
     status: string
-    image_media: { id: string; file_url: string; size: string }[] | null
+    image: string
+    image_small: string
+    image_medium: string
     prices: {
       id: string
       customer_category_id: string
@@ -97,6 +101,18 @@ const bulkFields = ref({
 // SKU image picker
 const skuImagePickerIndex = ref<number | null>(null)
 
+function getMediaUrl(m: any, size: string): string {
+  return m?.files?.find((f: any) => f.size === size)?.file_url || ''
+}
+
+function toSelectedMedia(m: any) {
+  const small = getMediaUrl(m, 'small')
+  const medium = getMediaUrl(m, 'medium')
+  const original = getMediaUrl(m, 'original') || getMediaUrl(m, 'large') || m?.files?.[0]?.file_url || ''
+  const thumb = getMediaUrl(m, 'thumbnail') || small || medium || original
+  return { small, medium, original, thumb }
+}
+
 function openSkuImagePicker(index: number) {
   skuImagePickerIndex.value = index
 }
@@ -107,16 +123,21 @@ function onSkuImageSelect(medias: any[]) {
     skuImagePickerIndex.value = null
     return
   }
-  const m = medias[0]
-  const thumb = m.files?.find((f: any) => f.size === 'thumbnail')?.file_url || m.files?.[0]?.file_url || ''
-  skus.value[idx]!.image = m.id
-  skus.value[idx]!.image_thumb = thumb
+  const sel = toSelectedMedia(medias[0])
+  const row = skus.value[idx]!
+  row.image = sel.original
+  row.image_small = sel.small
+  row.image_medium = sel.medium
+  row.image_thumb = sel.thumb
   skuImagePickerIndex.value = null
 }
 
 function removeSkuImage(index: number) {
-  skus.value[index]!.image = ''
-  skus.value[index]!.image_thumb = ''
+  const row = skus.value[index]!
+  row.image = ''
+  row.image_small = ''
+  row.image_medium = ''
+  row.image_thumb = ''
 }
 
 function createEmptyPrices(): SkuPrice[] {
@@ -244,6 +265,8 @@ function generateNewSkusForValue(newValue: string, isVariant1: boolean) {
         skus.value.push({
           sku: '',
           image: '',
+          image_small: '',
+          image_medium: '',
           image_thumb: '',
           variant_1: newValue,
           variant_2: v2,
@@ -266,6 +289,8 @@ function generateNewSkusForValue(newValue: string, isVariant1: boolean) {
         skus.value.push({
           sku: '',
           image: '',
+          image_small: '',
+          image_medium: '',
           image_thumb: '',
           variant_1: v1,
           variant_2: newValue,
@@ -365,13 +390,14 @@ async function loadProduct() {
       skus.value = p.skus.map(s => {
         const existingPrices = new Map(
           s.prices?.map(pr => [pr.customer_category_id, { id: pr.id, price: Number(pr.price) }]) || [],
-        )
-        const imageThumb = s.image_media?.find(f => f.size === 'thumbnail')?.file_url || s.image_media?.find(f => f.size === 'small')?.file_url || s.image_media?.[0]?.file_url || ''
+        ) 
         return {
           id: s.id,
           sku: s.sku,
-          image: imageThumb ? 'existing' : '',
-          image_thumb: imageThumb,
+          image: s.image,
+          image_small: s.image_small,
+          image_medium: s.image_medium,
+          image_thumb: s.image_small || s.image_medium || s.image || '',
           variant_1: s.variants?.[0]?.value || '',
           variant_2: s.variants?.[1]?.value || '',
           weight: s.weight,
@@ -416,7 +442,9 @@ async function handleSubmit() {
       skus: skus.value.map(s => ({
         id: s.id || undefined,
         sku: s.sku,
-        image: s.image === 'existing' ? undefined : (s.image || undefined),
+        image: s.image || undefined,
+        image_small: s.image_small || undefined,
+        image_medium: s.image_medium || undefined,
         variant_1: s.variant_1,
         variant_2: s.variant_2,
         weight: s.weight || 0,
@@ -553,7 +581,7 @@ async function handleSubmit() {
           </div>
 
           <!-- Variant 2 (right) -->
-          <div class="space-y-3">
+          <div class="space-y-3" v-if="variantName2!==''">
             <div>
               <label class="mb-1.5 block text-sm font-medium text-gray-700">Nama Varian 2 <span class="font-normal text-gray-400">(opsional)</span></label>
               <input
@@ -879,11 +907,11 @@ async function handleSubmit() {
         </button>
       </div>
     </form>
-
+    <pre>{{ skus }}</pre>
     <!-- SKU Image Picker Modal -->
     <AppMediaPicker
       v-if="skuImagePickerIndex !== null"
-      :selected="skus[skuImagePickerIndex]?.image && skus[skuImagePickerIndex]!.image !== 'existing' ? [skus[skuImagePickerIndex]!.image] : []"
+      :selected="[]"
       @select="onSkuImageSelect"
       @close="skuImagePickerIndex = null"
     />

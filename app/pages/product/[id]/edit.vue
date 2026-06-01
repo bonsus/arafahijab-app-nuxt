@@ -31,7 +31,13 @@ interface ProductDetail {
   description: string
   short_description: string
   thumbnail: string
-  images: string[]
+  thumbnail_small: string
+  thumbnail_medium: string
+  images: {
+    small?: string[]
+    medium?: string[]
+    original?: string[]
+  } | string[] | null
   thumbnail_media: MediaFile[] | null
   images_media: MediaItem[] | null
   variant1: string
@@ -60,17 +66,37 @@ const form = reactive({
   description: '',
   short_description: '',
   thumbnail: '',
-  images: [] as string[],
+  thumbnail_small: '',
+  thumbnail_medium: '',
+  images: {
+    small: [] as string[],
+    medium: [] as string[],
+    original: [] as string[],
+  },
   tags: '',
   type: 'master',
   status: 'active',
 })
 
-// Image media picker
 interface SelectedMedia {
   id: string
   name: string
   thumb: string
+  small: string
+  medium: string
+  original: string
+}
+
+function getMediaUrl(m: any, size: string): string {
+  return m?.files?.find((f: any) => f.size === size)?.file_url || ''
+}
+
+function toSelectedMedia(m: any): SelectedMedia {
+  const small = getMediaUrl(m, 'small')
+  const medium = getMediaUrl(m, 'medium')
+  const original = getMediaUrl(m, 'original') || getMediaUrl(m, 'large') || m?.files?.[0]?.file_url || ''
+  const thumb = getMediaUrl(m, 'thumbnail') || small || medium || original
+  return { id: m.id, name: m.name, thumb, small, medium, original }
 }
 
 const thumbnailMedia = ref<SelectedMedia | null>(null)
@@ -80,10 +106,11 @@ const showImagesPicker = ref(false)
 
 function onThumbSelect(medias: any[]) {
   if (medias.length) {
-    const m = medias[0]
-    const thumb = m.files?.find((f: any) => f.size === 'thumbnail')?.file_url || m.files?.[0]?.file_url || ''
-    thumbnailMedia.value = { id: m.id, name: m.name, thumb }
-    form.thumbnail = m.id
+    const sel = toSelectedMedia(medias[0])
+    thumbnailMedia.value = sel
+    form.thumbnail = sel.original
+    form.thumbnail_small = sel.small
+    form.thumbnail_medium = sel.medium
   }
   showThumbPicker.value = false
 }
@@ -91,22 +118,38 @@ function onThumbSelect(medias: any[]) {
 function removeThumb() {
   thumbnailMedia.value = null
   form.thumbnail = ''
+  form.thumbnail_small = ''
+  form.thumbnail_medium = ''
+}
+
+function syncImagesForm() {
+  form.images = {
+    small: imagesMedia.value.map(s => s.small),
+    medium: imagesMedia.value.map(s => s.medium),
+    original: imagesMedia.value.map(s => s.original),
+  }
 }
 
 function onImagesSelect(medias: any[]) {
-  const selected: SelectedMedia[] = medias.map(m => ({
-    id: m.id,
-    name: m.name,
-    thumb: m.files?.find((f: any) => f.size === 'thumbnail')?.file_url || m.files?.[0]?.file_url || '',
-  }))
-  imagesMedia.value = selected
-  form.images = selected.map(s => s.id)
+  const incoming = medias.map(toSelectedMedia)
+  // Merge with existing: keep existing in order, append new unique ones (by id or original URL)
+  const existingKeys = new Set(
+    imagesMedia.value.map(m => m.id || m.original).filter(Boolean),
+  )
+  for (const item of incoming) {
+    const key = item.id || item.original
+    if (key && !existingKeys.has(key)) {
+      imagesMedia.value.push(item)
+      existingKeys.add(key)
+    }
+  }
+  syncImagesForm()
   showImagesPicker.value = false
 }
 
 function removeImage(index: number) {
   imagesMedia.value.splice(index, 1)
-  form.images.splice(index, 1)
+  syncImagesForm()
 }
 
 const categorySelectOptions = computed(() => {
@@ -142,28 +185,66 @@ async function loadProduct() {
     form.slug = p.slug
     form.description = p.description || ''
     form.short_description = p.short_description || ''
-    form.thumbnail = p.thumbnail || ''
-    form.images = p.images || []
     form.tags = p.tags?.join(', ') || ''
     form.type = p.type || 'master'
     form.status = p.status
 
-    // Populate media refs from API response
-    if (p.thumbnail_media?.length) {
-      const thumbFile = p.thumbnail_media.find(f => f.size === 'thumbnail') || p.thumbnail_media[0]
+    // Thumbnail
+    const thumbSmall = p.thumbnail_small || p.thumbnail_media?.find(f => f.size === 'small')?.file_url || ''
+    const thumbMedium = p.thumbnail_medium || p.thumbnail_media?.find(f => f.size === 'medium')?.file_url || ''
+    const thumbOriginal = p.thumbnail
+      || p.thumbnail_media?.find(f => f.size === 'original')?.file_url
+      || p.thumbnail_media?.find(f => f.size === 'large')?.file_url
+      || p.thumbnail_media?.[0]?.file_url
+      || ''
+    const thumbPreview = p.thumbnail_media?.find(f => f.size === 'thumbnail')?.file_url
+      || thumbSmall || thumbMedium || thumbOriginal
+
+    form.thumbnail = thumbOriginal
+    form.thumbnail_small = thumbSmall
+    form.thumbnail_medium = thumbMedium
+
+    if (thumbPreview) {
       thumbnailMedia.value = {
-        id: p.thumbnail || '',
+        id: '',
         name: 'Thumbnail',
-        thumb: thumbFile?.file_url || '',
+        thumb: thumbPreview,
+        small: thumbSmall,
+        medium: thumbMedium,
+        original: thumbOriginal,
       }
     }
+
+    // Images
     if (p.images_media?.length) {
-      imagesMedia.value = p.images_media.map(m => ({
-        id: m.id,
-        name: m.name,
-        thumb: m.files?.find(f => f.size === 'thumbnail')?.file_url || m.files?.[0]?.file_url || '',
+      imagesMedia.value = p.images_media.map(toSelectedMedia)
+      syncImagesForm()
+    }
+    else if (p.images && !Array.isArray(p.images) && (p.images.original?.length || p.images.small?.length || p.images.medium?.length)) {
+      const small = p.images.small || []
+      const medium = p.images.medium || []
+      const original = p.images.original || []
+      const len = Math.max(small.length, medium.length, original.length)
+      imagesMedia.value = Array.from({ length: len }).map((_, i) => ({
+        id: '',
+        name: `Gambar ${i + 1}`,
+        small: small[i] || '',
+        medium: medium[i] || '',
+        original: original[i] || '',
+        thumb: small[i] || medium[i] || original[i] || '',
       }))
-      form.images = p.images_media.map(m => m.id)
+      syncImagesForm()
+    }
+    else if (Array.isArray(p.images) && p.images.length) {
+      imagesMedia.value = p.images.map((url, i) => ({
+        id: '',
+        name: `Gambar ${i + 1}`,
+        small: '',
+        medium: '',
+        original: url,
+        thumb: url,
+      }))
+      syncImagesForm()
     }
   }
   catch (err: any) {
@@ -191,6 +272,8 @@ async function handleSubmit() {
       description: form.description,
       short_description: form.short_description,
       thumbnail: form.thumbnail,
+      thumbnail_small: form.thumbnail_small,
+      thumbnail_medium: form.thumbnail_medium,
       images: form.images,
       tags,
       status: form.status,
@@ -246,15 +329,12 @@ onMounted(() => {
     </div>
 
     <form v-else @submit.prevent="handleSubmit">
-      <!-- TOP GRID: Info (left) + Media (right) -->
       <div class="grid gap-6 lg:grid-cols-3">
-        <!-- LEFT: Informasi Produk (2/3) -->
         <div class="space-y-6 lg:col-span-2">
           <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 sm:p-6">
             <h2 class="mb-4 text-base font-semibold text-gray-900">Informasi Produk</h2>
 
             <div class="space-y-4">
-              <!-- Name -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Nama Produk <span class="text-red-500">*</span></label>
                 <input
@@ -266,7 +346,6 @@ onMounted(() => {
                 <p v-if="getFieldError('name')" class="mt-1 text-xs text-red-600">{{ getFieldError('name') }}</p>
               </div>
 
-              <!-- Slug -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Slug</label>
                 <input
@@ -278,7 +357,6 @@ onMounted(() => {
                 <p v-if="getFieldError('slug')" class="mt-1 text-xs text-red-600">{{ getFieldError('slug') }}</p>
               </div>
 
-              <!-- Category + Type + Status -->
               <div class="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">Kategori <span class="text-red-500">*</span></label>
@@ -318,7 +396,6 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Short description -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Deskripsi Singkat</label>
                 <input
@@ -329,13 +406,11 @@ onMounted(() => {
                 />
               </div>
 
-              <!-- Description WYSIWYG -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Deskripsi</label>
                 <AppEditor v-model="form.description" placeholder="Tulis deskripsi lengkap produk..." />
               </div>
 
-              <!-- Tags -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Tags</label>
                 <input
@@ -349,13 +424,11 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- RIGHT: Thumbnail & Images (1/3) -->
         <div class="space-y-6">
           <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 sm:p-6">
             <h2 class="mb-4 text-base font-semibold text-gray-900">Thumbnail & Gambar</h2>
 
             <div class="space-y-4">
-              <!-- Thumbnail -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Thumbnail</label>
                 <div v-if="thumbnailMedia" class="group relative overflow-hidden rounded-lg border border-gray-200">
@@ -389,14 +462,13 @@ onMounted(() => {
                 </button>
               </div>
 
-              <!-- Images -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Gambar Produk</label>
 
                 <div v-if="imagesMedia.length" class="space-y-2">
                   <div
                     v-for="(img, idx) in imagesMedia"
-                    :key="img.id"
+                    :key="idx"
                     class="group flex items-center gap-2 rounded-lg border border-gray-200 p-2"
                   >
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-gray-50">
@@ -427,7 +499,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Actions -->
       <div class="sticky bottom-0 mt-6 flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50/80 px-1 py-4 backdrop-blur-sm">
         <NuxtLink
           to="/product/masters"
@@ -446,17 +517,16 @@ onMounted(() => {
       </div>
     </form>
 
-    <!-- Media Picker Modals -->
     <AppMediaPicker
       v-if="showThumbPicker"
-      :selected="form.thumbnail ? [form.thumbnail] : []"
+      :selected="[]"
       @select="onThumbSelect"
       @close="showThumbPicker = false"
     />
     <AppMediaPicker
       v-if="showImagesPicker"
       multiple
-      :selected="form.images"
+      :selected="[]"
       @select="onImagesSelect"
       @close="showImagesPicker = false"
     />

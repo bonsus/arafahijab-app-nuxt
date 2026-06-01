@@ -25,6 +25,8 @@ interface SkuPrice {
 interface SkuRow {
   sku: string
   image: string
+  image_small: string
+  image_medium: string
   image_thumb: string
   variant_1: string
   variant_2: string
@@ -56,7 +58,13 @@ const form = reactive({
   description: '',
   short_description: '',
   thumbnail: '',
-  images: [] as string[],
+  thumbnail_small: '',
+  thumbnail_medium: '',
+  images: {
+    small: [] as string[],
+    medium: [] as string[],
+    original: [] as string[],
+  },
   variant_1: '',
   variant_2: '',
   tags: '',
@@ -69,6 +77,21 @@ interface SelectedMedia {
   id: string
   name: string
   thumb: string
+  small: string
+  medium: string
+  original: string
+}
+
+function getMediaUrl(m: any, size: string): string {
+  return m?.files?.find((f: any) => f.size === size)?.file_url || ''
+}
+
+function toSelectedMedia(m: any): SelectedMedia {
+  const small = getMediaUrl(m, 'small')
+  const medium = getMediaUrl(m, 'medium')
+  const original = getMediaUrl(m, 'original') || getMediaUrl(m, 'large') || m?.files?.[0]?.file_url || ''
+  const thumb = getMediaUrl(m, 'thumbnail') || small || medium || original
+  return { id: m.id, name: m.name, thumb, small, medium, original }
 }
 
 const thumbnailMedia = ref<SelectedMedia | null>(null)
@@ -79,10 +102,11 @@ const skuImagePickerIndex = ref<number | null>(null)
 
 function onThumbSelect(medias: any[]) {
   if (medias.length) {
-    const m = medias[0]
-    const thumb = m.files?.find((f: any) => f.size === 'thumbnail')?.file_url || m.files?.[0]?.file_url || ''
-    thumbnailMedia.value = { id: m.id, name: m.name, thumb }
-    form.thumbnail = m.id
+    const sel = toSelectedMedia(medias[0])
+    thumbnailMedia.value = sel
+    form.thumbnail = sel.original
+    form.thumbnail_small = sel.small
+    form.thumbnail_medium = sel.medium
   }
   showThumbPicker.value = false
 }
@@ -90,22 +114,27 @@ function onThumbSelect(medias: any[]) {
 function removeThumb() {
   thumbnailMedia.value = null
   form.thumbnail = ''
+  form.thumbnail_small = ''
+  form.thumbnail_medium = ''
+}
+
+function syncImagesForm() {
+  form.images = {
+    small: imagesMedia.value.map(s => s.small),
+    medium: imagesMedia.value.map(s => s.medium),
+    original: imagesMedia.value.map(s => s.original),
+  }
 }
 
 function onImagesSelect(medias: any[]) {
-  const selected: SelectedMedia[] = medias.map(m => ({
-    id: m.id,
-    name: m.name,
-    thumb: m.files?.find((f: any) => f.size === 'thumbnail')?.file_url || m.files?.[0]?.file_url || '',
-  }))
-  imagesMedia.value = selected
-  form.images = selected.map(s => s.id)
+  imagesMedia.value = medias.map(toSelectedMedia)
+  syncImagesForm()
   showImagesPicker.value = false
 }
 
 function removeImage(index: number) {
   imagesMedia.value.splice(index, 1)
-  form.images.splice(index, 1)
+  syncImagesForm()
 }
 
 function openSkuImagePicker(index: number) {
@@ -118,16 +147,21 @@ function onSkuImageSelect(medias: any[]) {
     skuImagePickerIndex.value = null
     return
   }
-  const m = medias[0]
-  const thumb = m.files?.find((f: any) => f.size === 'thumbnail')?.file_url || m.files?.[0]?.file_url || ''
-  skus.value[idx]!.image = m.id
-  skus.value[idx]!.image_thumb = thumb
+  const sel = toSelectedMedia(medias[0])
+  const row = skus.value[idx]!
+  row.image = sel.original
+  row.image_small = sel.small
+  row.image_medium = sel.medium
+  row.image_thumb = sel.thumb
   skuImagePickerIndex.value = null
 }
 
 function removeSkuImage(index: number) {
-  skus.value[index]!.image = ''
-  skus.value[index]!.image_thumb = ''
+  const row = skus.value[index]!
+  row.image = ''
+  row.image_small = ''
+  row.image_medium = ''
+  row.image_thumb = ''
 }
 
 // Variant values
@@ -215,6 +249,8 @@ function createSku(v1: string, v2: string): SkuRow {
   return {
     sku: '',
     image: '',
+    image_small: '',
+    image_medium: '',
     image_thumb: '',
     variant_1: v1,
     variant_2: v2,
@@ -337,6 +373,8 @@ async function handleSubmit() {
       description: form.description,
       short_description: form.short_description,
       thumbnail: form.thumbnail,
+      thumbnail_small: form.thumbnail_small,
+      thumbnail_medium: form.thumbnail_medium,
       images: form.images,
       variant_1: form.variant_1,
       variant_2: form.variant_2,
@@ -346,6 +384,8 @@ async function handleSubmit() {
       skus: skus.value.map(s => ({
         sku: s.sku,
         image: s.image || undefined,
+        image_small: s.image_small || undefined,
+        image_medium: s.image_medium || undefined,
         variant_1: s.variant_1,
         variant_2: s.variant_2,
         weight: s.weight || 0,
@@ -933,24 +973,25 @@ watch(customerCategories, (cats) => {
         </button>
       </div>
     </form>
-
+    <!-- <pre>{{ form }}</pre>
+    <pre>{{ skus }}</pre> -->
     <!-- Media Picker Modals -->
     <AppMediaPicker
       v-if="showThumbPicker"
-      :selected="form.thumbnail ? [form.thumbnail] : []"
+      :selected="thumbnailMedia ? [thumbnailMedia.id] : []"
       @select="onThumbSelect"
       @close="showThumbPicker = false"
     />
     <AppMediaPicker
       v-if="showImagesPicker"
       multiple
-      :selected="form.images"
+      :selected="imagesMedia.map(m => m.id)"
       @select="onImagesSelect"
       @close="showImagesPicker = false"
     />
     <AppMediaPicker
       v-if="skuImagePickerIndex !== null"
-      :selected="skus[skuImagePickerIndex]?.image ? [skus[skuImagePickerIndex]!.image] : []"
+      :selected="[]"
       @select="onSkuImageSelect"
       @close="skuImagePickerIndex = null"
     />

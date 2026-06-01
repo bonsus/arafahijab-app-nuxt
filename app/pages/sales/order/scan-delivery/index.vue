@@ -86,7 +86,7 @@ async function fetchBatches() {
     if (filterCouriers.value.length > 0) params.courier_code = filterCouriers.value.join(',')
     if (search.value) params.search = search.value
 
-    const res = await api.get<{ data: PaginationData }>('/sales/orders/scan-delivery/index', { params })
+    const res = await api.get<{ data: PaginationData }>('/sales/orders/scan-delivery/index', params)
     
     batches.value = res.data.data
     pagination.value = {

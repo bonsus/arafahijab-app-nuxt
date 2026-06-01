@@ -4,6 +4,7 @@ import {
   ToggleLeft, ToggleRight, Loader2, ChevronDown,
   X, ChevronLeft, ChevronRight, Link2, Plus, Trash2,
 } from 'lucide-vue-next'
+import type { un } from 'vue-router/dist/index-BzEKChPW.js'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -37,8 +38,9 @@ interface SkuItem {
   buffer_stock: number
   rewards_point: string
   status: string
-  image : string | null
-  image_media: MediaFile[] | null
+  image: string | undefined
+  image_small: string | undefined
+  image_medium: string | undefined 
   binding_count: number
   prices: {
     id: string
@@ -56,7 +58,13 @@ interface ProductDetail {
   description: string
   short_description: string
   thumbnail: string
-  images: string[]
+  thumbnail_small: string
+  thumbnail_medium: string
+  images: {
+    small?: string[]
+    medium?: string[]
+    original?: string[]
+  } | string[] | null
   thumbnail_media: MediaFile[] | null
   images_media: MediaItem[] | null
   variant1: string
@@ -120,6 +128,7 @@ const togglingBinding = ref<Set<string>>(new Set())
 const showBindingModal = ref(false)
 const bindingModalSkuId = ref('')
 const bindingModalSkuCode = ref('')
+const bindingModalVariants = ref<{ name: string; value: string }[]>([])
 
 const sourceLabels: Record<string, string> = {
   tiktok: 'TikTok',
@@ -181,7 +190,10 @@ function checkDescHeight() {
 function getThumbnailUrl(): string {
   const p = product.value
   if (!p) return ''
-  return p.thumbnail_media?.find(f => f.size === 'medium')?.file_url
+  return p.thumbnail_medium
+    || p.thumbnail_small
+    || p.thumbnail
+    || p.thumbnail_media?.find(f => f.size === 'medium')?.file_url
     || p.thumbnail_media?.find(f => f.size === 'large')?.file_url
     || p.thumbnail_media?.[0]?.file_url || ''
 }
@@ -189,7 +201,8 @@ function getThumbnailUrl(): string {
 function getThumbnailOriginal(): string {
   const p = product.value
   if (!p) return ''
-  return p.thumbnail_media?.find(f => f.size === 'original')?.file_url
+  return p.thumbnail
+    || p.thumbnail_media?.find(f => f.size === 'original')?.file_url
     || p.thumbnail_media?.find(f => f.size === 'large')?.file_url
     || p.thumbnail_media?.[0]?.file_url || ''
 }
@@ -197,6 +210,10 @@ function getThumbnailOriginal(): string {
 function getImageUrls(): string[] {
   const p = product.value
   if (!p) return []
+  // Prefer new images object {small,medium,original}
+  if (p.images && !Array.isArray(p.images) && p.images.original?.length) {
+    return p.images.original.filter(Boolean)
+  }
   if (p.images_media?.length) {
     return p.images_media.map(m =>
       m.files?.find(f => f.size === 'original')?.file_url
@@ -204,7 +221,28 @@ function getImageUrls(): string[] {
       || m.files?.[0]?.file_url || '',
     ).filter(Boolean)
   }
-  return p.images?.length ? [...p.images] : []
+  if (Array.isArray(p.images)) return [...p.images].filter(Boolean)
+  return []
+}
+
+function getImageThumbUrls(): string[] {
+  const p = product.value
+  if (!p) return []
+  if (p.images && !Array.isArray(p.images)) {
+    const list = p.images.medium?.length ? p.images.medium
+      : p.images.small?.length ? p.images.small
+      : p.images.original || []
+    if (list.length) return list.filter(Boolean)
+  }
+  if (p.images_media?.length) {
+    return p.images_media.map(m =>
+      m.files?.find(f => f.size === 'medium')?.file_url
+      || m.files?.find(f => f.size === 'small')?.file_url
+      || m.files?.[0]?.file_url || '',
+    ).filter(Boolean)
+  }
+  if (Array.isArray(p.images)) return [...p.images].filter(Boolean)
+  return []
 }
 
 function getAllPreviewImages(): string[] {
@@ -305,6 +343,7 @@ async function loadBindings(skuId: string) {
 function openBindingModal(sku: SkuItem) {
   bindingModalSkuId.value = sku.id
   bindingModalSkuCode.value = sku.sku
+  bindingModalVariants.value = sku.variants || []
   showBindingModal.value = true
 }
 
@@ -317,7 +356,8 @@ function onBindingAdded() {
   }
 }
 
-function onBindingDeleted(skuId: string) {
+function onBindingDeleted() {
+  const skuId = bindingModalSkuId.value
   const sku = skus.value.find(s => s.id === skuId)
   if (sku && sku.binding_count > 0) sku.binding_count--
   if (expandedBindings.value.has(skuId)) {
@@ -615,16 +655,16 @@ watch(() => product.value?.description, () => {
               </div>
             </div>
           </div>
-          <div v-else-if="product.images?.length" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+          <div v-else-if="getImageUrls().length" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
             <div class="border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
-              <h2 class="text-base font-semibold text-gray-900">Gambar ({{ product.images.length }})</h2>
+              <h2 class="text-base font-semibold text-gray-900">Gambar ({{ getImageUrls().length }})</h2>
             </div>
             <div class="grid grid-cols-3 gap-2 p-4 sm:p-6">
               <div
-                v-for="(img, idx) in product.images"
+                v-for="(img, idx) in getImageThumbUrls()"
                 :key="idx"
                 class="group cursor-pointer overflow-hidden rounded-lg border border-gray-200"
-                @click="openPreview([...product!.images], idx)"
+                @click="openPreview(getImageUrls(), idx)"
               >
                 <img
                   :src="img"
@@ -732,8 +772,8 @@ watch(() => product.value?.description, () => {
                       </span>
                     </td>
                     <td class="px-4 py-2.5">
-                      <div v-if="sku.image_media?.length" class="h-10 w-10 overflow-hidden rounded bg-gray-50 ring-1 ring-gray-200">
-                        <img :src="sku.image_media.find(f => f.size === 'small')?.file_url || sku.image_media[0]?.file_url" alt="" class="h-full w-full object-cover" />
+                      <div v-if="sku.image || sku.image_small || sku.image_medium" class="h-10 w-10 overflow-hidden rounded bg-gray-50 ring-1 ring-gray-200">
+                        <img :src="sku.image_small || sku.image || sku.image_medium" alt="" class="h-full w-full object-cover" />
                       </div>
                       <span v-else class="text-xs text-gray-400">-</span>
                     </td>
@@ -808,7 +848,7 @@ watch(() => product.value?.description, () => {
                       <!-- Binding list -->
                       <div v-else>
                         <div class="mb-2 flex items-center justify-between">
-                          <span class="text-xs font-medium text-gray-600">{{ bindingData[sku.id].length }} binding marketplace</span>
+                          <span class="text-xs font-medium text-gray-600">{{ bindingData[sku.id]?.length || 0 }} binding marketplace</span>
                           <button
                             class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
                             @click="openBindingModal(sku)"
@@ -891,6 +931,8 @@ watch(() => product.value?.description, () => {
       :product-id="productId"
       :sku-id="bindingModalSkuId"
       :sku-code="bindingModalSkuCode"
+      :product-name="product?.name || ''"
+      :variants="bindingModalVariants"
       @binding-added="onBindingAdded"
       @binding-deleted="onBindingDeleted"
     />

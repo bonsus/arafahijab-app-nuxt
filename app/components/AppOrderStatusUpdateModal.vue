@@ -19,6 +19,7 @@ const results = ref<Record<string, string>>({})
 const pickingId = ref<string>('')
 const printingLabel = ref(false)
 const printingPicking = ref(false)
+const useAggregator = ref(false)
 
 // Reset results when modal opens with new orders/action
 watch(() => [props.orderIds.join(','), props.action], () => {
@@ -31,6 +32,7 @@ watch(() => [props.orderIds.join(','), props.action], () => {
   pickingId.value = ''
   printingLabel.value = false
   printingPicking.value = false
+  useAggregator.value = false
 }, { immediate: true })
 
 // Define available actions based on order status/substatus
@@ -224,6 +226,9 @@ const canSubmit = computed(() => {
   return props.action && !processing.value
 })
 
+// Show aggregator option only when packing orders that are currently processing/process
+const showAggregatorOption = computed(() => actionInfo.value?.key === 'start_process')
+
 // Get list of orders to process with their current status
 const ordersToProcess = computed(() => {
   if (!props.orders) return []
@@ -286,11 +291,15 @@ async function handleSubmit() {
   processing.value = true
 
   try {
-    const res = await api.post<UpdateStatusResponse>('/sales/orders/update-status', {
+    const payload: Record<string, any> = {
       ids: props.orderIds,
       status: actionInfo.value.targetStatus,
       sub_status: actionInfo.value.targetSubStatus,
-    })
+    }
+    if (showAggregatorOption.value) {
+      payload.aggregator = useAggregator.value
+    }
+    const res = await api.post<UpdateStatusResponse>('/sales/orders/update-status', payload)
 
     results.value = res.data?.result || {}
     pickingId.value = res.data?.picking_id || ''
@@ -571,6 +580,23 @@ function getStatusLabel(status: string, substatus: string) {
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                <!-- Aggregator option (packing) --> 
+                <div v-if="showAggregatorOption" class="rounded-lg bg-purple-50 p-4 ring-1 ring-purple-200">
+                  <label class="flex cursor-pointer items-start gap-3">
+                    <input
+                      v-model="useAggregator"
+                      type="checkbox"
+                      class="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div>
+                      <p class="text-sm font-medium text-purple-900">Hubungkan ke Aggregator</p>
+                      <p class="mt-0.5 text-xs text-purple-700">
+                        Aktifkan untuk membuat pengiriman melalui aggregator (Everpro) saat order diproses.
+                      </p>
+                    </div>
+                  </label>
                 </div>
 
                 <!-- Warning for multiple statuses -->

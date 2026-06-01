@@ -796,8 +796,7 @@ onUnmounted(() => {
           >
             <span class="text-xs text-gray-400">{{ product.sku_count }} SKU</span>
             <button
-              class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-700"
-              @click="toggleSkus(product)"
+              class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-700 cursor-pointer"
             >
               {{ expandedSkus.has(product.id) ? 'Tutup' : 'Buka' }}
               <ChevronDown
