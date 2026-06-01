@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: arafahijab-app:latest
-    container_name: arafahijab-app
+    container_name: arafahijab-app-nuxt
     restart: unless-stopped
     env_file:
       - .env
