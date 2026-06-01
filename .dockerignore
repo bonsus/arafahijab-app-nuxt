@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Nuxt / build output
+.nuxt
+.output
+.data
+dist
+.cache
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+logs
+
+# Git & CI
+.git
+.gitignore
+.github
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Misc
+README.md
+*.md
+nginx
+certbot

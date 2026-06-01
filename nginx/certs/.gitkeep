@@ -1,0 +1,4 @@
+# Place TLS certificates here (mounted read-only into nginx at /etc/nginx/certs).
+# Expected files when enabling HTTPS:
+#   fullchain.pem
+#   privkey.pem
