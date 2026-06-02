@@ -85,7 +85,7 @@ async function handleSave() {
       await api.put(`/customers/categories/${editingId.value}`, body)
       toast.success('Kategori berhasil diperbarui')
     } else {
-      await api.get('/customers/categories/create', body as any)
+      await api.post('/customers/categories/create', body as any)
       toast.success('Kategori berhasil ditambahkan')
     }
     showModal.value = false
