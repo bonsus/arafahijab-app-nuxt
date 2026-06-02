@@ -28,7 +28,8 @@ interface Product {
   description: string
   short_description: string
   thumbnail: string
-  thumbnail_media: MediaFile[] | null
+  thumbnail_small: string
+  thumbnail_medium: string
   images: string[]
   variant1: string
   variant2: string
@@ -386,11 +387,6 @@ const visiblePages = computed(() => {
   return pages
 })
 
-function getThumb(product: Product): string {
-  return product.thumbnail_media?.find(f => f.size === 'small')?.file_url
-    || product.thumbnail_media?.[0]?.file_url || ''
-}
-
 function openBindingModal(productId: string, sku: SkuItem) {
   bindingModalProductId.value = productId
   bindingModalSkuId.value = sku.id
@@ -631,8 +627,8 @@ onUnmounted(() => {
               <NuxtLink :to="`/product/${product.id}`" class="shrink-0">
                 <div class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200/60">
                   <img
-                    v-if="getThumb(product)"
-                    :src="getThumb(product)"
+                    v-if="product.thumbnail"
+                    :src="product.thumbnail"
                     :alt="product.name"
                     class="h-full w-full object-cover"
                   />
