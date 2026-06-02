@@ -30,7 +30,7 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8080',
+    apiBaseUrl: process.env.API_BASE_URL || 'https://v2.api.arafahijab.co.id',
     public: {
       appName: 'Arafa Hijab ERP',
     },
