@@ -157,7 +157,7 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Manajemen Pembayaran</h1>
+        <h1 class="text-xl font-bold text-gray-900">Manajemen Pembayaran</h1>
         <p class="mt-1 text-sm text-gray-500">Kelola konfirmasi dan pembayaran dari pelanggan</p>
       </div>
     </div>
@@ -178,8 +178,8 @@ onMounted(() => {
     </div>
 
     <!-- Filters -->
-    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
-      <div class="space-y-3 px-4 py-3">
+    <div class="rounded-xl">
+      <div class="space-y-3">
         <!-- Search + Actions -->
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
@@ -188,10 +188,22 @@ onMounted(() => {
               v-model="search"
               type="text"
               placeholder="Cari nomor order atau nama pelanggan..."
-              class="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+              class="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
               @input="onSearch"
             />
           </div>
+          <AppFilterSelect
+            :model-value="filterStatus"
+            :options="statusOptions"
+            multiple
+            :searchable="false"
+            placeholder="Status"
+            @update:model-value="onStatusFilter"
+          />
+          <AppDateRangePicker
+            :model-value="filterDate"
+            @update:model-value="onDateFilter"
+          />
           <button
             class="flex shrink-0 rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
             title="Refresh data"
@@ -209,22 +221,7 @@ onMounted(() => {
             <XIcon class="h-4 w-4" />
           </button>
         </div>
-
-        <!-- Filter Controls -->
-        <div class="flex flex-wrap items-center gap-2">
-          <AppFilterSelect
-            :model-value="filterStatus"
-            :options="statusOptions"
-            multiple
-            :searchable="false"
-            placeholder="Status"
-            @update:model-value="onStatusFilter"
-          />
-          <AppDateRangePicker
-            :model-value="filterDate"
-            @update:model-value="onDateFilter"
-          />
-        </div>
+ 
       </div>
     </div>
 

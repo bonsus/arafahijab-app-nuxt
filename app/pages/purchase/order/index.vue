@@ -275,7 +275,7 @@ onMounted(() => {
     />
 
     <!-- Tabs & Filters -->
-    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
+    <div class="rounded-xl">
       <!-- Page tabs -->
       <!-- <div class="flex items-center gap-0 overflow-x-auto border-b border-gray-200">
         <NuxtLink
@@ -296,7 +296,7 @@ onMounted(() => {
       </div> -->
 
       <!-- Filters -->
-      <div class="space-y-3 px-4 py-3">
+      <div class="space-y-3">
         <!-- Search + Refresh -->
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
@@ -309,26 +309,6 @@ onMounted(() => {
               @input="onSearch"
             />
           </div>
-          <button
-            class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
-            title="Refresh data"
-            :disabled="loading"
-            @click="fetchOrders()"
-          >
-            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" /> 
-          </button>
-          <!-- reset filters -->
-          <button
-            class="shrink-0 flex rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"
-            title="Reset filters"
-            :disabled="loading"
-            @click="resetFilters()"
-          >
-            <X class="h-4 w-4" /> 
-          </button>
-        </div>
-        <!-- Filter controls -->
-        <div class="flex flex-wrap items-center gap-2">
           <AppFilterSelect
             :model-value="filterSupplierIds"
             :options="supplierOptions"
@@ -354,7 +334,24 @@ onMounted(() => {
             <option v-for="opt in dateTypeOptions" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
           </select>
           <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
-        </div>
+          <button
+            class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+            title="Refresh data"
+            :disabled="loading"
+            @click="fetchOrders()"
+          >
+            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" /> 
+          </button>
+          <!-- reset filters -->
+          <button
+            class="shrink-0 flex rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"
+            title="Reset filters"
+            :disabled="loading"
+            @click="resetFilters()"
+          >
+            <X class="h-4 w-4" /> 
+          </button>
+        </div> 
       </div>
     </div>
 

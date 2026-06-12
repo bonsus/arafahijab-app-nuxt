@@ -117,8 +117,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
     <!-- Trigger -->
     <button
       type="button"
-      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm transition-colors hover:bg-gray-50"
-      :class="hasValue ? 'text-gray-900' : 'text-gray-500'"
+      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm transition-colors hover:bg-gray-50"
+      :class="hasValue ? 'text-gray-700' : 'text-gray-500'"
       @click="toggle"
     >
       <span class="max-w-[160px] truncate">{{ displayLabel || placeholder }}</span>

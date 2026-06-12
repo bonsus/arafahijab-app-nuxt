@@ -223,8 +223,8 @@ onMounted(() => {
     </div>
 
     <!-- Filters -->
-    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
-      <div class="space-y-3 px-4 py-3">
+    <div class="rounded-xl">
+      <div class="space-y-3">
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
             <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -232,28 +232,11 @@ onMounted(() => {
               v-model="search"
               type="text"
               placeholder="Cari no inbound, catatan..."
-              class="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+              class="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
               @input="onSearch"
             />
           </div>
-          <button
-            class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
-            :disabled="loading"
-            title="Refresh"
-            @click="fetchInbounds()"
-          >
-            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
-          </button>
-          <button
-            class="shrink-0 flex rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"
-            :disabled="loading"
-            title="Reset filter"
-            @click="resetFilters()"
-          >
-            <X class="h-4 w-4" />
-          </button>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
+
           <AppFilterSelect
             :model-value="filterWarehouseIds"
             :options="warehouseOptions"
@@ -273,7 +256,23 @@ onMounted(() => {
             @update:model-value="onStatusFilter"
           />
           <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
-        </div>
+          <button
+            class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+            :disabled="loading"
+            title="Refresh"
+            @click="fetchInbounds()"
+          >
+            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          </button>
+          <button
+            class="shrink-0 flex rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"
+            :disabled="loading"
+            title="Reset filter"
+            @click="resetFilters()"
+          >
+            <X class="h-4 w-4" />
+          </button>
+        </div> 
       </div>
     </div>
 

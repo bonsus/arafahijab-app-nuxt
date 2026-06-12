@@ -13,8 +13,7 @@ export function useSidebarMenu(): MenuItem[] {
       children: [
         { label: 'Order', to: '/sales/order' },
         { label: 'Pembayaran', to: '/sales/payments' },
-        { label: 'Retur', to: '/sales/retur' },
-        { label: 'Non-Sales', to: '/sales/non-sales' },
+        { label: 'Retur', to: '/sales/return' }, 
         { label: 'Order Marketplace', to: '/sales/marketplace' },
       ],
     },
@@ -71,6 +70,7 @@ export function useSidebarMenu(): MenuItem[] {
       children: [
         { label: 'Stock', to: '/inventory/stock' },
         { label: 'Stock Movement', to: '/inventory/movement' },
+        { label: 'Pemakaian Stock', to: '/inventory/usage' },
         { label: 'Stock Opname', to: '/inventory/opname' },
         { label: 'Penyesuaian Stock', to: '/inventory/adjustment' },
         { label: 'Konversi Stock', to: '/inventory/conversion' },
@@ -81,10 +81,9 @@ export function useSidebarMenu(): MenuItem[] {
       label: 'Laporan',
       icon: 'file-bar-chart',
       children: [
-        { label: 'Laporan Penjualan', to: '/laporan/penjualan' },
-        { label: 'Laporan Return', to: '/laporan/return' },
-        { label: 'Laporan Pembelian', to: '/laporan/pembelian' },
-        { label: 'Laporan Stock', to: '/laporan/stock' },
+        { label: 'Laporan Stock', to: '/report/stock/stock-report' },
+        { label: 'Laporan Penjualan', to: '/report/sales/overview' },
+        { label: 'Laporan Retur', to: '/report/return/overview' },
       ],
     },
     {

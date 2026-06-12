@@ -160,7 +160,10 @@ onMounted(() => fetchCouriers())
           </span>
         </button>
       </div>
-      <div class="relative w-full sm:w-64">
+      <div v-if="!loading && couriers.length > 0" class="text-xs text-gray-500">
+        Total {{ totalGroups }} kurir &middot; {{ totalServices }} layanan
+      </div>
+      <!-- <div class="relative w-full sm:w-64">
         <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           v-model="search"
@@ -168,7 +171,7 @@ onMounted(() => fetchCouriers())
           placeholder="Cari kurir..."
           class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
-      </div>
+      </div> -->
     </div>
 
     <!-- Loading skeleton -->
@@ -269,11 +272,6 @@ onMounted(() => fetchCouriers())
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Summary -->
-    <div v-if="!loading && couriers.length > 0" class="text-xs text-gray-400">
-      Total {{ totalGroups }} kurir &middot; {{ totalServices }} layanan
-    </div>
+    </div> 
   </div>
 </template>

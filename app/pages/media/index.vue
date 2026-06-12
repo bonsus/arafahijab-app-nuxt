@@ -288,7 +288,7 @@ onMounted(() => fetchMedias())
     </div>
 
     <!-- Filters -->
-    <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+    <div class="rounded-xl">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="relative w-full sm:max-w-xs">
           <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -296,7 +296,7 @@ onMounted(() => fetchMedias())
             v-model="search"
             type="text"
             placeholder="Cari nama, deskripsi, alt..."
-            class="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            class="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             @input="onSearch"
           />
         </div>

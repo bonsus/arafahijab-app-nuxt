@@ -94,6 +94,38 @@ watchEffect(() => {
   }
 })
 
+/** Flat list of every `to` in the sidebar (both top-level and children) */
+const allMenuTos = computed<string[]>(() => {
+  const tos: string[] = []
+  for (const item of menu) {
+    if (item.to) tos.push(item.to)
+    if (item.children) {
+      for (const child of item.children) {
+        if (child.to) tos.push(child.to)
+      }
+    }
+  }
+  return tos
+})
+
+/**
+ * Returns true when `to` is a prefix match for the current route,
+ * UNLESS a more-specific menu entry is an even better prefix match
+ * (in which case we defer to that entry and deactivate this one).
+ */
+function isActiveLink(to: string): boolean {
+  const path = route.path
+  // Must be an exact match or a proper prefix (next char is '/')
+  if (path !== to && !path.startsWith(to + '/')) return false
+  // If a sibling menu entry is more specific and also matches, don't activate this one
+  for (const menuTo of allMenuTos.value) {
+    if (menuTo === to) continue
+    if (!menuTo.startsWith(to + '/')) continue
+    if (path === menuTo || path.startsWith(menuTo + '/')) return false
+  }
+  return true
+}
+
 const userInitials = computed(() => {
   const name = authStore.user?.name || 'U'
   return name
@@ -181,7 +213,7 @@ const userInitials = computed(() => {
       </div>
 
       <!-- Business Switcher -->
-      <DropdownMenuRoot>
+      <!-- <DropdownMenuRoot>
         <DropdownMenuTrigger
           class="mt-3 flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
         >
@@ -206,7 +238,7 @@ const userInitials = computed(() => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenuPortal>
-      </DropdownMenuRoot>
+      </DropdownMenuRoot> -->
     </div>
 
     <!-- Navigation -->
@@ -218,7 +250,7 @@ const userInitials = computed(() => {
             v-if="!item.children"
             :to="item.to!"
             class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
-            active-class="bg-primary-50 text-primary-700 hover:bg-primary-50 hover:text-primary-700"
+            :class="isActiveLink(item.to!) ? 'bg-primary-50 text-primary-700 hover:bg-primary-50 hover:text-primary-700' : ''"
             @click="onNavClick"
           >
             <component :is="getIcon(item.icon!)" class="h-4 w-4 shrink-0" />
@@ -244,7 +276,7 @@ const userInitials = computed(() => {
                   <NuxtLink
                     :to="child.to!"
                     class="flex items-center rounded-lg px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                    active-class="bg-primary-50 text-primary-700 hover:bg-primary-50 hover:text-primary-700"
+                    :class="isActiveLink(child.to!) ? 'bg-primary-50 text-primary-700 hover:bg-primary-50 hover:text-primary-700' : ''"
                     @click="onNavClick"
                   >
                     {{ child.label }}

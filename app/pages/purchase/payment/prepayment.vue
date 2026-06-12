@@ -254,29 +254,37 @@ onMounted(() => {
       </button>
     </div>
 
+    <!-- Tabs -->
+    <div class="mb-4 flex border-b border-gray-200"> 
+      <NuxtLink
+        v-for="tab in tabs"
+        :key="tab.key"
+        :to="tab.to"
+        class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
+        :class="tab.key === 'prepayment'
+          ? 'border-primary-600 text-primary-600'
+          : 'border-transparent text-gray-500 hover:text-gray-700'"
+      >
+        {{ tab.label }}
+        <span
+          v-if="tab.key === 'prepayment'"
+          class="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-primary-600"
+        />
+      </NuxtLink>
+    </div>
+    <!-- summary -->
+    <AppPrepaymentRecap
+      ref="recapRef"
+      :search="search"
+      :supplier-ids="filterSupplierIds"
+      :wallet-ids="filterWalletIds"
+      :date-from="filterDate.from"
+      :date-to="filterDate.to"
+    />
     <!-- Tabs & Filters -->
-    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
-      <!-- Tabs -->
-      <div class="flex items-center gap-0 overflow-x-auto border-b border-gray-200">
-        <NuxtLink
-          v-for="tab in tabs"
-          :key="tab.key"
-          :to="tab.to"
-          class="relative shrink-0 whitespace-nowrap px-5 py-3 text-sm font-medium transition-colors"
-          :class="tab.key === 'prepayment'
-            ? 'text-primary-600'
-            : 'text-gray-500 hover:text-gray-700'"
-        >
-          {{ tab.label }}
-          <span
-            v-if="tab.key === 'prepayment'"
-            class="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-primary-600"
-          />
-        </NuxtLink>
-      </div>
-
+    <div class="rounded-xl"> 
       <!-- Filters -->
-      <div class="space-y-3 px-4 py-3">
+      <div class="space-y-3">
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
             <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -288,6 +296,20 @@ onMounted(() => {
               @input="onSearch"
             />
           </div>
+          <AppSupplierFilter
+            :model-value="filterSupplierIds"
+            @update:model-value="onSupplierFilter"
+          />
+          <AppFilterSelect
+            :model-value="filterWalletIds"
+            :options="walletOptions"
+            :loading="loadingWallets"
+            multiple
+            placeholder="Dompet"
+            search-placeholder="Cari dompet..."
+            @update:model-value="onWalletFilter"
+          />
+          <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
           <button
             class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
             title="Refresh data"
@@ -304,34 +326,9 @@ onMounted(() => {
           >
             <X class="h-4 w-4" />
           </button>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <AppSupplierFilter
-            :model-value="filterSupplierIds"
-            @update:model-value="onSupplierFilter"
-          />
-          <AppFilterSelect
-            :model-value="filterWalletIds"
-            :options="walletOptions"
-            :loading="loadingWallets"
-            multiple
-            placeholder="Dompet"
-            search-placeholder="Cari dompet..."
-            @update:model-value="onWalletFilter"
-          />
-          <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
-        </div>
+        </div> 
       </div>
     </div>
-
-    <AppPrepaymentRecap
-      ref="recapRef"
-      :search="search"
-      :supplier-ids="filterSupplierIds"
-      :wallet-ids="filterWalletIds"
-      :date-from="filterDate.from"
-      :date-to="filterDate.to"
-    />
 
     <!-- Table -->
     <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">

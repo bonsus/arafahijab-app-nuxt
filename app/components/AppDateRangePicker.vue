@@ -298,7 +298,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
     <button
       ref="triggerRef"
       type="button"
-      class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs whitespace-nowrap transition-colors hover:bg-gray-50"
+      class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs whitespace-nowrap transition-colors hover:bg-gray-50"
       :class="displayLabel ? 'text-gray-900' : 'text-gray-400'"
       @click="openPicker"
     >

@@ -241,8 +241,17 @@ onMounted(async () => {
       </NuxtLink>
     </div>
 
-    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
-      <div class="space-y-3 px-4 py-3">
+    <AppWalletSummary
+      ref="summaryRef"
+      :wallet-ids="filterWalletIds"
+      :type="filterType"
+      :search="search"
+      :date-from="filterDate.from"
+      :date-to="filterDate.to"
+    />
+
+    <div class="rounded-xl">
+      <div class="space-y-3">
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
             <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -250,10 +259,27 @@ onMounted(async () => {
               v-model="search"
               type="text"
               placeholder="Cari deskripsi transaksi / no referensi..."
-              class="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+              class="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
               @input="onSearch"
             />
           </div>
+
+          <AppFilterSelect
+            :model-value="filterWalletIds"
+            :options="walletFilterOptions"
+            multiple
+            placeholder="Dompet"
+            search-placeholder="Cari dompet..."
+            @update:model-value="onWalletFilter"
+          />
+          <AppFilterSelect
+            :model-value="filterType"
+            :options="typeFilterOptions"
+            :searchable="false"
+            placeholder="Tipe"
+            @update:model-value="onTypeFilter"
+          />
+          <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
           <button
             class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
             :disabled="loading"
@@ -271,36 +297,9 @@ onMounted(async () => {
             <X class="h-4 w-4" />
           </button>
         </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <AppFilterSelect
-            :model-value="filterWalletIds"
-            :options="walletFilterOptions"
-            multiple
-            placeholder="Dompet"
-            search-placeholder="Cari dompet..."
-            @update:model-value="onWalletFilter"
-          />
-          <AppFilterSelect
-            :model-value="filterType"
-            :options="typeFilterOptions"
-            :searchable="false"
-            placeholder="Tipe"
-            @update:model-value="onTypeFilter"
-          />
-          <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
-        </div>
+ 
       </div>
     </div>
-
-    <AppWalletSummary
-      ref="summaryRef"
-      :wallet-ids="filterWalletIds"
-      :type="filterType"
-      :search="search"
-      :date-from="filterDate.from"
-      :date-to="filterDate.to"
-    />
 
     <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
       <div class="overflow-x-auto">

@@ -139,6 +139,7 @@ interface StatusSummary {
   shipped_delayed_count: number
   shipped_delivered_count: number
   shipped_returning_count: number
+  all_completed_count: number
   completed_count: number
   returned_count: number
   canceled_count: number
@@ -153,7 +154,7 @@ const statusTabs: { key: string; label: string; count?: number }[] = [
   { key: 'processing', label: 'Perlu Dikirim' },
   { key: 'shipped', label: 'Dikirim' },
   { key: 'completed', label: 'Selesai' },
-  { key: 'returned', label: 'Retur' },
+  // { key: 'returned', label: 'Retur' },
   { key: 'canceled', label: 'Dibatalkan' },
 ]
 
@@ -186,6 +187,9 @@ const sub_statusOptions: { value: string; label: string; count?: number }[] = [
   { value: 'delayed', label: 'Pengiriman Bermasalah' },
   { value: 'delivered', label: 'Diterima' },
   { value: 'returning', label: 'Dikembalikan' },
+  // completed
+  { value: 'completed', label: 'Selesai' },
+  { value: 'returned', label: 'Retur' },
 ]
 
 const paymentStatusOptions = [
@@ -253,10 +257,12 @@ function getStatusLabel(status: string, sub_status?: string) {
     return statusConfig["delivered"]
   } else if (status === 'shipped' && sub_status === 'returning') {
     return statusConfig["returning"]
-  } else if (status === 'completed') {
+  } else if (status === 'completed' && sub_status === 'completed') {
     return statusConfig["completed"]
-  } else if (status === 'returned') {
+  } else if (status === 'completed' && sub_status === 'returned') {
     return statusConfig["returned"]
+  // } else if (status === 'returned') {
+  //   return statusConfig["returned"]
   } else if (status === 'canceled') {
     return statusConfig["canceled"]
   } else {
@@ -523,19 +529,19 @@ const availableBulkActions = computed(() => {
   if (canProcess) actions.push({ key: 'start_process', label: 'Proses Order', icon: 'package', color: 'blue' })
   
   // Check if all are processing/process (can start packing)
-  const canPack = selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'process')
-  console.log('canPack:', canPack, '(requires all processing/process)')
-  if (canPack) actions.push({ key: 'start_packing', label: 'Packing Order', icon: 'package-check', color: 'indigo' })
+  // const canPack = selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'process')
+  // console.log('canPack:', canPack, '(requires all processing/process)')
+  // if (canPack) actions.push({ key: 'start_packing', label: 'Packing Order', icon: 'package-check', color: 'indigo' })
   
   // Check if all are processing/packing (can mark ready)
-  const canReady = selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'packing')
-  console.log('canReady:', canReady, '(requires all processing/packing)')
-  if (canReady) actions.push({ key: 'ready_ship', label: 'Siap Dikirim', icon: 'package-check', color: 'green' })
+  // const canReady = selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'packing')
+  // console.log('canReady:', canReady, '(requires all processing/packing)')
+  // if (canReady) actions.push({ key: 'ready_ship', label: 'Siap Dikirim', icon: 'package-check', color: 'green' })
   
   // Check if all are processing/ready (can ship)
-  const canShip = selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'ready')
-  console.log('canShip:', canShip, '(requires all processing/ready)')
-  if (canShip) actions.push({ key: 'ship', label: 'Kirim Order', icon: 'truck', color: 'purple' })
+  // const canShip = selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'ready')
+  // console.log('canShip:', canShip, '(requires all processing/ready)')
+  // if (canShip) actions.push({ key: 'ship', label: 'Kirim Order', icon: 'truck', color: 'purple' })
   
   // Check if all are shipped/delivered (can complete)
   const canComplete = selectedOrders.value.every(o => o.status === 'shipped' && o.sub_status === 'delivered')
@@ -703,8 +709,7 @@ const statusTabsWithCount = computed(() => {
     { key: 'pending', label: 'Pending', count: sum.pending_count },
     { key: 'processing', label: 'Perlu Dikirim', count: sum.processing_count },
     { key: 'shipped', label: 'Dikirim', count: sum.shipped_count },
-    { key: 'completed', label: 'Selesai', count: sum.completed_count },
-    { key: 'returned', label: 'Retur', count: sum.returned_count },
+    { key: 'completed', label: 'Selesai', count: sum.all_completed_count }, 
     { key: 'canceled', label: 'Dibatalkan', count: sum.canceled_count },
   ]
 })
@@ -725,6 +730,8 @@ const sub_statusOptionsWithCount = computed(() => {
     delayed: sum.shipped_delayed_count,
     delivered: sum.shipped_delivered_count,
     returning: sum.shipped_returning_count,
+    completed: sum.completed_count,
+    returned: sum.returned_count,
   }
   return sub_statusOptions.map(opt => ({ ...opt, count: countMap[opt.value] || 0 }))
 })
@@ -745,6 +752,7 @@ const filteredsub_statusOptions = computed(() => {
     pending: ['unpaid', 'waiting_approval','waiting_confirmation'],
     processing: ['open', 'process', 'packing', 'ready'],
     shipped: ['in_delivery', 'delayed', 'delivered', 'returning'],
+    completed: ['completed', 'returned'],
   }
   
   const allowedValues = mapping[activeTab.value]

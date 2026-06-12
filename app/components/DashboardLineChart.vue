@@ -59,21 +59,31 @@ function yAt(v: number, max: number) {
 function pathFor(s: Series) {
   const max = (s.axis === 'right') ? maxRight.value : maxLeft.value
   const total = s.data.length
-  return s.data
-    .map((v, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i, total).toFixed(2)} ${yAt(v, max).toFixed(2)}`)
-    .join(' ')
+  if (!total) return ''
+  const pts = s.data.map((v, i) => ({ x: xAt(i, total), y: yAt(v, max) }))
+  let d = `M ${pts[0]!.x.toFixed(2)} ${pts[0]!.y.toFixed(2)}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1]!, cur = pts[i]!
+    const cx = ((prev.x + cur.x) / 2).toFixed(2)
+    d += ` C ${cx} ${prev.y.toFixed(2)}, ${cx} ${cur.y.toFixed(2)}, ${cur.x.toFixed(2)} ${cur.y.toFixed(2)}`
+  }
+  return d
 }
 
 function areaFor(s: Series) {
   const max = (s.axis === 'right') ? maxRight.value : maxLeft.value
   const total = s.data.length
   if (!total) return ''
-  const first = `M ${xAt(0, total).toFixed(2)} ${(padding.top + chartH.value).toFixed(2)}`
-  const line = s.data
-    .map((v, i) => `L ${xAt(i, total).toFixed(2)} ${yAt(v, max).toFixed(2)}`)
-    .join(' ')
-  const close = `L ${xAt(total - 1, total).toFixed(2)} ${(padding.top + chartH.value).toFixed(2)} Z`
-  return `${first} ${line} ${close}`
+  const bottom = (padding.top + chartH.value).toFixed(2)
+  const pts = s.data.map((v, i) => ({ x: xAt(i, total), y: yAt(v, max) }))
+  let d = `M ${pts[0]!.x.toFixed(2)} ${pts[0]!.y.toFixed(2)}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1]!, cur = pts[i]!
+    const cx = ((prev.x + cur.x) / 2).toFixed(2)
+    d += ` C ${cx} ${prev.y.toFixed(2)}, ${cx} ${cur.y.toFixed(2)}, ${cur.x.toFixed(2)} ${cur.y.toFixed(2)}`
+  }
+  d += ` L ${pts[total - 1]!.x.toFixed(2)} ${bottom} L ${pts[0]!.x.toFixed(2)} ${bottom} Z`
+  return d
 }
 
 // Generate ~4 gridlines

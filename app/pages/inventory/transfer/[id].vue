@@ -320,6 +320,11 @@ onMounted(fetchTransfer)
         </div>
       </div>
 
+
+          <!-- Stock Movements (via linked adjustment) -->
+      <AppStockMovements v-if="transfer.id" :reference-id="transfer.id" />
+
+
       <!-- Activity log -->
       <div v-if="transfer.logs?.length" class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
         <div class="border-b border-gray-200 px-5 py-3.5">

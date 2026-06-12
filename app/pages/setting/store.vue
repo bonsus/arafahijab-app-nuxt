@@ -269,18 +269,7 @@ onMounted(() => fetchStores())
         Tambah Toko
       </button>
     </div>
-
-    <!-- Search -->
-    <div class="relative w-full sm:w-72">
-      <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="Cari toko..."
-        class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-        @input="onSearch"
-      />
-    </div>
+ 
 
     <!-- Loading skeleton -->
     <div v-if="loading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

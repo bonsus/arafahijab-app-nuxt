@@ -228,95 +228,98 @@ onMounted(() => fetchSources())
       </div>
 
       <!-- List -->
-      <div v-else class="space-y-2">
-        <div
-          v-for="(item, index) in items"
-          :key="item._key"
-          draggable="true"
-          class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 transition-all"
-          :class="[
-            dragOverIndex === index ? 'ring-primary-400 shadow-md' : 'ring-gray-200',
-            dragIndex === index ? 'opacity-40' : 'hover:shadow-md',
-          ]"
-          @dragstart="onDragStart(index, $event)"
-          @dragover="onDragOver(index, $event)"
-          @dragleave="onDragLeave"
-          @drop="onDrop(index)"
-          @dragend="resetDrag"
-        >
-          <!-- Drag handle -->
-          <GripVertical class="h-5 w-5 shrink-0 cursor-grab text-gray-300 active:cursor-grabbing" />
+      <div v-else >
+      <!-- Hint -->
+        <p v-if="items.length" class="text-xs text-gray-400 mb-4">
+          {{ items.length }} sumber &middot; Seret untuk mengubah urutan &middot; Klik nama untuk mengedit
+        </p>
 
-          <!-- Source name / inline edit -->
-          <div class="flex-1">
-            <input
-              v-if="editingKey === item._key"
-              v-model="editingText"
-              type="text"
-              class="w-full rounded-lg border border-primary-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
-              @blur="commitEdit(item)"
-              @keydown="onEditKeydown($event, item)"
-            />
-            <span
-              v-else
-              class="cursor-pointer select-none text-sm text-gray-800 hover:text-primary-600"
-              @click="startEdit(item)"
-            >
-              {{ item.source }}
+        <div class="space-y-2">
+          <div
+            v-for="(item, index) in items"
+            :key="item._key"
+            draggable="true"
+            class="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 transition-all"
+            :class="[
+              dragOverIndex === index ? 'ring-primary-400 shadow-md' : 'ring-gray-200',
+              dragIndex === index ? 'opacity-40' : 'hover:shadow-md',
+            ]"
+            @dragstart="onDragStart(index, $event)"
+            @dragover="onDragOver(index, $event)"
+            @dragleave="onDragLeave"
+            @drop="onDrop(index)"
+            @dragend="resetDrag"
+          >
+            <!-- Drag handle -->
+            <GripVertical class="h-5 w-5 shrink-0 cursor-grab text-gray-300 active:cursor-grabbing" />
+
+            <!-- Source name / inline edit -->
+            <div class="flex-1">
+              <input
+                v-if="editingKey === item._key"
+                v-model="editingText"
+                type="text"
+                class="w-full rounded-lg border border-primary-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                @blur="commitEdit(item)"
+                @keydown="onEditKeydown($event, item)"
+              />
+              <span
+                v-else
+                class="cursor-pointer select-none text-sm text-gray-800 hover:text-primary-600"
+                @click="startEdit(item)"
+              >
+                {{ item.source }}
+              </span>
+            </div>
+
+            <!-- Sort badge -->
+            <span class="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">
+              #{{ index + 1 }}
             </span>
+
+            <!-- Delete -->
+            <button
+              type="button"
+              class="shrink-0 rounded-md p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+              title="Hapus"
+              @click="deleteItem(item)"
+            >
+              <Trash2 class="h-4 w-4" />
+            </button>
           </div>
 
-          <!-- Sort badge -->
-          <span class="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">
-            #{{ index + 1 }}
-          </span>
-
-          <!-- Delete -->
-          <button
-            type="button"
-            class="shrink-0 rounded-md p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-            title="Hapus"
-            @click="deleteItem(item)"
+          <!-- Inline add row -->
+          <div
+            v-if="showAddRow"
+            class="flex items-center gap-3 rounded-xl bg-primary-50 px-4 py-3 ring-1 ring-primary-200"
           >
-            <Trash2 class="h-4 w-4" />
-          </button>
-        </div>
-
-        <!-- Inline add row -->
-        <div
-          v-if="showAddRow"
-          class="flex items-center gap-3 rounded-xl bg-primary-50 px-4 py-3 ring-1 ring-primary-200"
-        >
-          <GripVertical class="h-5 w-5 shrink-0 text-primary-200" />
-          <input
-            ref="addInputRef"
-            v-model="addText"
-            type="text"
-            class="flex-1 rounded-lg border border-primary-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
-            placeholder="Nama sumber penjualan..."
-            @keydown="onAddKeydown"
-          />
-          <button
-            type="button"
-            class="shrink-0 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
-            @click="commitAdd"
-          >
-            Tambah
-          </button>
-          <button
-            type="button"
-            class="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-            @click="cancelAdd"
-          >
-            Batal
-          </button>
+            <GripVertical class="h-5 w-5 shrink-0 text-primary-200" />
+            <input
+              ref="addInputRef"
+              v-model="addText"
+              type="text"
+              class="flex-1 rounded-lg border border-primary-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+              placeholder="Nama sumber penjualan..."
+              @keydown="onAddKeydown"
+            />
+            <button
+              type="button"
+              class="shrink-0 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
+              @click="commitAdd"
+            >
+              Tambah
+            </button>
+            <button
+              type="button"
+              class="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+              @click="cancelAdd"
+            >
+              Batal
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Hint -->
-      <p v-if="items.length" class="text-xs text-gray-400">
-        {{ items.length }} sumber &middot; Seret untuk mengubah urutan &middot; Klik nama untuk mengedit
-      </p>
     </template>
   </div>
 </template>
