@@ -9,6 +9,7 @@ import {
   Eye,
   Trash2,
   Loader2,
+  Download,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -219,6 +220,43 @@ async function resetFilters() {
   await summaryRef.value?.refresh()
 }
 
+const exporting = ref(false)
+
+async function exportTransactions() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterWalletIds.value.length) params.wallet_id = filterWalletIds.value.join(',')
+    if (filterType.value) params.type = filterType.value
+    if (filterDate.value.from) {
+      params.date_from = filterDate.value.from
+      params.date_to = filterDate.value.to
+    }
+    const response = await api.get<Blob>('/wallets/transactions/export', params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    link.download = `wallet_transactions_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  }
+  finally {
+    exporting.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchWallets()
   await fetchTransactions()
@@ -295,6 +333,16 @@ onMounted(async () => {
             @click="resetFilters"
           >
             <X class="h-4 w-4" />
+          </button>
+          <button
+            class="shrink-0 flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            :disabled="exporting"
+            title="Export Excel"
+            @click="exportTransactions"
+          >
+            <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+            <Download v-else class="h-4 w-4" />
+            Export
           </button>
         </div>
  

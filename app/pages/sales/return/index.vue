@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  Plus, Search, Eye, Pencil, RefreshCw, X, RotateCcw, MoreVertical, Ban, Wallet, Loader2,
+  Plus, Search, Eye, Pencil, RefreshCw, X, RotateCcw, MoreVertical, Ban, Wallet, Loader2, Download, ChevronDown,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -243,6 +243,49 @@ function resetFilters() {
   fetchReturns()
 }
 
+// ─── Export ──────────────────────────────────────────────────────────────────
+const exporting = ref(false)
+const showExportDropdown = ref(false)
+const exportDropdownRef = ref<HTMLElement | null>(null)
+
+async function exportData(endpoint: string) {
+  if (exporting.value) return
+  exporting.value = true
+  showExportDropdown.value = false
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterStores.value.length) params.store_id = filterStores.value.join(',')
+    if (filterStatus.value) params.status = filterStatus.value
+    if (filterPaymentStatus.value) params.payment_status = filterPaymentStatus.value
+    if (filterDate.value.from && filterDate.value.to) {
+      params.date_from = filterDate.value.from
+      params.date_to = filterDate.value.to
+    }
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    const name = (endpoint.split('/').pop() || 'return').replace(/-/g, '_')
+    link.download = `${name}_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 // Refund modal
 const wallets = ref<WalletRef[]>([])
 const showRefundModal = ref(false)
@@ -326,7 +369,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-4" @click="openMenuId = null">
+  <div class="space-y-4" @click="openMenuId = null; showExportDropdown = false">
     <!-- Header -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -424,6 +467,36 @@ onMounted(() => {
           >
             <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
           </button>
+          <!-- Export Dropdown -->
+          <div ref="exportDropdownRef" class="relative">
+            <button
+              class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+              :disabled="exporting"
+              @click.stop="showExportDropdown = !showExportDropdown"
+            >
+              <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+              <Download v-else class="h-4 w-4" />
+              <span>Export</span>
+              <ChevronDown class="h-3.5 w-3.5" />
+            </button>
+            <div
+              v-if="showExportDropdown"
+              class="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            >
+              <button
+                class="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                @click="exportData('/sales/order-return-export/return')"
+              >
+                Retur
+              </button>
+              <button
+                class="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                @click="exportData('/sales/order-return-export/return-with-items')"
+              >
+                Retur With Items
+              </button>
+            </div>
+          </div>
           <button
             v-if="hasActiveFilters"
             class="flex shrink-0 rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"

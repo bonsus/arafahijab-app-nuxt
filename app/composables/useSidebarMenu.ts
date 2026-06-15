@@ -12,9 +12,10 @@ export function useSidebarMenu(): MenuItem[] {
       icon: 'shopping-cart',
       children: [
         { label: 'Order', to: '/sales/order' },
-        { label: 'Pembayaran', to: '/sales/payments' },
+        { label: 'Pembayaran', to: '/sales/payment' },
         { label: 'Retur', to: '/sales/return' }, 
         { label: 'Order Marketplace', to: '/sales/marketplace' },
+        { label: 'Rekonsiliasi Ongkir', to: '/sales/order/reconcile-shipment' },
       ],
     },
     {
@@ -33,8 +34,7 @@ export function useSidebarMenu(): MenuItem[] {
       children: [
         { label: 'Master Produk', to: '/product/masters' },
         { label: 'Kategori Produk', to: '/product/categories' }, 
-        { label: 'Produk Marketplace', to: '/product/marketplace' },
-        { label: 'Produk Integrations', to: '/product/integrations' },
+        { label: 'Produk Marketplace', to: '/product/marketplace' }, 
       ],
     },
     {
@@ -83,6 +83,7 @@ export function useSidebarMenu(): MenuItem[] {
       children: [
         { label: 'Laporan Stock', to: '/report/stock/stock-report' },
         { label: 'Laporan Penjualan', to: '/report/sales/overview' },
+        { label: 'Laporan Keuangan', to: '/report/finance/overview' },
         { label: 'Laporan Retur', to: '/report/return/overview' },
       ],
     },

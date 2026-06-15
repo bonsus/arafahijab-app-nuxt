@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  Search, RefreshCw, X, Package, Layers, ArrowDownToLine,
+  Search, RefreshCw, X, Package, Layers, ArrowDownToLine, Download, Loader2,
   ArrowUpFromLine, Boxes, Lock, PackageCheck, Inbox, ImageOff, ArrowUpRight,
 } from 'lucide-vue-next'
 
@@ -315,6 +315,46 @@ function resetFilters() {
   refreshAll()
 }
 
+// ─── Export ───────────────────────────────────────────────────────────────────
+const exporting = ref(false)
+
+async function exportData() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
+    if (filterProductIds.value.length) params.product_id = filterProductIds.value.join(',')
+    if (filterSkuIds.value.length) params.sku_id = filterSkuIds.value.join(',')
+    if (filterType.value) params.type = filterType.value
+    if (filterDate.value.from) params.date_from = filterDate.value.from
+    if (filterDate.value.to) params.date_to = filterDate.value.to
+    const endpoint = '/inventories/export/stock-movements'
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    const name = (endpoint.split('/').pop() || 'stock_movements').replace(/-/g, '_')
+    link.download = `${name}_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 function locationText(m: Movement): string {
   return [m.zone?.code, m.rack?.code, m.bin?.code].filter(Boolean).join(' / ') || '-'
 }
@@ -462,6 +502,16 @@ onMounted(() => {
             @click="refreshAll()"
           >
             <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          </button>
+          <button
+            class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+            title="Export Excel"
+            :disabled="exporting"
+            @click="exportData()"
+          >
+            <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+            <Download v-else class="h-4 w-4" />
+            <span>Export</span>
           </button>
           <button
             class="flex shrink-0 rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"

@@ -2,7 +2,7 @@
 import {
   Search, RefreshCw, X, Eye, Package,
   ChevronDown, ChevronRight as ChevronRightIcon, TrendingDown, AlertCircle,
-  BarChart3, Layers, DollarSign,
+  BarChart3, Layers, DollarSign, Download, Loader2,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -57,7 +57,7 @@ interface Paginated<T> {
 }
 
 const api = useApi()
-
+const toast = useToast()
 const loading = ref(true)
 const loadingSummary = ref(true)
 const products = ref<Product[]>([])
@@ -205,6 +205,43 @@ async function resetFilters() {
   fetchProducts()
 }
 
+// ─── Export ───────────────────────────────────────────────────────────────────
+const exporting = ref(false)
+
+async function exportData() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
+    if (filterCategoryIds.value.length) params.category_id = filterCategoryIds.value.join(',')
+    if (filterStockType.value) params.stock_available = filterStockType.value
+    const endpoint = '/inventories/export/stock'
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    const name = (endpoint.split('/').pop() || 'stock').replace(/-/g, '_')
+    link.download = `${name}_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(() => {
   fetchSummary()
   fetchProducts()
@@ -305,6 +342,16 @@ onMounted(() => {
             @click="fetchProducts(); fetchSummary()"
           >
             <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          </button>
+          <button
+            class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+            title="Export Excel"
+            :disabled="exporting"
+            @click="exportData()"
+          >
+            <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+            <Download v-else class="h-4 w-4" />
+            <span>Export</span>
           </button>
           <button 
             class="flex shrink-0 rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"

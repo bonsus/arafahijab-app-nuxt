@@ -907,7 +907,7 @@ async function handleSubmit() {
         </button>
       </div>
     </form>
-    <pre>{{ skus }}</pre>
+    <!-- <pre>{{ skus }}</pre> -->
     <!-- SKU Image Picker Modal -->
     <AppMediaPicker
       v-if="skuImagePickerIndex !== null"

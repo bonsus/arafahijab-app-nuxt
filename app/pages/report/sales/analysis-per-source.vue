@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-vue-next'
+import { RefreshCw, TrendingUp, TrendingDown, Download, Loader2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -90,6 +90,35 @@ async function fetchStores() {
 }
 
 watch(groupBy, fetchData)
+
+const exporting = ref(false)
+
+async function exportData() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const endpoint = '/reports/sales/analysis-per-source/export'
+    const response = await api.get<Blob>(endpoint, buildParams(), { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    link.download = `analysis_per_source_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(async () => { await fetchStores(); fetchData() })
 
 // ── Chart ──────────────────────────────────────────────────────────────────
@@ -242,13 +271,6 @@ function fmtSummary(metric: string): string {
         <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Analisis Per Source</h1>
         <p class="mt-0.5 text-sm text-gray-500">Bandingkan performa penjualan berdasarkan sumber order</p>
       </div>
-      <button
-        class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        @click="fetchData"
-      >
-        <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
-        Refresh
-      </button>
     </div>
 
     <!-- Tabs -->
@@ -293,6 +315,24 @@ function fmtSummary(metric: string): string {
         :model-value="filterDate"
         @update:model-value="filterDate = $event; fetchData()"
       />
+      <div class="ml-auto flex items-center gap-2">
+        <button
+          class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          :disabled="exporting"
+          @click="exportData()"
+        >
+          <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+          <Download v-else class="h-4 w-4" />
+          Export
+        </button>
+        <button
+          class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          @click="fetchData"
+        >
+          <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          Refresh
+        </button>
+      </div>
     </div>
 
     <!-- Summary Cards -->

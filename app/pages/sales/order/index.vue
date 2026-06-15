@@ -99,6 +99,8 @@ const total = ref(0)
 const showScanModal = ref(false)
 const showScanDropdown = ref(false)
 const scanDropdownRef = ref<HTMLElement | null>(null)
+const showExportDropdown = ref(false)
+const exportDropdownRef = ref<HTMLElement | null>(null)
 
 // Filter state
 const search = ref('')
@@ -403,7 +405,7 @@ async function onChangeResiSuccess() {
 // ─── Export orders ────────────────────────────────────────────────────────────
 const exporting = ref(false)
 
-async function exportOrders() {
+async function exportOrders(endpoint: string = '/sales/order-export/order') {
   if (exporting.value) return
   exporting.value = true
   try {
@@ -427,15 +429,18 @@ async function exportOrders() {
     if (filterSource.value.length) params.source = filterSource.value.join(',')
     if (filterTags.value.length) params.tag = filterTags.value.join(',')
 
-    const response = await api.get<Blob>('/sales/order-export/order', params, { responseType: 'blob' })
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    const ts = new Date().toISOString().slice(0, 10)
-    link.download = `orders-${ts}.xlsx`
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    const name = (endpoint.split('/').pop() || 'order').replace(/-/g, '_')
+    link.download = `${name}_${date}_${hhmm}.xlsx`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -538,7 +543,7 @@ const availableBulkActions = computed(() => {
   // console.log('canReady:', canReady, '(requires all processing/packing)')
   // if (canReady) actions.push({ key: 'ready_ship', label: 'Siap Dikirim', icon: 'package-check', color: 'green' })
   
-  // Check if all are processing/ready (can ship)
+  // // Check if all are processing/ready (can ship)
   // const canShip = selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'ready')
   // console.log('canShip:', canShip, '(requires all processing/ready)')
   // if (canShip) actions.push({ key: 'ship', label: 'Kirim Order', icon: 'truck', color: 'purple' })
@@ -1005,6 +1010,9 @@ function onClickOutsideScanDropdown(e: MouseEvent) {
   if (scanDropdownRef.value && !scanDropdownRef.value.contains(e.target as Node)) {
     showScanDropdown.value = false
   }
+  if (exportDropdownRef.value && !exportDropdownRef.value.contains(e.target as Node)) {
+    showExportDropdown.value = false
+  }
 }
 
 onMounted(() => {
@@ -1085,17 +1093,98 @@ onUnmounted(() => {
             </div>
           </Transition>
         </div>
-        <button
-          type="button"
-          :disabled="exporting"
-          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          title="Export order ke Excel"
-          @click="exportOrders"
-        >
-          <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
-          <Download v-else class="h-4 w-4" />
-          Export
-        </button>
+        <div ref="exportDropdownRef" class="relative">
+          <button
+            type="button"
+            :disabled="exporting"
+            class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            @click="showExportDropdown = !showExportDropdown"
+          >
+            <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+            <Download v-else class="h-4 w-4" />
+            Export
+            <ChevronDown class="h-3.5 w-3.5" />
+          </button>
+          <Transition
+            enter-active-class="transition duration-100 ease-out"
+            enter-from-class="transform scale-95 opacity-0"
+            enter-to-class="transform scale-100 opacity-100"
+            leave-active-class="transition duration-75 ease-in"
+            leave-from-class="transform scale-100 opacity-100"
+            leave-to-class="transform scale-95 opacity-0"
+          >
+            <div
+              v-if="showExportDropdown"
+              class="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 z-10"
+            >
+              <div class="py-1">
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  Order
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-detail'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  Order Detail
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-detail-with-items'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  Order Detail With Items
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-jnt'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  J&T
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-jne'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  JNE
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-pos'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  Pos Indonesia
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-spx'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  SPX
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-lincah'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  Lincah
+                </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-everpro'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  Everpro
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
         <NuxtLink
           to="/sales/order/create"
           class="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"

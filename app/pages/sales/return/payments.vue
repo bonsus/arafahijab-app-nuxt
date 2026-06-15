@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  Search, RefreshCw, X, Wallet, Trash2,
+  Search, RefreshCw, X, Wallet, Trash2, Download, Loader2,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -166,6 +166,46 @@ function resetFilters() {
   fetchRefunds()
 }
 
+// ─── Export ──────────────────────────────────────────────────────────────────
+const exporting = ref(false)
+
+async function exportData() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterWalletIds.value.length) params.wallet_id = filterWalletIds.value.join(',')
+    if (filterMethod.value.length) params.method = filterMethod.value.join(',')
+    if (filterDate.value.from && filterDate.value.to) {
+      params.date_from = filterDate.value.from
+      params.date_to = filterDate.value.to
+    }
+    const endpoint = '/sales/order-return-export/return-payment'
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    const name = (endpoint.split('/').pop() || 'return_payment').replace(/-/g, '_')
+    link.download = `${name}_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 async function handleDelete(refund: RefundPayment) {
   const ok = await confirm({
     title: 'Hapus Refund',
@@ -253,6 +293,16 @@ onMounted(() => {
             @click="fetchRefunds()"
           >
             <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          </button>
+          <button
+            class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+            title="Export Excel"
+            :disabled="exporting"
+            @click="exportData()"
+          >
+            <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+            <Download v-else class="h-4 w-4" />
+            <span>Export</span>
           </button>
           <button
             v-if="hasActiveFilters"

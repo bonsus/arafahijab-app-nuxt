@@ -3,7 +3,7 @@ import {
   Search, RefreshCw, X, Package,
   Eye, Trash2,
   Plus, Wallet,
-  Pencil,
+  Pencil, Download, ChevronDown, Loader2,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -337,6 +337,50 @@ async function resetFilters() {
   await recapRef.value?.refresh()
 }
 
+// ─── Export ───────────────────────────────────────────────────────────────────
+const exporting = ref(false)
+const showExportDropdown = ref(false)
+
+async function exportData(endpoint: string) {
+  if (exporting.value) return
+  exporting.value = true
+  showExportDropdown.value = false
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterStatus.value.length) params.status = filterStatus.value.join(',')
+    if (filterPaymentStatus.value.length) params.payment_status = filterPaymentStatus.value.join(',')
+    if (filterSupplierIds.value.length) params.customer_id = filterSupplierIds.value.join(',')
+    if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
+    if (filterDate.value.from) {
+      params.date_type = filterDateType.value
+      params.date_from = filterDate.value.from
+      params.date_to = filterDate.value.to
+    }
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    const name = (endpoint.split('/').pop() || 'purchase_return').replace(/-/g, '_')
+    link.download = `${name}_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(() => {
   fetchReturns()
   fetchWarehouseOptions()
@@ -345,7 +389,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-4" @click="showExportDropdown = false">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Retur Pembelian</h1>
@@ -437,6 +481,36 @@ onMounted(() => {
           >
             <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
           </button>
+          <!-- Export Dropdown -->
+          <div class="relative" @click.stop>
+            <button
+              class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+              :disabled="exporting"
+              @click="showExportDropdown = !showExportDropdown"
+            >
+              <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+              <Download v-else class="h-4 w-4" />
+              <span>Export</span>
+              <ChevronDown class="h-3.5 w-3.5" />
+            </button>
+            <div
+              v-if="showExportDropdown"
+              class="absolute right-0 top-full z-30 mt-1 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            >
+              <button
+                class="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                @click="exportData('/sales/purchase-order-export/purchase-return')"
+              >
+                Purchase Return
+              </button>
+              <button
+                class="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                @click="exportData('/sales/purchase-order-export/purchase-return-with-items')"
+              >
+                Purchase Return With Items
+              </button>
+            </div>
+          </div>
           <button
             class="shrink-0 flex rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"
             :disabled="loading"

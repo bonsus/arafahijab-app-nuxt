@@ -17,6 +17,7 @@ export default defineNuxtConfig({
         'reka-ui',
         '@vue/devtools-core',
         '@vue/devtools-kit',
+        'xlsx',
       ],
     },
   },

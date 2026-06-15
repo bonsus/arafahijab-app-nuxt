@@ -23,6 +23,7 @@ interface ReturnOrderRef {
 	date_shipped: string
 	total: string
 	grand_total: string
+  payment_total: string
 	qty: number
 	status: string
 	sub_status: string
@@ -320,6 +321,7 @@ const DATE_TYPE_OPTIONS: Array<{ value: '' | 'order_date' | 'shipped_date' | 're
               <th class="whitespace-nowrap px-4 py-3 text-center">Status Retur</th>
               <th class="whitespace-nowrap px-4 py-3 text-left">Order Asal</th>
               <th class="whitespace-nowrap px-4 py-3 text-right">Total Order</th>
+              <th class="whitespace-nowrap px-4 py-3 text-right">Total Payment</th>
               <th class="whitespace-nowrap px-4 py-3 text-center">COD</th>
               <th class="whitespace-nowrap px-4 py-3 text-center">Source</th>
             </tr>
@@ -364,7 +366,8 @@ const DATE_TYPE_OPTIONS: Array<{ value: '' | 'order_date' | 'shipped_date' | 're
                     </template>
                   </p>
                 </td>
-                <td class="whitespace-nowrap px-4 py-3 text-right text-xs font-medium text-gray-700">{{ fmtCurrency(item.order?.grand_total) }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-right text-xs font-medium text-gray-700">{{ fmtCurrency(item.order?.total) }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-right text-xs font-medium text-gray-700">{{ fmtCurrency(item.order?.payment_total) }}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-center">
                   <span
                     class="rounded-full px-2 py-0.5 text-[11px] font-semibold"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, ChevronDown, ChevronRight, RefreshCw } from 'lucide-vue-next'
+import { Search, ChevronDown, ChevronRight, RefreshCw, Download, Loader2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -105,6 +105,40 @@ const tabs = [
   { label: 'Stock Turn Over', to: '/report/stock/stock-turnover' },
 ]
 
+// ─── Export ───────────────────────────────────────────────────────────────────
+const exporting = ref(false)
+
+async function exportData() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterWarehouse.value.length) params.warehouse_id = filterWarehouse.value.join(',')
+    if (filterDate.value.from) params.date_from = filterDate.value.from
+    if (filterDate.value.to) params.date_to = filterDate.value.to
+    const endpoint = '/reports/stocks/stock-turnover/export'
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    link.download = `stock_turnover_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchWarehouses()
   fetchSummary()
@@ -190,6 +224,15 @@ onMounted(async () => {
         @click="fetchData(); fetchSummary()"
       >
         <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+      </button>
+      <button
+        class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+        :disabled="exporting"
+        @click="exportData()"
+      >
+        <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+        <Download v-else class="h-4 w-4" />
+        <span>Export</span>
       </button>
     </div>
 

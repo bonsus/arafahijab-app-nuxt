@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { Search, Eye, Loader2, DollarSign, CheckCircle, XCircle, Ban, X as XIcon, RefreshCw } from 'lucide-vue-next'
+import { Search, Eye, Loader2, DollarSign, CheckCircle, XCircle, Ban, X as XIcon, RefreshCw, Download } from 'lucide-vue-next'
 import { formatCurrency, formatDate } from '~/composables/useFormatters'
 
 definePageMeta({ middleware: 'auth' })
@@ -21,6 +21,47 @@ const filterStores = ref<string[]>([])
 const filterCod = ref<string[]>([])
 const filterStatus = ref<string[]>([])
 
+const exporting = ref(false)
+
+async function exportData() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (search.value) params.search = search.value
+    if (filterDate.value.from) {
+      params.date_from = filterDate.value.from
+      params.date_to = filterDate.value.to
+    }
+    if (filterStores.value.length) params.store_id = filterStores.value.join(',')
+    if (filterCod.value.length) params.cod = filterCod.value.join(',')
+    if (filterStatus.value.length) params.status = filterStatus.value.join(',')
+
+    const endpoint = '/sales/order-payment-export/payment'
+    const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    const name = (endpoint.split('/').pop() || 'payment').replace(/-/g, '_')
+    link.download = `${name}_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 const showLightbox = ref(false)
 const lightboxUrl = ref('')
 const showCancelModal = ref(false)
@@ -28,9 +69,8 @@ const selectedPayment = ref<any>(null)
 const cancelling = ref(false)
 
 const tabs = [
-  { key: 'payments', label: 'Pembayaran Diterima', to: '/sales/payments' },
-  // { key: 'orders', label: 'Order Pembayaran', to: '/sales/payments/orders' },
-  { key: 'confirmations', label: 'Konfirmasi Pembayaran', to: '/sales/payment-confirmations' },
+  { key: 'payments', label: 'Pembayaran Diterima', to: '/sales/payment' }, 
+  { key: 'confirmations', label: 'Konfirmasi Pembayaran', to: '/sales/payment/confirmation' },
 ]
 
 const statusConfig: Record<string, { label: string; bg: string }> = {
@@ -274,6 +314,16 @@ onMounted(() => {
             @click="fetchData()"
           >
             <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+          </button>
+          <button
+            class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+            title="Export Excel"
+            :disabled="exporting"
+            @click="exportData()"
+          >
+            <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+            <Download v-else class="h-4 w-4" />
+            <span>Export</span>
           </button>
           <button
             class="flex shrink-0 rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"

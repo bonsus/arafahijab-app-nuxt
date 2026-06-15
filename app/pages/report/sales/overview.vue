@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RefreshCw, TrendingUp, TrendingDown, UserPlus, Users, RotateCcw, Users2, ChevronUp, ChevronDown, Search } from 'lucide-vue-next'
+import { RefreshCw, TrendingUp, TrendingDown, UserPlus, Users, RotateCcw, Users2, ChevronUp, ChevronDown, Search, Download, Loader2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -93,7 +93,7 @@ const METRIC_AXIS: Record<MetricKey, 'left' | 'right'> = { revenue: 'left', prof
 const activeMetrics = ref<MetricKey[]>(['revenue'])
 
 // Detail report state
-const detailViewBy = ref<'order' | 'sku' | 'product' | 'category' | 'customer' | 'channel'>('order')
+const detailViewBy = ref<'order' | 'sku' | 'product' | 'category' | 'customer' | 'customer_category' | 'channel'>('order')
 const detailSearch = ref('')
 const detailPage = ref(1)
 const detailLimit = ref(20)
@@ -103,8 +103,9 @@ const VIEW_BY_OPTIONS = [
   { value: 'order' as const, label: 'Order' },
   { value: 'sku' as const, label: 'SKU' },
   { value: 'product' as const, label: 'Produk' },
-  { value: 'category' as const, label: 'Kategori' },
+  { value: 'category' as const, label: 'Kategori Produk' },
   { value: 'customer' as const, label: 'Customer' },
+  { value: 'customer_category' as const, label: 'Kategori Customer' },
   { value: 'channel' as const, label: 'Channel' },
 ]
 function toggleMetric(m: MetricKey) {
@@ -250,6 +251,40 @@ function onFilterChange() { refresh() }
 watch(groupBy, fetchTrends)
 watch(compare, fetchTrends)
 
+const exporting = ref(false)
+
+async function exportDetail() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {
+      ...buildParams(),
+      view_by: detailViewBy.value,
+      sort_dir: detailSortDir.value,
+    }
+    if (detailSearch.value) params.search = detailSearch.value
+    if (detailSortBy.value) params.sort_by = detailSortBy.value
+    const response = await api.get<Blob>('/reports/sales/details/export', params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    link.download = `order_details_by_${detailViewBy.value}_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+    toast.success('Export berhasil diunduh')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengekspor data')
+  } finally {
+    exporting.value = false
+  }
+}
+
 // ── Chart ──────────────────────────────────────────────────────────────────
 const METRIC_COLORS: Record<string, string> = {
   revenue: '#2563eb', profit: '#10b981', orders: '#f59e0b', aov: '#8b5cf6', qty: '#ef4444',
@@ -360,13 +395,6 @@ onMounted(async () => {
           <span v-else>Pantau performa penjualan bisnis secara komprehensif</span>
         </p>
       </div>
-      <button
-        class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        @click="refresh"
-      >
-        <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loadingOverview || loadingTrends || loadingTop }" />
-        Refresh
-      </button>
     </div>
 
     <!-- Tabs -->
@@ -436,6 +464,15 @@ onMounted(async () => {
         :model-value="filterDate"
         @update:model-value="filterDate = $event; onFilterChange()"
       />
+      <div class="ml-auto flex items-center gap-2"> 
+        <button
+          class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          @click="refresh"
+        >
+          <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loadingOverview || loadingTrends || loadingTop }" />
+          Refresh
+        </button>
+      </div>
     </div>
 
     <!-- Summary Cards -->
@@ -817,6 +854,16 @@ onMounted(async () => {
               @input="onDetailSearch"
             />
           </div>
+          <!-- Export -->
+          <button
+            class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            :disabled="exporting"
+            @click="exportDetail()"
+          >
+            <Loader2 v-if="exporting" class="h-3.5 w-3.5 animate-spin" />
+            <Download v-else class="h-3.5 w-3.5" />
+            Export
+          </button>
         </div>
       </div>
 

@@ -85,12 +85,53 @@ interface OrderPayment {
   wallet: { id: string; name: string } | null
 }
 
+interface OrderReturnItem {
+  id: string
+  order_return_id: string
+  order_item_id: string
+  category_name: string
+  product_id: string
+  sku_id: string
+  sku: string
+  name: string
+  variants: Variant[]
+  weight: number
+  qty: number
+  price: string
+  discount: string
+  total: string
+  cogs: string
+  cogs_total: string
+}
+
+interface OrderReturn {
+  id: string
+  no: string
+  date: string
+  qty: number
+  subtotal: string
+  discount: string
+  shipping_cost: string
+  shipping_discount: string
+  shipping_total: string
+  cod_cost: string
+  total: string
+  cogs_total: string
+  payment_total: string
+  status: string
+  payment_status: string
+  note: string
+  items: OrderReturnItem[]
+}
+
 interface SalesOrder {
   id: string
   no: string
   date_created: string
   date_due: string
   date_processed: string
+  date_packing: string
+  date_ready: string  
   date_shipped: string
   date_delivered: string
   date_completed: string
@@ -106,11 +147,20 @@ interface SalesOrder {
   shipping_discount: string
   shipping_total: string
   cod_cost: string
+  unique_code: string
   adjustment: string
   tax: string
   total: string
+  admin_fee: string
+  affiliate_fee: string
+  commission_fee: string
+  shipping_fee: string
+  shipping_return_fee: string
+  cod_fee: string
+  others_fee: string
   grand_total: string
   payment_total: string
+  cogs_total: string
   status: string
   sub_status: string
   payment_status: string
@@ -132,6 +182,7 @@ interface SalesOrder {
   customer: { id: string; name: string; phone: string } | null
   customer_category: { id: string; name: string } | null
   staff: { id: string; name: string; code: string } | null
+  returns: OrderReturn[]
 }
 
 const api = useApi()
@@ -237,6 +288,30 @@ const remainingAmount = computed(() => {
   return Number(showingTotal.value) - paidAmount.value
 })
 
+const netProfit = computed(() => {
+  if (!order.value) return null
+  const netCogs = Number(order.value.cogs_total) - totalReturnsCogs.value
+  return Number(order.value.payment_total) - netCogs
+})
+
+const hasSettlementFees = computed(() => {
+  if (!order.value) return false
+  return [
+    order.value.admin_fee, order.value.affiliate_fee, order.value.commission_fee,
+    order.value.shipping_fee, order.value.shipping_return_fee, order.value.cod_fee, order.value.others_fee,
+  ].some(v => Number(v) !== 0)
+})
+
+const totalReturns = computed(() => {
+  if (!order.value?.returns?.length) return 0
+  return order.value.returns.reduce((sum, r) => sum + Number(r.total), 0)
+})
+
+const totalReturnsCogs = computed(() => {
+  if (!order.value?.returns?.length) return 0
+  return order.value.returns.reduce((sum, r) => sum + Number(r.cogs_total), 0)
+})
+
 async function fetchOrder() {
   loading.value = true
   try {
@@ -277,12 +352,12 @@ onMounted(fetchOrder)
   <div class="space-y-5">
     <!-- Header -->
     <div class="flex flex-wrap items-start gap-3">
-      <NuxtLink
-        to="/sales/order"
+      <button
         class="mt-0.5 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+        @click="router.back()"
       >
         <ArrowLeft class="h-5 w-5" />
-      </NuxtLink>
+      </button>
       <div class="flex-1 min-w-0">
         <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">
           {{ loading ? 'Memuat...' : (order?.no || 'Detail Order') }}
@@ -391,27 +466,39 @@ onMounted(fetchOrder)
               </div>
               <div class="flex justify-between gap-2">
                 <dt class="shrink-0 text-xs text-gray-400">Tanggal</dt>
-                <dd class="text-right text-gray-700">{{ formatDate(order.date_created) }}</dd>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_created) }}</dd>
               </div>
               <div v-if="isValidDate(order.date_due)" class="flex justify-between gap-2">
                 <dt class="shrink-0 text-xs text-gray-400">Jatuh Tempo</dt>
-                <dd class="text-right text-gray-700">{{ formatDate(order.date_due) }}</dd>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_due) }}</dd>
               </div>
               <div v-if="isValidDate(order.date_processed)" class="flex justify-between gap-2">
                 <dt class="shrink-0 text-xs text-gray-400">Tgl Diproses</dt>
-                <dd class="text-right text-gray-700">{{ formatDate(order.date_processed) }}</dd>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_processed) }}</dd>
+              </div>
+              <div v-if="isValidDate(order.date_packing)" class="flex justify-between gap-2">
+                <dt class="shrink-0 text-xs text-gray-400">Tgl Packing</dt>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_packing) }}</dd>
+              </div>
+              <div v-if="isValidDate(order.date_ready)" class="flex justify-between gap-2">
+                <dt class="shrink-0 text-xs text-gray-400">Tgl Siap Kirim</dt>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_ready) }}</dd>
               </div>
               <div v-if="isValidDate(order.date_shipped)" class="flex justify-between gap-2">
                 <dt class="shrink-0 text-xs text-gray-400">Tgl Dikirim</dt>
-                <dd class="text-right text-gray-700">{{ formatDate(order.date_shipped) }}</dd>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_shipped) }}</dd>
               </div>
               <div v-if="isValidDate(order.date_delivered)" class="flex justify-between gap-2">
                 <dt class="shrink-0 text-xs text-gray-400">Tgl Diterima</dt>
-                <dd class="text-right text-gray-700">{{ formatDate(order.date_delivered) }}</dd>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_delivered) }}</dd>
               </div>
               <div v-if="isValidDate(order.date_completed)" class="flex justify-between gap-2">
                 <dt class="shrink-0 text-xs text-gray-400">Tgl Selesai</dt>
-                <dd class="text-right text-gray-700">{{ formatDate(order.date_completed) }}</dd>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_completed) }}</dd>
+              </div>
+              <div v-if="isValidDate(order.date_canceled)" class="flex justify-between gap-2">
+                <dt class="shrink-0 text-xs text-gray-400">Tgl Dibatalkan</dt>
+                <dd class="text-right text-gray-700">{{ formatDateTime(order.date_canceled) }}</dd>
               </div>
               <div class="flex justify-between gap-2 border-t border-gray-100 pt-2">
                 <dt class="shrink-0 text-xs text-gray-400">Metode Bayar</dt>
@@ -631,53 +718,204 @@ onMounted(fetchOrder)
             </div>
           </div>
 
+          <!-- Returns -->
+          <div v-if="order.returns?.length" class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
+            <div class="border-b border-gray-100 px-5 py-4">
+              <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <RotateCcw class="h-4 w-4 text-orange-500" />
+                Retur
+                <span class="ml-0.5 rounded-full bg-orange-50 px-1.5 py-0.5 text-xs text-orange-600 ring-1 ring-orange-200">{{ order.returns.length }}</span>
+              </h2>
+            </div>
+            <div class="divide-y divide-gray-100">
+              <div v-for="ret in order.returns" :key="ret.id">
+                <!-- Return header -->
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-orange-50/60 px-5 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-gray-900 text-sm">{{ ret.no }}</span>
+                    <span
+                      class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1"
+                      :class="ret.status === 'completed' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-orange-50 text-orange-700 ring-orange-200'"
+                    >
+                      {{ ret.status === 'completed' ? 'Selesai' : ret.status }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-4 text-sm">
+                    <span class="text-xs text-gray-400">{{ formatDate(ret.date) }}</span>
+                    <span class="font-semibold text-orange-600">-Rp{{ formatCurrency(ret.total) }}</span>
+                  </div>
+                </div>
+                <!-- Return items table -->
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[500px] text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-100 bg-gray-50 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                        <th class="px-4 py-2">Produk</th>
+                        <th class="px-4 py-2 w-14 text-center">Qty</th>
+                        <th class="px-4 py-2 text-right">Harga</th>
+                        <th class="px-4 py-2 text-right">Diskon</th>
+                        <th class="px-4 py-2 text-right">Total</th>
+                        <th class="px-4 py-2 text-right">HPP</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                      <tr v-for="item in ret.items" :key="item.id" class="align-middle">
+                        <td class="px-4 py-2.5">
+                          <p class="font-medium text-gray-900 line-clamp-1">{{ item.name }}</p>
+                          <div class="mt-0.5 flex flex-wrap items-center gap-1 text-xs">
+                            <span class="font-mono text-gray-500">{{ item.sku }}</span>
+                            <span
+                              v-for="v in item.variants"
+                              :key="v.name"
+                              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600"
+                            >
+                              {{ v.value }}
+                            </span>
+                          </div>
+                        </td>
+                        <td class="px-4 py-2.5 text-center font-medium text-gray-900">{{ item.qty }}</td>
+                        <td class="px-4 py-2.5 text-right text-gray-700 whitespace-nowrap">Rp{{ formatCurrency(item.price) }}</td>
+                        <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                          <span v-if="Number(item.discount) > 0" class="text-green-600">-Rp{{ formatCurrency(item.discount) }}</span>
+                          <span v-else class="text-gray-300">—</span>
+                        </td>
+                        <td class="px-4 py-2.5 text-right font-semibold text-orange-600 whitespace-nowrap">Rp{{ formatCurrency(item.total) }}</td>
+                        <td class="px-4 py-2.5 text-right text-gray-500 whitespace-nowrap">Rp{{ formatCurrency(item.cogs_total) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- Return footer -->
+                <div class="flex flex-wrap justify-end gap-x-6 gap-y-1 border-t border-gray-100 bg-gray-50/50 px-5 py-2.5 text-xs">
+                  <span class="text-gray-500">Subtotal: <span class="font-medium text-gray-900">Rp{{ formatCurrency(ret.subtotal) }}</span></span>
+                  <span v-if="Number(ret.shipping_total) > 0" class="text-gray-500">Ongkir: <span class="font-medium text-gray-900">Rp{{ formatCurrency(ret.shipping_total) }}</span></span>
+                  <span class="text-gray-500">HPP: <span class="font-medium text-gray-900">Rp{{ formatCurrency(ret.cogs_total) }}</span></span>
+                  <span class="font-semibold text-orange-600">Total: Rp{{ formatCurrency(ret.total) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Summary -->
           <div class="rounded-xl bg-white p-5 shadow-xs ring-1 ring-gray-200">
-            <h2 class="mb-3 text-sm font-semibold text-gray-900">Ringkasan Pembayaran</h2>
+            <h2 class="mb-3 text-sm font-semibold text-gray-900">Ringkasan</h2>
             <div class="space-y-2 text-sm">
+              <!-- Penjualan -->
               <div class="flex justify-between">
-                <span class="text-gray-500">Subtotal</span>
+                <span class="text-gray-500">Subtotal Produk</span>
                 <span class="text-gray-900">Rp{{ formatCurrency(order.subtotal) }}</span>
               </div>
               <div v-if="Number(order.discount) > 0" class="flex justify-between">
-                <span class="text-gray-500">Diskon Produk</span>
+                <span class="text-gray-500">Diskon Penjualan</span>
                 <span class="text-green-600">-Rp{{ formatCurrency(order.discount) }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-gray-500">Ongkir</span>
-                <span class="text-gray-900">Rp{{ formatCurrency(order.shipping_cost) }}</span>
-              </div>
-              <div v-if="Number(order.shipping_discount) > 0" class="flex justify-between">
-                <span class="text-gray-500">Diskon Ongkir</span>
-                <span class="text-green-600">-Rp{{ formatCurrency(order.shipping_discount) }}</span>
+                <span class="text-gray-500">Ongkir Customer</span>
+                <span class="text-gray-900">Rp{{ formatCurrency(order.shipping_total) }}</span>
               </div>
               <div v-if="Number(order.cod_cost) > 0" class="flex justify-between">
-                <span class="text-gray-500">Biaya COD</span>
+                <span class="text-gray-500">COD Fee Customer</span>
                 <span class="text-gray-900">Rp{{ formatCurrency(order.cod_cost) }}</span>
+              </div>
+              <div v-if="Number(order.unique_code) !== 0" class="flex justify-between">
+                <span class="text-gray-500">Kode Unik</span>
+                <span>{{ Number(order.unique_code) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.unique_code))) }}</span>
+              </div>
+              <div v-if="Number(order.adjustment) !== 0" class="flex justify-between">
+                <span class="text-gray-500">Penyesuaian</span>
+                <span>{{ Number(order.adjustment) > 0 ? '+' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.adjustment))) }}</span>
               </div>
               <div v-if="Number(order.tax) > 0" class="flex justify-between">
                 <span class="text-gray-500">Pajak</span>
                 <span class="text-gray-900">Rp{{ formatCurrency(order.tax) }}</span>
               </div>
-              <div v-if="Number(order.adjustment) !== 0" class="flex justify-between">
-                <span class="text-gray-500">Penyesuaian</span>
-                <span>{{ Number(order.adjustment) > 0 ? '+' : '' }}Rp{{ formatCurrency(order.adjustment) }}</span>
-              </div>
               <div class="flex justify-between border-t border-gray-200 pt-2.5">
                 <span class="font-semibold text-gray-900">Total</span>
-                <span class="font-bold text-gray-900">Rp{{ formatCurrency(showingTotal) }}</span>
+                <span class="font-bold text-gray-900">Rp{{ formatCurrency(order.total) }}</span>
               </div>
-              <div v-if="Number(order.payment_total) > 0" class="flex justify-between">
+
+              <!-- Returns summary -->
+              <template v-if="order.returns?.length">
+                <p class="pt-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">Retur</p>
+                <div v-for="ret in order.returns" :key="ret.id" class="flex justify-between">
+                  <span class="text-gray-500">{{ ret.no }}</span>
+                  <span class="text-orange-600">-Rp{{ formatCurrency(ret.total) }}</span>
+                </div>
+                <div v-if="totalReturnsCogs > 0" class="flex justify-between">
+                  <span class="text-gray-500">HPP Retur</span>
+                  <span class="text-gray-500">Rp{{ formatCurrency(totalReturnsCogs) }}</span>
+                </div>
+              </template>
+
+              <!-- Settlement fees -->
+              <template v-if="hasSettlementFees">
+                <p class="pt-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">Biaya Settlement</p>
+                <div v-if="Number(order.admin_fee) !== 0" class="flex justify-between">
+                  <span class="text-gray-500">Admin Fee</span>
+                  <span :class="Number(order.admin_fee) < 0 ? 'text-red-500' : 'text-gray-900'">{{ Number(order.admin_fee) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.admin_fee))) }}</span>
+                </div>
+                <div v-if="Number(order.affiliate_fee) !== 0" class="flex justify-between">
+                  <span class="text-gray-500">Affiliate Fee</span>
+                  <span :class="Number(order.affiliate_fee) < 0 ? 'text-red-500' : 'text-gray-900'">{{ Number(order.affiliate_fee) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.affiliate_fee))) }}</span>
+                </div>
+                <div v-if="Number(order.commission_fee) !== 0" class="flex justify-between">
+                  <span class="text-gray-500">Commission Fee</span>
+                  <span :class="Number(order.commission_fee) < 0 ? 'text-red-500' : 'text-gray-900'">{{ Number(order.commission_fee) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.commission_fee))) }}</span>
+                </div>
+                <div v-if="Number(order.shipping_fee) !== 0" class="flex justify-between">
+                  <span class="text-gray-500">Ongkir ke Kurir</span>
+                  <span :class="Number(order.shipping_fee) < 0 ? 'text-red-500' : 'text-gray-900'">{{ Number(order.shipping_fee) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.shipping_fee))) }}</span>
+                </div>
+                <div v-if="Number(order.shipping_return_fee) !== 0" class="flex justify-between">
+                  <span class="text-gray-500">Ongkir Retur</span>
+                  <span :class="Number(order.shipping_return_fee) < 0 ? 'text-red-500' : 'text-gray-900'">{{ Number(order.shipping_return_fee) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.shipping_return_fee))) }}</span>
+                </div>
+                <div v-if="Number(order.cod_fee) !== 0" class="flex justify-between">
+                  <span class="text-gray-500">COD Fee ke Kurir</span>
+                  <span :class="Number(order.cod_fee) < 0 ? 'text-red-500' : 'text-gray-900'">{{ Number(order.cod_fee) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.cod_fee))) }}</span>
+                </div>
+                <div v-if="Number(order.others_fee) !== 0" class="flex justify-between">
+                  <span class="text-gray-500">Biaya Lainnya</span>
+                  <span :class="Number(order.others_fee) < 0 ? 'text-red-500' : 'text-gray-900'">{{ Number(order.others_fee) > 0 ? '' : '-' }}Rp{{ formatCurrency(Math.abs(Number(order.others_fee))) }}</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-200 pt-2.5">
+                  <span class="font-semibold text-gray-900">Grand Total</span>
+                  <span class="font-bold text-gray-900">Rp{{ formatCurrency(order.grand_total) }}</span>
+                </div>
+              </template>
+
+              <!-- Pembayaran -->
+              <p class="pt-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">Pembayaran</p>
+              <div class="flex justify-between">
                 <span class="text-gray-500">Sudah Dibayar</span>
-                <span class="text-green-600 font-medium">Rp{{ formatCurrency(order.payment_total) }}</span>
+                <span class="font-medium" :class="paidAmount > 0 ? 'text-green-600' : 'text-gray-400'">Rp{{ formatCurrency(order.payment_total) }}</span>
               </div>
               <div
-                v-if="order.payment_status !== 'paid' && paidAmount > 0"
+                v-if="order.payment_status !== 'paid'"
                 class="flex justify-between rounded-lg bg-red-50 px-3 py-2"
               >
-                <span class="text-sm font-semibold text-red-700">Sisa Tagihan</span>
-                <span class="text-sm font-bold text-red-700">Rp{{ formatCurrency(remainingAmount) }}</span>
+                <span class="font-semibold text-red-700">Sisa Tagihan</span>
+                <span class="font-bold text-red-700">Rp{{ formatCurrency(remainingAmount) }}</span>
               </div>
+
+              <!-- Profitabilitas -->
+              <template v-if="Number(order.cogs_total) > 0 || netProfit !== null">
+                <p class="pt-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">Profitabilitas</p>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">HPP Total</span>
+                  <span class="text-red-500">-Rp{{ formatCurrency(order.cogs_total) }}</span>
+                </div>
+                <div v-if="totalReturnsCogs > 0" class="flex justify-between">
+                  <span class="text-gray-500">HPP Retur</span>
+                  <span class="text-green-600">+Rp{{ formatCurrency(totalReturnsCogs) }}</span>
+                </div>
+                <div class="flex justify-between rounded-lg px-3 py-2" :class="(netProfit ?? 0) >= 0 ? 'bg-green-50' : 'bg-red-50'">
+                  <span class="font-semibold" :class="(netProfit ?? 0) >= 0 ? 'text-green-700' : 'text-red-700'">Net Profit</span>
+                  <span class="font-bold" :class="(netProfit ?? 0) >= 0 ? 'text-green-700' : 'text-red-700'">
+                    {{ (netProfit ?? 0) < 0 ? '-' : '' }}Rp{{ formatCurrency(Math.abs(netProfit ?? 0)) }}
+                  </span>
+                </div>
+              </template>
             </div>
           </div>
 

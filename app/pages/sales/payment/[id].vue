@@ -83,7 +83,7 @@ onMounted(() => {
         <button
           type="button"
           class="rounded-lg border border-gray-300 p-2 transition-colors hover:bg-gray-50"
-          @click="router.push('/sales/payments')"
+          @click="router.push('/sales/payment')"
         >
           <ArrowLeft class="h-5 w-5 text-gray-600" />
         </button>
