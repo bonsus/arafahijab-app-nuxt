@@ -43,8 +43,8 @@ interface VariantValue {
 interface ProductBasic {
   id: string
   name: string
-  variant1: string
-  variant2: string
+  variant_1: string
+  variant_2: string
   skus: {
     id: string
     sku: string
@@ -373,8 +373,8 @@ async function loadProduct() {
 
     const p = prodRes.data
     productName.value = p.name
-    variantName1.value = p.variant1 || ''
-    variantName2.value = p.variant2 || ''
+    variantName1.value = p.variant_1 || ''
+    variantName2.value = p.variant_2 || ''
 
     if (p.skus && p.skus.length) {
       // Extract unique variant values
@@ -507,7 +507,7 @@ async function handleSubmit() {
       </div>
     </div>
 
-    <form v-else @submit.prevent="handleSubmit" class="space-y-4 sm:space-y-6">
+    <div class="space-y-4 sm:space-y-6">
       <!-- Variant Section — side by side -->
       <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
         <div class="border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
@@ -897,8 +897,8 @@ async function handleSubmit() {
         >
           Batal
         </NuxtLink>
-        <button
-          type="submit"
+        <button @click="handleSubmit"
+          type="submit" 
           :disabled="saving || !skus.length"
           class="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6 sm:py-2.5"
         >
@@ -906,7 +906,7 @@ async function handleSubmit() {
           {{ saving ? 'Menyimpan...' : 'Simpan SKU' }}
         </button>
       </div>
-    </form>
+    </div>
     <!-- <pre>{{ skus }}</pre> -->
     <!-- SKU Image Picker Modal -->
     <AppMediaPicker
