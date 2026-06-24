@@ -39,8 +39,19 @@ const search = ref('')
 
 // Action menu
 const openMenuId = ref<string | null>(null)
-function toggleMenu(id: string) {
-  openMenuId.value = openMenuId.value === id ? null : id
+const menuStyle = ref<Record<string, string>>({})
+function toggleMenu(id: string, event: MouseEvent) {
+  if (openMenuId.value === id) {
+    openMenuId.value = null
+    return
+  }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const menuWidth = 176
+  menuStyle.value = {
+    top: `${rect.bottom + 4}px`,
+    left: `${Math.max(8, rect.right - menuWidth)}px`,
+  }
+  openMenuId.value = id
 }
 function closeMenu() {
   openMenuId.value = null
@@ -132,8 +143,12 @@ const visiblePages = computed(() => {
 onMounted(() => {
   fetchSuppliers()
   document.addEventListener('click', closeMenu)
+  window.addEventListener('scroll', closeMenu, true)
 })
-onUnmounted(() => { document.removeEventListener('click', closeMenu) })
+onUnmounted(() => {
+  document.removeEventListener('click', closeMenu)
+  window.removeEventListener('scroll', closeMenu, true)
+})
 </script>
 
 <template>
@@ -230,22 +245,24 @@ onUnmounted(() => { document.removeEventListener('click', closeMenu) })
             <td class="py-3 pr-4 align-middle">
               <div class="flex items-center justify-end gap-0.5">
                 <div class="relative">
-                  <button class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600" @click.stop="toggleMenu(supplier.id)">
+                  <button class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600" @click.stop="toggleMenu(supplier.id, $event)">
                     <EllipsisVertical class="h-4 w-4" />
                   </button>
-                  <Transition enter-active-class="transition duration-100 ease-out" enter-from-class="scale-95 opacity-0" enter-to-class="scale-100 opacity-100" leave-active-class="transition duration-75 ease-in" leave-from-class="scale-100 opacity-100" leave-to-class="scale-95 opacity-0">
-                    <div v-if="openMenuId === supplier.id" class="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-gray-200">
-                      <NuxtLink :to="`/contact/${supplier.id}`" class="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="closeMenu">
-                        <Eye class="h-3.5 w-3.5" /> Lihat Detail
-                      </NuxtLink>
-                      <NuxtLink :to="`/contact/${supplier.id}/edit`" class="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="closeMenu">
-                        <Pencil class="h-3.5 w-3.5" /> Edit
-                      </NuxtLink>
-                      <button class="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50" @click="handleDelete(supplier); closeMenu()">
-                        <Trash2 class="h-3.5 w-3.5" /> Hapus
-                      </button>
-                    </div>
-                  </Transition>
+                  <Teleport to="body">
+                    <Transition enter-active-class="transition duration-100 ease-out" enter-from-class="scale-95 opacity-0" enter-to-class="scale-100 opacity-100" leave-active-class="transition duration-75 ease-in" leave-from-class="scale-100 opacity-100" leave-to-class="scale-95 opacity-0">
+                      <div v-if="openMenuId === supplier.id" :style="menuStyle" class="fixed z-50 w-44 overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-gray-200" @click.stop>
+                        <NuxtLink :to="`/contact/${supplier.id}`" class="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="closeMenu">
+                          <Eye class="h-3.5 w-3.5" /> Lihat Detail
+                        </NuxtLink>
+                        <NuxtLink :to="`/contact/${supplier.id}/edit`" class="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="closeMenu">
+                          <Pencil class="h-3.5 w-3.5" /> Edit
+                        </NuxtLink>
+                        <button class="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50" @click="handleDelete(supplier); closeMenu()">
+                          <Trash2 class="h-3.5 w-3.5" /> Hapus
+                        </button>
+                      </div>
+                    </Transition>
+                  </Teleport>
                 </div>
               </div>
             </td>
