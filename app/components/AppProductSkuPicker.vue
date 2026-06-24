@@ -44,6 +44,7 @@ const open = ref(false)
 const query = ref('')
 const loading = ref(false)
 const results = ref<ProductResult[]>([])
+const searchType = ref<'product' | 'sku'>('product')
 
 let timer: ReturnType<typeof setTimeout>
 
@@ -58,10 +59,15 @@ function onSearch(val: string) {
   timer = setTimeout(() => fetchProducts(val), 300)
 }
 
+function setSearchType(type: 'product' | 'sku') {
+  searchType.value = type
+  if (query.value.length >= 2) fetchProducts(query.value)
+}
+
 async function fetchProducts(search: string) {
   loading.value = true
   try {
-    const res = await api.get<{ data: any }>('/products/public/index', { search })
+    const res = await api.get<{ data: any }>('/products/public/index', { search, search_type: searchType.value })
     results.value = (res.data?.data || res.data || []) as ProductResult[]
     open.value = true
   }
@@ -91,24 +97,45 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 
 <template>
   <div ref="containerRef" class="relative">
-    <!-- Search input -->
-    <div class="relative">
-      <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-      <input
-        v-model="query"
-        type="text"
-        placeholder="Cari produk / SKU..."
-        class="input-base pl-10 pr-10"
-        @input="onSearch(query)"
-        @focus="query.length >= 2 && (open = true)"
-      />
-      <button
-        v-if="query"
-        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-        @click="closeDropdown"
-      >
-        <X class="h-4 w-4" />
-      </button>
+    <!-- Search input + type toggle -->
+    <div class="flex gap-2">
+      <div class="relative flex-1">
+        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          v-model="query"
+          type="text"
+          placeholder="Cari produk / SKU..."
+          class="input-base pl-10 pr-10"
+          @input="onSearch(query)"
+          @focus="query.length >= 2 && (open = true)"
+        />
+        <button
+          v-if="query"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          @click="closeDropdown"
+        >
+          <X class="h-4 w-4" />
+        </button>
+      </div>
+      <!-- Search type toggle -->
+      <div class="flex shrink-0 overflow-hidden rounded-lg border border-gray-300 text-xs font-medium">
+        <button
+          type="button"
+          class="px-3 py-2 transition-colors"
+          :class="searchType === 'product' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
+          @click="setSearchType('product')"
+        >
+          Produk
+        </button>
+        <button
+          type="button"
+          class="border-l border-gray-300 px-3 py-2 transition-colors"
+          :class="searchType === 'sku' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
+          @click="setSearchType('sku')"
+        >
+          SKU
+        </button>
+      </div>
     </div>
 
     <!-- Dropdown -->

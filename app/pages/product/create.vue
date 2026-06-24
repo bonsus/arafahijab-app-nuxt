@@ -515,7 +515,7 @@ watch(customerCategories, (cats) => {
                     {{ getFieldError('categoryId') || getFieldError('category_id') }}
                   </p>
                 </div>
-                <div>
+                <!-- <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">Tipe <span class="text-red-500">*</span></label>
                   <select
                     v-model="form.type"
@@ -525,7 +525,7 @@ watch(customerCategories, (cats) => {
                     <option value="slave">Slave</option>
                   </select>
                   <p v-if="getFieldError('type')" class="mt-1 text-xs text-red-600">{{ getFieldError('type') }}</p>
-                </div>
+                </div> -->
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">Status <span class="text-red-500">*</span></label>
                   <select

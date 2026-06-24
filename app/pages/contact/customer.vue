@@ -151,6 +151,7 @@ async function handleUpdateCategory() {
     toast.success('Kategori berhasil diperbarui')
     showCategoryModal.value = false
     fetchCustomers()
+    fetchCategories()
   } catch (err: any) {
     toast.error(err.message || 'Gagal mengubah kategori')
   } finally {
@@ -187,6 +188,7 @@ async function handleBulkUpdateCategory() {
     showBulkCategoryModal.value = false
     selectedIds.value.clear()
     fetchCustomers()
+    fetchCategories()
   } catch (err: any) {
     toast.error(err.message || 'Gagal mengubah kategori massal')
   } finally {
@@ -279,6 +281,7 @@ async function toggleStatus(customer: Customer) {
     await api.put(`/customers/${customer.id}/update-status`, { status: newStatus })
     customer.status = newStatus
     toast.success(`Status diubah ke ${statusConfig[newStatus]?.label || newStatus}`)
+    fetchCategories()
   } catch (err: any) {
     toast.error(err.message || 'Gagal mengubah status')
   }
@@ -292,6 +295,7 @@ async function bulkUpdateStatus(status: string) {
     toast.success(`${ids.length} pelanggan status diubah ke ${statusConfig[status]?.label || status}`)
     selectedIds.value.clear()
     fetchCustomers()
+    fetchCategories()
   } catch (err: any) {
     toast.error(err.message || 'Gagal mengubah status massal')
   }

@@ -122,7 +122,7 @@ function onReceiptSearch(val: string) {
 async function fetchReceipts() {
   receiptLoading.value = true
   try {
-    const params: Record<string, string> = { status: 'received,completed', per_page: '20' }
+    const params: Record<string, string> = { status: 'received,completed', per_page: '20', has_remaining_items: '1' }
     if (receiptSearch.value) params.search = receiptSearch.value
     const res = await api.get<{ data: { data: typeof receiptResults.value } }>('/purchase-receipts/index', params)
     receiptResults.value = res.data?.data || []
@@ -151,6 +151,12 @@ async function selectReceipt(receipt: Pick<ReceiptRef, 'id' | 'no' | 'status'>) 
         price: Number(item.price) || 0,
       }))
       .filter(i => i.max_qty > 0)
+
+    if (!receiptItems.value.length) {
+      toast.error('Semua item pada GRN ini sudah diproses')
+      selectedReceipt.value = null
+      form.purchase_receipt_id = ''
+    }
   }
   catch (err: any) {
     toast.error(err.message || 'Gagal memuat detail penerimaan')

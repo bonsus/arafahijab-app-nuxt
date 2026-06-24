@@ -1062,7 +1062,7 @@ onUnmounted(() => {
           >
             <div
               v-if="showScanDropdown"
-              class="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 ring-opacity-5 z-10"
+              class="absolute left-0 sm:left-auto sm:right-0 mt-2 w-56 max-w-[calc(100vw-1rem)] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 ring-opacity-5 z-10"
             >
               <div class="py-1">
                 <NuxtLink
@@ -1115,7 +1115,7 @@ onUnmounted(() => {
           >
             <div
               v-if="showExportDropdown"
-              class="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 z-10"
+              class="absolute left-0 sm:left-auto sm:right-0 mt-2 w-56 max-w-[calc(100vw-1rem)] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 z-10"
             >
               <div class="py-1">
                 <button

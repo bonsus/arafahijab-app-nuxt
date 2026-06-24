@@ -57,11 +57,13 @@ interface ConversionItemRow {
   froms: FromRow[]
   to: ToRow | null
   fromSearch: string
+  fromSearchType: 'product' | 'sku'
   fromSearching: boolean
   fromSearchError: string
   fromResults: ProductResult[]
   showFromDropdown: boolean
   toSearch: string
+  toSearchType: 'product' | 'sku'
   toSearching: boolean
   toSearchError: string
   toResults: ProductResult[]
@@ -95,11 +97,13 @@ function newItem(): ConversionItemRow {
     froms: [],
     to: null,
     fromSearch: '',
+    fromSearchType: 'product',
     fromSearching: false,
     fromSearchError: '',
     fromResults: [],
     showFromDropdown: false,
     toSearch: '',
+    toSearchType: 'product',
     toSearching: false,
     toSearchError: '',
     toResults: [],
@@ -137,6 +141,13 @@ function onFromSearchInput(itemIdx: number) {
   fromSearchTimers.set(itemIdx, setTimeout(() => searchFromProducts(itemIdx), 300))
 }
 
+function setFromSearchType(itemIdx: number, type: 'product' | 'sku') {
+  const item = conversionItems.value[itemIdx]
+  if (!item || item.fromSearchType === type) return
+  item.fromSearchType = type
+  if (item.fromSearch.trim()) searchFromProducts(itemIdx)
+}
+
 async function searchFromProducts(itemIdx: number) {
   const item = conversionItems.value[itemIdx]
   if (!item || !form.warehouse_id) return
@@ -146,6 +157,7 @@ async function searchFromProducts(itemIdx: number) {
   try {
     const res = await api.get<{ data: { data: ProductResult[] } }>('/inventories/products/index', {
       search: q,
+      search_type: item.fromSearchType,
       warehouse_id: form.warehouse_id,
     })
     item.fromResults = res.data?.data || []
@@ -204,6 +216,13 @@ function onToSearchInput(itemIdx: number) {
   toSearchTimers.set(itemIdx, setTimeout(() => searchToProducts(itemIdx), 300))
 }
 
+function setToSearchType(itemIdx: number, type: 'product' | 'sku') {
+  const item = conversionItems.value[itemIdx]
+  if (!item || item.toSearchType === type) return
+  item.toSearchType = type
+  if (item.toSearch.trim()) searchToProducts(itemIdx)
+}
+
 async function searchToProducts(itemIdx: number) {
   const item = conversionItems.value[itemIdx]
   if (!item || !form.warehouse_id) return
@@ -213,6 +232,7 @@ async function searchToProducts(itemIdx: number) {
   try {
     const res = await api.get<{ data: { data: ProductResult[] } }>('/inventories/products/index', {
       search: q,
+      search_type: item.toSearchType,
       warehouse_id: form.warehouse_id,
     })
     item.toResults = res.data?.data || []
@@ -310,11 +330,13 @@ async function loadData() {
         froms,
         to: toRow,
         fromSearch: '',
+        fromSearchType: 'product',
         fromSearching: false,
         fromSearchError: '',
         fromResults: [],
         showFromDropdown: false,
         toSearch: '',
+        toSearchType: 'product',
         toSearching: false,
         toSearchError: '',
         toResults: [],
@@ -574,6 +596,24 @@ onMounted(() => {
 
               <!-- From search with live dropdown -->
               <div class="relative">
+                <div class="mb-1.5 flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors"
+                    :class="item.fromSearchType === 'product' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                    @click="setFromSearchType(idx, 'product')"
+                  >
+                    Produk
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors"
+                    :class="item.fromSearchType === 'sku' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                    @click="setFromSearchType(idx, 'sku')"
+                  >
+                    SKU
+                  </button>
+                </div>
                 <div class="relative">
                   <Search class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                   <input
@@ -717,6 +757,24 @@ onMounted(() => {
               <template v-if="!item.to">
                 <!-- To search with live dropdown -->
                 <div class="relative">
+                  <div class="mb-1.5 flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors"
+                      :class="item.toSearchType === 'product' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                      @click="setToSearchType(idx, 'product')"
+                    >
+                      Produk
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors"
+                      :class="item.toSearchType === 'sku' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                      @click="setToSearchType(idx, 'sku')"
+                    >
+                      SKU
+                    </button>
+                  </div>
                   <div class="relative">
                     <Search class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                     <input

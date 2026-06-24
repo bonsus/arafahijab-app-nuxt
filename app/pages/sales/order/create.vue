@@ -1249,7 +1249,6 @@ onMounted(() => {
                         <span v-if="item.is_free === 'no' && item.is_preorder" class="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">PREORDER</span>
                       </div>
                       <div class="flex flex-wrap items-center gap-1 text-xs text-gray-500">
-                        {{item.variants}}
                         <span>{{ item.sku }}</span>
                         <span
                           v-for="v in item.variants"

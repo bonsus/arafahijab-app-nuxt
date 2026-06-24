@@ -542,11 +542,11 @@ function getItemStatus(item: PickingItem) {
           <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
             <!-- Tabs -->
             <div class="border-b border-gray-200 px-5">
-              <div class="flex gap-1">
+              <div class="flex gap-1 overflow-x-auto">
                 <button
                   type="button"
                   :class="activeTab === 'all' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                  class="border-b-2 px-4 py-3 text-sm font-medium transition-colors"
+                  class="shrink-0 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors"
                   @click="activeTab = 'all'"
                 >
                   Semua SKU ({{ pickingList.sku_count }})
@@ -554,7 +554,7 @@ function getItemStatus(item: PickingItem) {
                 <button
                   type="button"
                   :class="activeTab === 'incomplete' ? 'border-orange-600 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                  class="border-b-2 px-4 py-3 text-sm font-medium transition-colors"
+                  class="shrink-0 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors"
                   @click="activeTab = 'incomplete'"
                 >
                   Belum Lengkap ({{ incompleteCount }})
@@ -562,7 +562,7 @@ function getItemStatus(item: PickingItem) {
                 <button
                   type="button"
                   :class="activeTab === 'complete' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                  class="border-b-2 px-4 py-3 text-sm font-medium transition-colors"
+                  class="shrink-0 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors"
                   @click="activeTab = 'complete'"
                 >
                   Selesai ({{ completeCount }})
@@ -570,8 +570,8 @@ function getItemStatus(item: PickingItem) {
               </div>
             </div>
 
-            <!-- Table -->
-            <div class="overflow-x-auto">
+            <!-- Table (desktop) -->
+            <div class="hidden overflow-x-auto lg:block">
               <table class="w-full text-sm">
                 <thead class="border-b border-gray-200 bg-gray-50/80 text-xs font-medium uppercase tracking-wider text-gray-500">
                   <tr>
@@ -687,6 +687,93 @@ function getItemStatus(item: PickingItem) {
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Card list (mobile / tablet) -->
+            <div class="divide-y divide-gray-100 lg:hidden">
+              <div
+                v-for="(item, index) in filteredItems"
+                :key="item.id"
+                class="p-4"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-gray-400">#{{ index + 1 }}</span>
+                      <p class="truncate text-sm font-medium text-gray-900">{{ item.product_name }}</p>
+                    </div>
+                    <p class="mt-0.5 text-xs text-gray-500">SKU: {{ item.sku }}</p>
+                    <div
+                      v-if="item.variants && item.variants.length > 0"
+                      class="mt-1.5 flex flex-wrap gap-1"
+                    >
+                      <span
+                        v-for="(variant, idx) in item.variants"
+                        :key="idx"
+                        class="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
+                      >
+                        {{ variant.name }}: {{ variant.value }}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    :class="getItemStatus(item).cls"
+                    class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1"
+                  >
+                    {{ getItemStatus(item).label }}
+                  </span>
+                </div>
+
+                <!-- Lokasi -->
+                <div class="mt-2 flex items-center gap-1.5 text-xs text-gray-600">
+                  <MapPin class="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <span class="font-semibold text-gray-900">{{ item.zone_code }}-{{ item.rack_code }}-{{ item.bin_code }}</span>
+                </div>
+
+                <!-- Qty -->
+                <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div class="rounded-lg bg-gray-50 py-2">
+                    <p class="text-[10px] uppercase tracking-wide text-gray-500">Target</p>
+                    <p class="text-base font-bold text-gray-900">{{ item.qty }}</p>
+                  </div>
+                  <div class="rounded-lg bg-gray-50 py-2">
+                    <p class="text-[10px] uppercase tracking-wide text-gray-500">Picked</p>
+                    <p
+                      class="text-base font-bold"
+                      :class="item.qty_picked >= item.qty ? 'text-green-600' : 'text-orange-600'"
+                    >
+                      {{ item.qty_picked }}
+                    </p>
+                  </div>
+                  <div class="rounded-lg bg-gray-50 py-2">
+                    <p class="text-[10px] uppercase tracking-wide text-gray-500">Sisa</p>
+                    <p class="text-base font-bold text-gray-700">{{ Math.max(0, item.qty - item.qty_picked) }}</p>
+                  </div>
+                </div>
+
+                <!-- Progress -->
+                <div class="mt-3 space-y-1">
+                  <div class="flex items-center justify-between text-xs">
+                    <span
+                      class="font-medium"
+                      :class="item.qty_picked >= item.qty ? 'text-green-600' : 'text-gray-700'"
+                    >
+                      {{ getItemProgress(item) }}%
+                    </span>
+                    <CheckCircle
+                      v-if="item.qty_picked >= item.qty"
+                      class="h-3.5 w-3.5 text-green-500"
+                    />
+                  </div>
+                  <div class="h-1.5 w-full rounded-full bg-gray-200">
+                    <div
+                      class="h-1.5 rounded-full transition-all"
+                      :class="item.qty_picked >= item.qty ? 'bg-green-500' : 'bg-orange-500'"
+                      :style="{ width: `${getItemProgress(item)}%` }"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

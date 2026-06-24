@@ -25,7 +25,7 @@ const loadingRef = ref(true)
 
 // Reference data
 interface CategoryOption { id: string; name: string }
-interface StoreOption { id: string; name: string }
+interface StoreOption { id: string; shop_name: string }
 
 const categories = ref<CategoryOption[]>([])
 const stores = ref<StoreOption[]>([])
@@ -290,7 +290,7 @@ onMounted(() => fetchReferenceData())
                 <!-- <label class="mb-1.5 block text-sm font-medium text-gray-700">Toko</label> -->
                 <select v-model="form.store_id" class="form-input">
                   <option value="">Pilih toko</option>
-                  <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.shop_name }}</option>
                 </select>
                 <p v-if="getFieldError('store_id')" class="mt-1 text-xs text-red-500">{{ getFieldError('store_id') }}</p>
               </div>

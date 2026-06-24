@@ -49,6 +49,7 @@ const searching = ref(false)
 const results = ref<TransferProduct[]>([])
 const showDropdown = ref(false)
 const internalError = ref('')
+const searchType = ref<'product' | 'sku'>('product')
 
 let timer: ReturnType<typeof setTimeout>
 
@@ -61,10 +62,17 @@ function onInput() {
   timer = setTimeout(() => fetchProducts(q), 300)
 }
 
+function setSearchType(type: 'product' | 'sku') {
+  if (searchType.value === type) return
+  searchType.value = type
+  const q = search.value.trim()
+  if (q) fetchProducts(q)
+}
+
 async function fetchProducts(q: string) {
   searching.value = true
   try {
-    const res = await api.get<{ data: { data: TransferProduct[] } }>('/inventories/transfers/products', { search: q })
+    const res = await api.get<{ data: { data: TransferProduct[] } }>('/inventories/transfers/products', { search: q, search_type: searchType.value })
     results.value = res.data?.data || []
     showDropdown.value = true
   }
@@ -95,6 +103,25 @@ function pickLocation(product: TransferProduct, sku: TransferSku, stock: Transfe
 
 <template>
   <div class="relative">
+    <!-- Search type toggle -->
+    <div class="mb-1.5 flex items-center gap-1">
+      <button
+        type="button"
+        class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors"
+        :class="searchType === 'product' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+        @click="setSearchType('product')"
+      >
+        Produk
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors"
+        :class="searchType === 'sku' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+        @click="setSearchType('sku')"
+      >
+        SKU
+      </button>
+    </div>
     <!-- Search input -->
     <div class="relative">
       <Search class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
