@@ -224,17 +224,44 @@ function formatPoints(val: string | number): string {
 
 // --- Category lookup ---
 const categoryMap = ref<Record<string, string>>({})
+const categoryList = ref<{ id: string; name: string }[]>([])
 
 async function fetchCategories() {
   try {
     const res = await api.get<{ data: { id: string; name: string }[] }>('/customers/categories/index')
+    const list = res.data || []
+    categoryList.value = list
     const map: Record<string, string> = {}
-    for (const cat of res.data || []) {
+    for (const cat of list) {
       map[cat.id] = cat.name
     }
     categoryMap.value = map
   } catch {
     // silent
+  }
+}
+
+// --- Change category ---
+const showCategoryModal = ref(false)
+const newCategoryId = ref('')
+const savingCategory = ref(false)
+
+function openCategoryModal() {
+  newCategoryId.value = customer.value?.category?.id || customer.value?.customer_category_id || ''
+  showCategoryModal.value = true
+}
+
+async function handleUpdateCategory() {
+  savingCategory.value = true
+  try {
+    await api.put(`/customers/${customerId}/update-category`, { customer_category_id: newCategoryId.value })
+    toast.success('Kategori berhasil diperbarui')
+    showCategoryModal.value = false
+    loadCustomer()
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal mengubah kategori')
+  } finally {
+    savingCategory.value = false
   }
 }
 
@@ -601,10 +628,21 @@ onMounted(() => {
 
           <!-- Category Card -->
           <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-            <h2 class="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900">
-              <Tag class="h-4 w-4 text-gray-400" />
-              Kategori
-            </h2>
+            <div class="mb-3 flex items-center justify-between">
+              <h2 class="flex items-center gap-2 text-base font-semibold text-gray-900">
+                <Tag class="h-4 w-4 text-gray-400" />
+                Kategori
+              </h2>
+              <button
+                v-if="customer.type !== 'supplier'"
+                type="button"
+                class="flex items-center gap-1.5 rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100"
+                @click="openCategoryModal"
+              >
+                <Pencil class="h-3.5 w-3.5" />
+                Ubah
+              </button>
+            </div>
             <div v-if="customer.category">
               <p class="text-sm font-semibold text-gray-900">{{ customer.category.name }}</p>
               <p v-if="customer.category.description" class="mt-0.5 text-xs text-gray-500">{{ customer.category.description }}</p>
@@ -687,6 +725,43 @@ onMounted(() => {
             >
               <Loader2 v-if="savingAddress" class="h-4 w-4 animate-spin" />
               {{ savingAddress ? 'Menyimpan...' : 'Simpan' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Category Modal -->
+    <Teleport to="body">
+      <div v-if="showCategoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @mousedown.self="showCategoryModal = false">
+        <div class="flex w-full max-w-sm flex-col rounded-xl bg-white shadow-xl" style="max-height: 90vh;">
+          <div class="shrink-0 border-b border-gray-100 px-6 py-4">
+            <h2 class="text-lg font-semibold text-gray-900">Ubah Kategori</h2>
+            <p class="mt-0.5 text-sm text-gray-500">{{ customer?.name }}</p>
+          </div>
+          <div class="flex-1 overflow-y-auto px-6 py-5">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">Kategori</label>
+            <select v-model="newCategoryId" class="form-input">
+              <option value="">Tidak ada kategori</option>
+              <option v-for="cat in categoryList" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+            </select>
+          </div>
+          <div class="flex shrink-0 justify-end gap-3 border-t border-gray-100 px-6 py-4">
+            <button
+              type="button"
+              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              @click="showCategoryModal = false"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              :disabled="savingCategory"
+              class="flex items-center gap-2 rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="handleUpdateCategory"
+            >
+              <Loader2 v-if="savingCategory" class="h-4 w-4 animate-spin" />
+              {{ savingCategory ? 'Menyimpan...' : 'Simpan' }}
             </button>
           </div>
         </div>
