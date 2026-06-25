@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { Search, ChevronDown, ChevronRight, RefreshCw, Download, Loader2 } from 'lucide-vue-next'
+import { Search, ChevronDown, ChevronRight, RefreshCw, Download, Loader2, MapPin } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
 interface Variant { name: string; value: string }
 interface WarehouseOption { id: string; name: string }
 
+interface SrLocation {
+  bin_id: string; bin_code: string; rack_code: string; zone_code: string
+  qty: number; avg_cost: string; total_cogs: string
+}
 interface SrSku {
   sku_id: string; sku: string; variants: Variant[]
   qty: number; avg_cost: string; total_cogs: string; stock_status: string
+  locations?: SrLocation[]
 }
 interface SrProduct {
   product_id: string; product_name: string
@@ -107,6 +112,14 @@ function toggle(id: string) {
   const idx = expanded.value.indexOf(id)
   if (idx >= 0) expanded.value.splice(idx, 1)
   else expanded.value.push(id)
+}
+
+const expandedSkus = ref<string[]>([])
+
+function toggleSku(id: string) {
+  const idx = expandedSkus.value.indexOf(id)
+  if (idx >= 0) expandedSkus.value.splice(idx, 1)
+  else expandedSkus.value.push(id)
 }
 
 const tabs = [
@@ -294,18 +307,47 @@ onMounted(async () => {
                   <td class="px-4 py-3 text-right font-medium text-gray-900">Rp{{ formatCurrency(product.total_cogs) }}</td>
                 </tr>
                 <template v-if="expanded.includes(product.product_id)">
-                  <tr v-for="sku in product.skus" :key="sku.sku_id" class="bg-gray-50/60">
-                    <td class="py-2 pl-10 pr-4">
-                      <div class="flex flex-wrap items-center gap-1 text-xs">
-                        <span class="font-mono text-gray-500">{{ sku.sku }}</span>
-                        <span v-for="v in sku.variants" :key="v.name" class="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600">{{ v.value }}</span>
-                      </div>
-                    </td>
-                    <td class="px-4 py-2 text-right text-sm text-gray-700">{{ sku.qty }}</td>
-                    <td class="px-4 py-2 text-right text-xs text-gray-600">Rp{{ formatCurrency(sku.avg_cost) }}</td>
-                    <td class="px-4 py-2 text-right text-xs text-gray-700">Rp{{ formatCurrency(sku.total_cogs) }}</td>
-                     
-                  </tr>
+                  <template v-for="sku in product.skus" :key="sku.sku_id">
+                    <tr
+                      class="bg-gray-50/60"
+                      :class="sku.locations?.length ? 'cursor-pointer hover:bg-gray-100/70' : ''"
+                      @click="sku.locations?.length && toggleSku(sku.sku_id)"
+                    >
+                      <td class="py-2 pl-10 pr-4">
+                        <div class="flex flex-wrap items-center gap-1 text-xs">
+                          <component
+                            :is="expandedSkus.includes(sku.sku_id) ? ChevronDown : ChevronRight"
+                            v-if="sku.locations?.length"
+                            class="h-3.5 w-3.5 shrink-0 text-gray-400"
+                          />
+                          <span v-else class="inline-block w-3.5 shrink-0" />
+                          <span class="font-mono text-gray-500">{{ sku.sku }}</span>
+                          <span v-for="v in sku.variants" :key="v.name" class="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600">{{ v.value }}</span>
+                          <span v-if="sku.locations?.length" class="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500">{{ sku.locations.length }} lokasi</span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-2 text-right text-sm text-gray-700">{{ sku.qty }}</td>
+                      <td class="px-4 py-2 text-right text-xs text-gray-600">Rp{{ formatCurrency(sku.avg_cost) }}</td>
+                      <td class="px-4 py-2 text-right text-xs text-gray-700">Rp{{ formatCurrency(sku.total_cogs) }}</td>
+                    </tr>
+                    <template v-if="expandedSkus.includes(sku.sku_id) && sku.locations?.length">
+                      <tr v-for="loc in sku.locations" :key="loc.bin_id" class="bg-white">
+                        <td class="py-1.5 pl-[4.5rem] pr-4">
+                          <div class="flex items-center gap-1.5 text-xs text-gray-600">
+                            <MapPin class="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                            <span class="font-medium text-gray-700">{{ loc.zone_code }}</span>
+                            <span class="text-gray-300">/</span>
+                            <span>{{ loc.rack_code }}</span>
+                            <span class="text-gray-300">/</span>
+                            <span class="font-mono">{{ loc.bin_code }}</span>
+                          </div>
+                        </td>
+                        <td class="px-4 py-1.5 text-right text-xs text-gray-600">{{ loc.qty }}</td>
+                        <td class="px-4 py-1.5 text-right text-[11px] text-gray-500">Rp{{ formatCurrency(loc.avg_cost) }}</td>
+                        <td class="px-4 py-1.5 text-right text-[11px] text-gray-600">Rp{{ formatCurrency(loc.total_cogs) }}</td>
+                      </tr>
+                    </template>
+                  </template>
                 </template>
               </template>
             </template>
