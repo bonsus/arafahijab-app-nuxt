@@ -164,13 +164,13 @@ onMounted(() => loadCustomer())
                   <option value="inactive">Nonaktif</option>
                 </select>
               </div>
-              <div v-if="form.type !== 'supplier'">
+              <!-- <div v-if="form.type !== 'supplier'">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Status Login</label>
                 <select v-model="form.login_status" class="form-input">
                   <option value="active">Aktif</option>
                   <option value="inactive">Nonaktif</option>
                 </select>
-              </div>
+              </div> -->
             </div>
           </div>
 
