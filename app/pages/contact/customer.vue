@@ -42,7 +42,7 @@ interface CategoryOption {
 
 interface StoreOption {
   id: string
-  name: string
+  shop_name: string
   customer_count: number
 }
 
@@ -438,7 +438,7 @@ onUnmounted(() => {
                 : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'"
               @click="onStoreFilter(store.id)"
             >
-              {{ store.name }}
+              {{ store.shop_name }}
               <span class="ml-0.5 text-[10px] tabular-nums" :class="filterStore.has(store.id) ? 'text-violet-400' : 'text-gray-300'">{{ store.customer_count }}</span>
             </button>
           </div>
