@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, ChevronDown, ChevronRight, RefreshCw, Download, Loader2, MapPin } from 'lucide-vue-next'
+import { Search, ChevronDown, ChevronRight, RefreshCw, Download, Loader2, MapPin, ChevronsUpDown, ChevronsDownUp } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -120,6 +120,23 @@ function toggleSku(id: string) {
   const idx = expandedSkus.value.indexOf(id)
   if (idx >= 0) expandedSkus.value.splice(idx, 1)
   else expandedSkus.value.push(id)
+}
+
+const allExpanded = computed(() =>
+  data.value.length > 0 && expanded.value.length === data.value.length,
+)
+
+function toggleExpandAll() {
+  if (allExpanded.value) {
+    expanded.value = []
+    expandedSkus.value = []
+  }
+  else {
+    expanded.value = data.value.map(p => p.product_id)
+    expandedSkus.value = data.value.flatMap(p =>
+      p.skus.filter(s => s.locations?.length).map(s => s.sku_id),
+    )
+  }
 }
 
 const tabs = [
@@ -252,6 +269,14 @@ onMounted(async () => {
         :searchable="false"
         @update:model-value="filterStatus = $event as string[]; onFilterChange()"
       />
+      <button
+        class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
+        :disabled="!data.length"
+        @click="toggleExpandAll()"
+      >
+        <component :is="allExpanded ? ChevronsDownUp : ChevronsUpDown" class="h-4 w-4" />
+        <span>{{ allExpanded ? 'Tutup Semua' : 'Buka Semua' }}</span>
+      </button>
       <button
         class="flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50 transition-colors"
         :disabled="loading"
