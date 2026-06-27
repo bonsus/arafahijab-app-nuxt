@@ -35,12 +35,14 @@ export function useApi() {
           }
           catch (parseError) {
             // If parsing fails, use default error message
+            useAccessControl().handleHttpError(statusCode)
             throw { statusCode, message: 'Terjadi kesalahan saat memproses response', errors: undefined } as ApiError
           }
         }
         // Check if error.data is already an object (JSON parsed by $fetch)
         else if (error?.data && typeof error.data === 'object') {
           const message = error.data.error || error.data.message || 'Terjadi kesalahan'
+          useAccessControl().handleHttpError(statusCode, message)
           throw { statusCode, message, errors: error.data.errors } as ApiError
         }
       }
@@ -49,6 +51,9 @@ export function useApi() {
       const backendBody = error?.data?.data || error?.data || {}
       const message = backendBody.error || backendBody.message || error?.statusMessage || 'Terjadi kesalahan'
       const errors = backendBody.errors
+
+      // Global auth/permission handling: 401 -> login, 403 -> access denied popup
+      useAccessControl().handleHttpError(statusCode, message)
 
       throw { statusCode, message, errors } as ApiError
     }

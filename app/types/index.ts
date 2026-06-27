@@ -2,7 +2,7 @@ export interface Role {
   id: string
   business_id: string
   name: string
-  permission: Record<string, boolean>
+  permission: string[]
   CreatedAt: string
   UpdatedAt: string
   DeletedAt: string | null
@@ -72,6 +72,8 @@ export interface MenuItem {
   label: string
   icon?: string
   to?: string
+  /** Permission(s) required to see this item. String = single, array = any-of. */
+  permission?: string | string[]
   children?: MenuItem[]
 }
 

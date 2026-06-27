@@ -10,6 +10,7 @@ const api = useApi()
 const toast = useToast()
 const authStore = useAuthStore()
 const { confirm } = useConfirm()
+const { can } = usePermission()
 
 const isSelf = (user: User) => user.id === authStore.user?.id
 
@@ -70,19 +71,19 @@ const roleForm = reactive({
   permission: [] as string[],
 })
 
-// Permission groups — berdasarkan menu sidebar
-const permissionGroups = [
-  { label: 'Dashboard', permissions: ['dashboard.read'] },
-  { label: 'Penjualan', permissions: ['penjualan.read', 'penjualan.create', 'penjualan.update', 'penjualan.delete'] },
-  { label: 'Pembelian', permissions: ['pembelian.read', 'pembelian.create', 'pembelian.update', 'pembelian.delete'] },
-  { label: 'Produk', permissions: ['produk.read', 'produk.create', 'produk.update', 'produk.delete'] },
-  { label: 'Customer', permissions: ['customer.read', 'customer.create', 'customer.update', 'customer.delete'] },
-  { label: 'Inventory', permissions: ['inventory.read', 'inventory.create', 'inventory.update', 'inventory.delete'] },
-  { label: 'Laporan', permissions: ['laporan.penjualan', 'laporan.pembelian', 'laporan.return', 'laporan.stock'] },
-  { label: 'Staff & Role', permissions: ['user.read', 'user.create', 'user.update', 'user.delete', 'role.read', 'role.create', 'role.update', 'role.delete'] },
-  { label: 'Pengaturan', permissions: ['setting.read', 'setting.update'] },
-  { label: 'Rekening Bank', permissions: ['bank.read', 'bank.create', 'bank.update', 'bank.delete'] },
-]
+// Permission catalogue (PERMISSION_GROUPS) is provided by usePermission and
+// kept in sync with the backend (internal/middleware/PERMISSION.md).
+function flatGroupPerms(group: PermissionGroup): string[] {
+  return group.modules.flatMap(m => m.permissions)
+}
+
+function isAllSelected(perms: string[]): boolean {
+  return perms.length > 0 && perms.every(p => roleForm.permission.includes(p))
+}
+
+function isSomeSelected(perms: string[]): boolean {
+  return perms.some(p => roleForm.permission.includes(p)) && !isAllSelected(perms)
+}
 
 function openCreateRole() {
   editingRole.value = null
@@ -335,14 +336,14 @@ onMounted(async () => {
       <h1 class="text-2xl font-bold text-gray-900">Staff & Role</h1>
       <div class="flex gap-2">
         <button
-          v-if="activeTab === 'roles'"
+          v-if="activeTab === 'roles' && can('role.create')"
           class="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
           @click="openCreateRole"
         >
           <Plus class="h-4 w-4" /> Tambah Role
         </button>
         <button
-          v-else
+          v-else-if="activeTab === 'users' && can('user.create')"
           class="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
           @click="openCreateUser"
         >
@@ -451,7 +452,7 @@ onMounted(async () => {
           <!-- Actions -->
           <div class="flex shrink-0 items-center gap-0.5 sm:gap-1">
             <button
-              v-if="!isSelf(user)"
+              v-if="!isSelf(user) && can('user.update')"
               class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 sm:p-2"
               title="Toggle Status"
               @click="toggleUserStatus(user)"
@@ -460,6 +461,7 @@ onMounted(async () => {
               <ToggleLeft v-else class="h-5 w-5 text-gray-400" />
             </button>
             <button
+              v-if="can('user.update')"
               class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 sm:p-2"
               title="Ubah Password"
               @click="openPasswordModal(user)"
@@ -467,6 +469,7 @@ onMounted(async () => {
               <KeyRound class="h-4 w-4" />
             </button>
             <button
+              v-if="can('user.update')"
               class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 sm:p-2"
               title="Edit"
               @click="openEditUser(user)"
@@ -474,7 +477,7 @@ onMounted(async () => {
               <Pencil class="h-4 w-4" />
             </button>
             <button
-              v-if="user.type !== 'owner' && !isSelf(user)"
+              v-if="user.type !== 'owner' && !isSelf(user) && can('user.delete')"
               class="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 sm:p-2"
               title="Hapus"
               @click="handleDeleteUser(user)"
@@ -547,6 +550,7 @@ onMounted(async () => {
             </div>
             <div class="flex shrink-0 gap-1">
               <button
+                v-if="can('role.update')"
                 class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 title="Edit"
                 @click="openEditRole(role)"
@@ -554,6 +558,7 @@ onMounted(async () => {
                 <Pencil class="h-4 w-4" />
               </button>
               <button
+                v-if="can('role.delete')"
                 class="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
                 title="Hapus"
                 @click="handleDeleteRole(role)"
@@ -777,33 +782,58 @@ onMounted(async () => {
 
               <!-- Permissions -->
               <div>
-                <label class="mb-3 block text-sm font-medium text-gray-700">Permission</label>
-                <div class="space-y-4">
-                  <div v-for="group in permissionGroups" :key="group.label">
-                    <div class="flex items-center gap-2">
+                <div class="mb-3 flex items-center justify-between">
+                  <label class="block text-sm font-medium text-gray-700">Permission</label>
+                  <span class="text-xs text-gray-400">{{ roleForm.permission.length }} dipilih</span>
+                </div>
+                <div class="space-y-5">
+                  <div v-for="group in PERMISSION_GROUPS" :key="group.key" class="rounded-lg border border-gray-100 p-3">
+                    <!-- Group header with select-all -->
+                    <label class="flex cursor-pointer items-center gap-2">
                       <input
                         type="checkbox"
-                        :checked="group.permissions.every(p => roleForm.permission.includes(p))"
-                        :indeterminate="group.permissions.some(p => roleForm.permission.includes(p)) && !group.permissions.every(p => roleForm.permission.includes(p))"
+                        :checked="isAllSelected(flatGroupPerms(group))"
+                        :indeterminate="isSomeSelected(flatGroupPerms(group))"
                         class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        @change="toggleGroupAll(group.permissions)"
+                        @change="toggleGroupAll(flatGroupPerms(group))"
                       />
                       <span class="text-sm font-semibold text-gray-800">{{ group.label }}</span>
-                    </div>
-                    <div class="ml-6 mt-1.5 flex flex-wrap gap-x-4 gap-y-1.5">
-                      <label
-                        v-for="perm in group.permissions"
-                        :key="perm"
-                        class="flex cursor-pointer items-center gap-1.5"
+                    </label>
+
+                    <!-- Modules -->
+                    <div class="mt-3 space-y-2.5">
+                      <div
+                        v-for="mod in group.modules"
+                        :key="mod.key"
+                        class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3"
                       >
-                        <input
-                          type="checkbox"
-                          :checked="roleForm.permission.includes(perm)"
-                          class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                          @change="togglePermission(perm)"
-                        />
-                        <span class="text-xs text-gray-600">{{ perm }}</span>
-                      </label>
+                        <label class="flex w-44 shrink-0 cursor-pointer items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            :checked="isAllSelected(mod.permissions)"
+                            :indeterminate="isSomeSelected(mod.permissions)"
+                            class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            @change="toggleGroupAll(mod.permissions)"
+                          />
+                          <span class="text-xs font-medium text-gray-700">{{ mod.label }}</span>
+                        </label>
+                        <div class="flex flex-wrap gap-x-3 gap-y-1.5">
+                          <label
+                            v-for="perm in mod.permissions"
+                            :key="perm"
+                            class="flex cursor-pointer items-center gap-1"
+                            :title="perm"
+                          >
+                            <input
+                              type="checkbox"
+                              :checked="roleForm.permission.includes(perm)"
+                              class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              @change="togglePermission(perm)"
+                            />
+                            <span class="text-xs text-gray-600">{{ permissionActionLabel(perm) }}</span>
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

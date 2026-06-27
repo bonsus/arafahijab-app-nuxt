@@ -39,6 +39,28 @@ const authStore = useAuthStore()
 const route = useRoute()
 const menu = useSidebarMenu()
 const sidebar = useSidebar()
+const { can, canAny } = usePermission()
+
+/** Whether the current user may see a given menu entry. */
+function isMenuAllowed(item: MenuItem): boolean {
+  if (!item.permission) return true
+  return Array.isArray(item.permission) ? canAny(item.permission) : can(item.permission)
+}
+
+/** Menu filtered by the current user's permissions (owner sees everything). */
+const visibleMenu = computed<MenuItem[]>(() => {
+  const result: MenuItem[] = []
+  for (const item of menu) {
+    if (item.children) {
+      const children = item.children.filter(isMenuAllowed)
+      if (children.length) result.push({ ...item, children })
+    }
+    else if (isMenuAllowed(item)) {
+      result.push(item)
+    }
+  }
+  return result
+})
 
 // Close sidebar on mobile when a link is clicked
 function onNavClick() {
@@ -89,7 +111,7 @@ function isGroupActive(item: MenuItem): boolean {
 }
 
 watchEffect(() => {
-  for (const item of menu) {
+  for (const item of visibleMenu.value) {
     if (item.children && isGroupActive(item)) {
       openGroups[item.label] = true
     }
@@ -99,7 +121,7 @@ watchEffect(() => {
 /** Flat list of every `to` in the sidebar (both top-level and children) */
 const allMenuTos = computed<string[]>(() => {
   const tos: string[] = []
-  for (const item of menu) {
+  for (const item of visibleMenu.value) {
     if (item.to) tos.push(item.to)
     if (item.children) {
       for (const child of item.children) {
@@ -246,7 +268,7 @@ const userInitials = computed(() => {
     <!-- Navigation -->
     <nav class="flex-1 overflow-y-auto px-3 py-4">
       <ul class="space-y-1">
-        <li v-for="item in menu" :key="item.label">
+        <li v-for="item in visibleMenu" :key="item.label">
           <!-- Simple link (no children) -->
           <NuxtLink
             v-if="!item.children"
