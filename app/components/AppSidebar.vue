@@ -24,6 +24,7 @@ import {
   FileBarChart,
   Settings,
   Wallet,
+  Activity,
   ChevronDown,
   ChevronsUpDown,
   LogOut,
@@ -73,6 +74,7 @@ const iconMap: Record<string, Component> = {
   'file-bar-chart': FileBarChart,
   'settings': Settings,
   'wallet': Wallet,
+  'activity': Activity,
 }
 
 function getIcon(name: string): Component {

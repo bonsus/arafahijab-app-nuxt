@@ -4,7 +4,7 @@ import {
   RefreshCw, ShoppingCart, X, Truck,
   MoreVertical, Loader2, CheckSquare, CreditCard,
   RefreshCcw, Printer, FileText, Scan, History, ChevronDown,
-  Copy, Check, Download
+  Copy, Check, Download, Box
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -58,6 +58,14 @@ interface SalesOrder {
     service_name?: string
     tracking_no?: string
     aggregator?: string
+  } | null
+  dropship?: {
+    id?: string
+    name?: string
+    phone?: string
+    type?: string
+    source?: string
+    file?: string
   } | null
   payment_method?: string | null
   staff?: { id: string; name: string } | null
@@ -1729,7 +1737,31 @@ onUnmounted(() => {
                     </button>
                   </p>
                 </div>
-                <span v-else class="text-xs text-gray-300">—</span>
+                <!-- Dropship -->
+                <div v-if="order.dropship?.id" class="mt-1.5 space-y-0.5 border-t border-dashed border-amber-200 pt-1.5">
+                  <div class="flex items-center gap-1 text-[10px] font-semibold uppercase text-amber-600">
+                    <Box class="h-3 w-3 shrink-0" />
+                    Dropship
+                  </div>
+                  <div v-if="order.dropship.source" class="flex items-center gap-1 text-xs text-gray-600">
+                    <img :src="`/images/platform/${order.dropship.source}.svg`" alt="" class="h-3.5 w-3.5 object-contain" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+                    <span class="capitalize">{{ order.dropship.source }}</span>
+                  </div>
+                  <p v-if="order.dropship.name" class="text-xs text-gray-600 whitespace-nowrap max-w-[120px] truncate">{{ order.dropship.name }}</p>
+                  <p v-if="order.dropship.phone" class="text-xs text-gray-500 whitespace-nowrap">{{ order.dropship.phone }}</p>
+                  <a
+                    v-if="order.dropship.file"
+                    :href="order.dropship.file"
+                    target="_blank"
+                    rel="noopener"
+                    class="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:underline"
+                    @click.stop
+                  >
+                    <Printer class="h-3 w-3" />
+                    Label
+                  </a>
+                </div>
+                <span v-if="!order.shipment?.courier_name && !order.shipment?.service_name && !order.shipment?.tracking_no && !order.dropship" class="text-xs text-gray-300">—</span>
               </td>
 
               <!-- Status -->

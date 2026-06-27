@@ -4,7 +4,7 @@ import {
   ShoppingCart, MapPin, Truck, Package,
   ChevronDown, UserCircle, FileText, Clock,
   CheckCircle, XCircle, AlertCircle, CreditCard,
-  Printer, Building2, User, RotateCcw, Hash, Weight,
+  Printer, Building2, User, RotateCcw, Hash, Weight, Box,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -57,6 +57,17 @@ interface OrderShipment {
   aggregator: string
   aggregator_status: boolean
   package_id: string
+}
+
+interface OrderDropship {
+  id: string
+  business_id: string
+  order_id: string
+  name: string
+  phone: string
+  type: string
+  source: string
+  file: string
 }
 
 interface OrderLog {
@@ -175,6 +186,7 @@ interface SalesOrder {
   items: OrderItem[]
   address: OrderAddress | null
   shipment: OrderShipment | null
+  dropship: OrderDropship | null
   logs: OrderLog[]
   payments: OrderPayment[]
   store: { id: string; name: string; source: string; shop_name: string } | null
@@ -650,6 +662,35 @@ onMounted(fetchOrder)
               </div>
             </div>
             <p v-else class="text-sm text-gray-400">Belum ada info pengiriman</p>
+
+            <!-- Dropship -->
+            <div v-if="order.dropship" class="mt-3 rounded-lg bg-amber-50/60 p-3 ring-1 ring-amber-100">
+              <div class="mb-1.5 flex items-center gap-1.5">
+                <Box class="h-3.5 w-3.5 text-amber-600" />
+                <span class="text-xs font-semibold text-amber-700">Dropship</span>
+                <span class="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium capitalize text-amber-700">
+                  {{ order.dropship.type === 'marketplace' ? 'Marketplace' : 'Regular' }}
+                </span>
+              </div>
+              <div class="space-y-1 text-sm">
+                <div v-if="order.dropship.source" class="flex items-center gap-1.5">
+                  <img :src="`/images/platform/${order.dropship.source}.svg`" alt="" class="h-4 w-4 object-contain" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+                  <span class="capitalize text-gray-700">{{ order.dropship.source }}</span>
+                </div>
+                <p v-if="order.dropship.name" class="font-medium text-gray-900">{{ order.dropship.name }}</p>
+                <p v-if="order.dropship.phone" class="text-gray-500">{{ order.dropship.phone }}</p>
+                <a
+                  v-if="order.dropship.file"
+                  :href="order.dropship.file"
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:underline"
+                >
+                  <Printer class="h-3.5 w-3.5" />
+                  Lihat Label Dropship
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -101,6 +101,11 @@ export function useSidebarMenu(): MenuItem[] {
       to: '/media',
     },
     {
+      label: 'Monitor Worker',
+      icon: 'activity',
+      to: '/monitor/worker',
+    },
+    {
       label: 'Pengaturan',
       icon: 'settings',
       to: '/setting/general', 
