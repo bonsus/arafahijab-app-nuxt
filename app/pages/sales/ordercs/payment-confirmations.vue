@@ -9,10 +9,7 @@ const router = useRouter()
 const api = useApi()
 const toast = useToast()
 const authStore = useAuthStore()
-
-if (!authStore.user?.is_cs) {
-  await navigateTo('/dashboard')
-}
+ 
 
 const loading = ref(false)
 const confirmations = ref<any[]>([])
@@ -113,13 +110,10 @@ onMounted(fetchData)
 <template>
   <div class="space-y-4">
     <!-- Header -->
-    <div class="flex items-center gap-3">
-      <NuxtLink to="/sales/ordercs" class="rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50">
-        <ArrowLeft class="h-4 w-4" />
-      </NuxtLink>
+    <div class="flex items-center gap-3"> 
       <div>
-        <h1 class="text-xl font-bold text-gray-900">History Konfirmasi Pembayaran</h1>
-        <p class="mt-1 text-sm text-gray-500">Riwayat konfirmasi pembayaran order CS.</p>
+        <h1 class="text-xl font-bold text-gray-900">Konfirmasi Pembayaran</h1>
+        <p class="mt-1 text-sm text-gray-500">Riwayat konfirmasi pembayaran order.</p>
       </div>
     </div>
 

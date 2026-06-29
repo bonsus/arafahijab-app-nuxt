@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Search, Eye, RefreshCw, ShoppingCart, X, Truck,
-  CreditCard, Copy, Check, Box,
+  CreditCard, Copy, Check, Box, Plus,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -90,10 +90,7 @@ const api = useApi()
 const route = useRoute()
 const router = useRouter()
 
-const authStore = useAuthStore()
-if (!authStore.user?.is_cs) {
-  await navigateTo('/dashboard')
-}
+const authStore = useAuthStore() 
 
 const loading = ref(true)
 const orders = ref<SalesOrder[]>([])
@@ -590,6 +587,13 @@ onMounted(() => {
         <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Order CS</h1>
         <p class="text-sm text-gray-500">Daftar order penjualan Anda.</p>
       </div>
+      <NuxtLink
+        to="/sales/order/create"
+        class="flex items-center gap-2 self-start rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+      >
+        <Plus class="h-4 w-4" />
+        Buat Order
+      </NuxtLink>
     </div>
 
     <!-- Filter Card -->

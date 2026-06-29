@@ -7,7 +7,8 @@ definePageMeta({ middleware: 'auth' })
 
 const api = useApi()
 const authStore = useAuthStore()
- 
+// redirect to pesanan 
+  await navigateTo('/sales/ordercs') 
 
 interface CsSummary {
   total_orders: number

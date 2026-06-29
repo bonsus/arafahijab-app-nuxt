@@ -34,6 +34,10 @@ const api = useApi()
 const toast = useToast()
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+
+const isCs = computed(() => !!authStore.user?.is_cs)
+const ordersListPath = computed(() => (isCs.value ? '/sales/ordercs' : '/sales/order'))
 
 const isEdit = computed(() => !!route.query.edit)
 const orderId = computed(() => route.query.edit as string)
@@ -640,7 +644,7 @@ async function loadOrder() {
   }
   catch (err: any) {
     toast.error(err.message || 'Gagal memuat data order')
-    router.push('/sales/order')
+    router.push(ordersListPath.value)
   }
   finally {
     loadingData.value = false
@@ -676,10 +680,12 @@ function selectStaff(s: StaffUser) {
   staffSearch.value = ''
 }
 function clearStaff() {
+  if (isCs.value) return
   selectedStaff.value = null
   form.staff_id = ''
 }
 function openStaffDropdown() {
+  if (isCs.value) return
   staffDropdownOpen.value = true
   staffSearch.value = ''
   fetchStaff()
@@ -781,7 +787,7 @@ async function handleSubmit() {
     if (isEdit.value) {
       await api.put(`/sales/orders/${orderId.value}`, payload)
       toast.success('Order berhasil diperbarui')
-      router.push('/sales/order')
+      router.push(ordersListPath.value)
     }
     else {
       const res = await api.post<{ data: CreatedOrder }>('/sales/orders/create', payload)
@@ -841,11 +847,15 @@ function handleCreateNew() {
   form.cod_percent = 0
   form.cod_cost = 0
   selectedStaff.value = null
+  if (isCs.value && authStore.user) {
+    selectedStaff.value = { id: authStore.user.id, name: authStore.user.name, email: authStore.user.email, phone: authStore.user.phone }
+    form.staff_id = authStore.user.id
+  }
   toast.success('Form berhasil direset untuk order baru')
 }
 
 function handleFinish() {
-  router.push('/sales/order')
+  router.push(ordersListPath.value)
 }
 
 function handlePayNowXendit() {
@@ -883,6 +893,10 @@ function adjustFreeProductQty(index: number, availableQty: number) {
 
 onMounted(() => {
   fetchSources()
+  if (isCs.value && authStore.user) {
+    selectedStaff.value = { id: authStore.user.id, name: authStore.user.name, email: authStore.user.email, phone: authStore.user.phone }
+    form.staff_id = authStore.user.id
+  }
   if (isEdit.value) loadOrder()
 })
 </script>
@@ -892,7 +906,7 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center gap-3">
       <NuxtLink
-        to="/sales/order"
+        :to="ordersListPath"
         class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
       >
         <ArrowLeft class="h-5 w-5" />
@@ -1110,7 +1124,7 @@ onMounted(() => {
                     <p class="text-sm font-medium text-primary-900">{{ selectedStaff.name }}</p>
                     <p class="text-xs text-primary-500">{{ selectedStaff.email }}</p>
                   </div>
-                  <button type="button" class="text-xs text-primary-400 hover:text-primary-600" @click="clearStaff">Hapus</button>
+                  <button type="button" class="text-xs text-primary-400 hover:text-primary-600" v-if="!isCs" @click="clearStaff">Hapus</button>
                 </div>
                 <!-- Trigger -->
                 <button
@@ -1550,7 +1564,7 @@ onMounted(() => {
           <!-- Actions -->
           <div class="sticky bottom-0 flex items-center justify-end gap-3 rounded-xl bg-white/90 px-5 py-4 shadow-sm ring-1 ring-gray-200 backdrop-blur">
             <NuxtLink
-              to="/sales/order"
+              :to="ordersListPath"
               class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
             >
               Batal

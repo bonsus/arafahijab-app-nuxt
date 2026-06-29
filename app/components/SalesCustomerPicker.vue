@@ -151,7 +151,7 @@ async function loadAddresses(customerId: string) {
   loadingAddresses.value = true
   highlightedAddressId.value = null
   try {
-    const res = await api.get<{ data: any }>(`/customers/${customerId}/addresses`)
+    const res = await api.get<{ data: any }>(`/customers/public/${customerId}/addresses`)
     addresses.value = (res.data || []) as SalesCustomerAddress[]
     const primary = addresses.value.find(a => a.primary)
     highlightedAddressId.value = (primary || addresses.value[0])?.id || null

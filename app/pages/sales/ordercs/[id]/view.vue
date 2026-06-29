@@ -107,10 +107,7 @@ interface SalesOrder {
 const api = useApi()
 const route = useRoute()
 
-const authStore = useAuthStore()
-if (!authStore.user?.is_cs) {
-  await navigateTo('/dashboard')
-}
+const authStore = useAuthStore() 
 
 const orderId = computed(() => route.params.id as string)
 const loading = ref(true)
