@@ -43,6 +43,7 @@ const { can, canAny } = usePermission()
 
 /** Whether the current user may see a given menu entry. */
 function isMenuAllowed(item: MenuItem): boolean {
+  if (item.csOnly && !authStore.user?.is_cs) return false
   if (!item.permission) return true
   return Array.isArray(item.permission) ? canAny(item.permission) : can(item.permission)
 }

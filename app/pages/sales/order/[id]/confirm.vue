@@ -74,15 +74,10 @@ async function handleSubmit() {
   formData.append('note', form.note)
   formData.append('file', form.file)
   
-  try { 
-
-    // await $fetch('/api/sales/orders/payment-confirmations/create', {
-    //     method: 'POST',
-    //     body: formData,
-    // })
+  try {  
     await api.post('/sales/orders/payment-confirmations/create', formData)
     toast.success('Konfirmasi pembayaran berhasil dikirim')
-    // router.push(`/sales/order`)
+    router.push(`/sales/order`)
   } catch (err: any) {
     if (err.errors) {
       formErrors.value = err.errors
@@ -196,7 +191,7 @@ onMounted(async () => {
               </label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
-                <input v-model.number="form.amount" type="number" min="0" class="input-field pl-9" readonly />
+                <input v-model.number="form.amount" type="number" min="0" class="input-field" style="padding-left:2rem;" readonly />
               </div>
               <p v-if="formErrors.amount" class="mt-1 text-xs text-red-600">{{ formErrors.amount[0] }}</p>
             </div>

@@ -38,7 +38,7 @@ interface SalesOrder {
   discount: string
   shipping_cost: string
   total: string
-  payment_total?: string
+  payment_total?: string 
   items_count?: number
   weight?: number
   items?: SalesOrderItem[]
@@ -68,6 +68,7 @@ interface SalesOrder {
     file?: string
   } | null
   payment_method?: string | null
+  payment_provider?: string | null
   staff?: { id: string; name: string } | null
   customer_category?: { id: string; name: string } | null
   tags: string[] 
@@ -1973,7 +1974,7 @@ onUnmounted(() => {
           Edit Order
         </NuxtLink>
         <button
-          v-if="openMenuOrder.payment_status === 'unpaid'"
+          v-if="openMenuOrder.payment_status === 'unpaid' && openMenuOrder.payment_provider == 'internal' && openMenuOrder.payment_method == 'bank_transfer'"
           class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-green-600 hover:bg-green-50"
           @click="openPaymentModal(openMenuOrder)"
         >

@@ -65,6 +65,34 @@ const selectedConfirmation = ref<any>(null)
 const reviewAction = ref<'approved' | 'rejected' | ''>('')
 const processing = ref(false)
 
+// Banks for "to bank" selection
+const banks = ref<any[]>([])
+const banksLoading = ref(false)
+const approveForm = reactive({
+  to_bank_id: '',
+  actual_amount: 0,
+})
+
+const bankOptions = computed(() =>
+  banks.value.map(b => ({
+    value: String(b.id),
+    label: `${b.bank_name} - ${b.account_number} (${b.account_name})`,
+  })),
+)
+
+async function fetchBanks() {
+  if (banks.value.length || banksLoading.value) return
+  banksLoading.value = true
+  try {
+    const res = await api.get<{ data: any[] }>('/banks/index')
+    banks.value = (res.data || []).filter((b: any) => b.status === 'active')
+  } catch {
+    banks.value = []
+  } finally {
+    banksLoading.value = false
+  }
+}
+
 const showLightbox = ref(false)
 const lightboxUrl = ref('')
 
@@ -114,6 +142,11 @@ async function fetchData() {
 function openReviewModal(item: any, action: 'approved' | 'rejected') {
   selectedConfirmation.value = item
   reviewAction.value = action
+  if (action === 'approved') {
+    approveForm.to_bank_id = item.to_bank_id ? String(item.to_bank_id) : ''
+    approveForm.actual_amount = Number(item.amount) || 0
+    fetchBanks()
+  }
   showReviewModal.value = true
 }
 
@@ -121,17 +154,35 @@ function closeReviewModal() {
   showReviewModal.value = false
   selectedConfirmation.value = null
   reviewAction.value = ''
+  approveForm.to_bank_id = ''
+  approveForm.actual_amount = 0
 }
 
 async function confirmAction() {
   if (!selectedConfirmation.value || !reviewAction.value) return
-  
+
+  if (reviewAction.value === 'approved') {
+    if (!approveForm.to_bank_id) {
+      toast.error('Pilih bank tujuan terlebih dahulu')
+      return
+    }
+    if (!approveForm.actual_amount || approveForm.actual_amount <= 0) {
+      toast.error('Jumlah aktual harus lebih dari 0')
+      return
+    }
+  }
+
   processing.value = true
   try {
-    await api.post('/sales/orders/payment-confirmations/update-status', {
+    const payload: Record<string, any> = {
       id: selectedConfirmation.value.id,
       status: reviewAction.value,
-    })
+    }
+    if (reviewAction.value === 'approved') {
+      payload.to_bank_id = Number(approveForm.to_bank_id) || approveForm.to_bank_id
+      payload.actual_amount = Number(approveForm.actual_amount)
+    }
+    await api.post('/sales/orders/payment-confirmations/update-status', payload)
     toast.success(`Konfirmasi pembayaran berhasil ${reviewAction.value === 'approved' ? 'disetujui' : 'ditolak'}`)
     closeReviewModal()
     fetchData()
@@ -302,7 +353,7 @@ onMounted(() => {
           <tbody class="divide-y divide-gray-100 text-sm">
             <tr v-for="item in confirmations" :key="item.id" class="hover:bg-gray-50">
               <td class="px-4 py-3">
-                <span class="font-mono text-xs font-semibold text-primary-600">
+                <span class="text-xs font-semibold text-primary-600">
                   {{ item.order?.no || '-' }}
                 </span>
               </td>
@@ -438,6 +489,37 @@ onMounted(() => {
               <div v-if="selectedConfirmation.note" class="border-t border-gray-200 pt-2.5">
                 <span class="text-gray-600">Catatan:</span>
                 <p class="mt-1 text-gray-900">{{ selectedConfirmation.note }}</p>
+              </div>
+            </div>
+
+            <!-- Approve form: bank tujuan & actual amount -->
+            <div v-if="reviewAction === 'approved'" class="space-y-4 rounded-lg border border-green-200 bg-green-50/40 p-4">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">
+                  Ganti Bank Tujuan <span class="text-red-500">*</span>
+                </label>
+                <AppFilterSelect
+                  :model-value="approveForm.to_bank_id"
+                  :options="bankOptions"
+                  :searchable="true"
+                  :placeholder="banksLoading ? 'Memuat bank...' : 'Pilih bank tujuan'"
+                  @update:model-value="(v: any) => approveForm.to_bank_id = Array.isArray(v) ? v[0] : v"
+                />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">
+                  Jumlah Aktual Diterima <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rp</span>
+                  <input
+                    v-model.number="approveForm.actual_amount"
+                    type="number"
+                    min="0"
+                    class="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+                  />
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Otomatis terisi dari jumlah transfer, ubah bila berbeda.</p>
               </div>
             </div>
             <!-- File Preview -->

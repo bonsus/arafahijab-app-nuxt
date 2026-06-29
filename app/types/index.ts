@@ -21,6 +21,7 @@ export interface User {
   email_status: string
   phone_status: string
   language: string
+  is_cs?: boolean
   CreatedAt: string
   UpdatedAt: string
   DeletedAt: string | null
@@ -74,6 +75,8 @@ export interface MenuItem {
   to?: string
   /** Permission(s) required to see this item. String = single, array = any-of. */
   permission?: string | string[]
+  /** Only visible to users with is_cs = true. */
+  csOnly?: boolean
   children?: MenuItem[]
 }
 

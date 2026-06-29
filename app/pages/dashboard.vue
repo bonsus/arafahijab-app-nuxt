@@ -14,6 +14,10 @@ interface StoreOption {
 const api = useApi()
 const authStore = useAuthStore()
 
+if (authStore.user?.is_cs) {
+  await navigateTo('/sales/ordercs/dashboard')
+}
+
 function todayStr() {
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')

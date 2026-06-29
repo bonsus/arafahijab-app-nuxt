@@ -368,14 +368,14 @@ onMounted(() => {
             <tr v-for="item in payments" :key="item.id" class="hover:bg-gray-50">
               <td class="px-4 py-3">
                 <NuxtLink
-                  :to="`/sales/payments/${item.id}`"
-                  class="font-mono text-xs font-semibold text-primary-600 hover:text-primary-700"
+                  :to="`/sales/payment/${item.id}`"
+                  class="text-xs font-semibold text-primary-600 hover:text-primary-700"
                 >
                   {{ item.no || '-' }}
                 </NuxtLink>
               </td>
               <td class="px-4 py-3">
-                <span class="font-mono text-xs font-semibold text-primary-600">
+                <span class="text-xs font-semibold text-primary-600">
                   {{ item.order?.no || '-' }}
                 </span>
               </td>
@@ -388,6 +388,9 @@ onMounted(() => {
               </td>
               <td class="px-4 py-3 text-right font-semibold text-gray-900">
                 Rp{{ formatCurrency(Number(item.amount)) }}
+                <div v-if="item.amount !== item.actual_amount" class="text-xs font-normal text-gray-500">
+                  (Rp{{ formatCurrency(Number(item.actual_amount)) }})
+                </div>
               </td>
               <td class="px-4 py-3">
                 <div class="text-gray-900">{{ item.method }}</div>

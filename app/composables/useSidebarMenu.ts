@@ -5,13 +5,25 @@ export function useSidebarMenu(): MenuItem[] {
     {
       label: 'Dashboard',
       icon: 'layout-dashboard',
-      to: '/dashboard',
+      to: '/dashboard', 
+    },
+    {
+      label: 'Pesanan',
+      icon: 'shopping-bag',
+      to: '/sales/ordercs', 
+      csOnly: true, 
+    },
+    {
+      label: 'Konfirmasi Pembayaran',
+      icon: 'credit-card',
+      to: '/sales/ordercs/payment-confirmations', 
+      csOnly: true,
     },
     {
       label: 'Penjualan',
       icon: 'shopping-cart',
       children: [
-        { label: 'Order', to: '/sales/order', permission: 'sales_order.read' },
+        { label: 'Order', to: '/sales/order', permission: 'sales_order.read' }, 
         { label: 'Pembayaran', to: '/sales/payment', permission: 'sales_order_payment.read' },
         { label: 'Retur', to: '/sales/return', permission: 'sales_order_return.read' },
         { label: 'Order Marketplace', to: '/sales/marketplace', permission: 'sales_order_mp.read' },
@@ -61,7 +73,7 @@ export function useSidebarMenu(): MenuItem[] {
       icon: 'users',
       children: [
         { label: 'Pelanggan', to: '/contact/customer', permission: 'customer.read' },
-        { label: 'Supplier', to: '/contact/supplier' },
+        { label: 'Supplier', to: '/contact/supplier', permission: 'customer.read' },
       ],
     },
     {
@@ -99,11 +111,13 @@ export function useSidebarMenu(): MenuItem[] {
       label: 'Media',
       icon: 'image',
       to: '/media',
+      permission: 'media.read',
     },
     {
       label: 'Monitor Worker',
       icon: 'activity',
       to: '/monitor/worker',
+      permission: 'monitor.read',
     },
     {
       label: 'Pengaturan',

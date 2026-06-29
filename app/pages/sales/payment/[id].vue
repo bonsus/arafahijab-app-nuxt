@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Eye, Ban, Loader2, Package, User, DollarSign, Building2, FileText, Calendar, CreditCard, X as XIcon } from 'lucide-vue-next'
-import { formatCurrency, formatDate } from '~/composables/useFormatters'
+import { formatCurrency, formatDate, formatDateTime } from '~/composables/useFormatters'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -143,9 +143,21 @@ onMounted(() => {
                 <p class="mt-1 text-lg font-bold text-gray-900">Rp{{ formatCurrency(Number(payment.amount)) }}</p>
               </div>
               <div>
+                <label class="text-xs font-medium text-gray-500">Jumlah Aktual Diterima</label>
+                <p class="mt-1 text-lg font-bold text-gray-900">Rp{{ formatCurrency(Number(payment.actual_amount)) }}</p>
+              </div>
+              <div>
                 <label class="text-xs font-medium text-gray-500">Metode Pembayaran</label>
                 <p class="mt-1 text-sm text-gray-900">{{ payment.method }}</p>
                 <p class="text-xs text-gray-500">{{ payment.provider }}</p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500">Dibuat</label>
+                <p class="mt-1 text-sm text-gray-900 capitalize">{{ formatDateTime(payment.created_at) }}</p>
+              </div>
+              <div v-if="payment.updated_at != payment.created_at">
+                <label class="text-xs font-medium text-gray-500">Diperbarui</label>
+                <p class="mt-1 text-sm text-gray-900 capitalize">{{ formatDateTime(payment.updated_at) }}</p>
               </div>
             </div>
 
@@ -214,9 +226,12 @@ onMounted(() => {
 
           <div class="space-y-3">
             <div>
+              <label class="text-xs font-medium text-gray-500">Dompet</label>
+              <p class="mt-1 text-sm font-medium text-gray-900">{{ payment.wallet?.name || '-' }}</p>
+            </div>
+            <div>
               <label class="text-xs font-medium text-gray-500">Bank</label>
               <p class="mt-1 text-sm font-medium text-gray-900">{{ payment.bank_name }}</p>
-              <p class="text-xs text-gray-500">{{ payment.wallet?.name }}</p>
             </div>
             <div>
               <label class="text-xs font-medium text-gray-500">No. Rekening</label>
@@ -259,25 +274,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-
-        <!-- Timestamps Card -->
-        <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
-          <div class="mb-4 flex items-center gap-2">
-            <Calendar class="h-5 w-5 text-gray-400" />
-            <h2 class="text-lg font-semibold text-gray-900">Riwayat</h2>
-          </div>
-
-          <div class="space-y-3">
-            <div>
-              <label class="text-xs font-medium text-gray-500">Dibuat</label>
-              <p class="mt-1 text-sm text-gray-900">{{ formatDateTime(payment.created_at) }}</p>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500">Terakhir Update</label>
-              <p class="mt-1 text-sm text-gray-900">{{ formatDateTime(payment.updated_at) }}</p>
-            </div>
-          </div>
-        </div>
+ 
       </div>
     </div>
 

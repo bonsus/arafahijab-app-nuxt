@@ -25,7 +25,7 @@ async function handleLogin() {
       email: form.email,
       password: form.password,
     })
-    navigateTo('/dashboard')
+    navigateTo(authStore.user?.is_cs ? '/sales/ordercs/dashboard' : '/dashboard')
   }
   catch (error: any) {
     if (error?.errors) {
