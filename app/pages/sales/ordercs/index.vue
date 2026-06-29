@@ -145,7 +145,7 @@ const statusSummary = ref<StatusSummary | null>(null)
 const statusTabs: { key: string; label: string; count?: number }[] = [
   { key: '', label: 'Semua' },
   { key: 'pending', label: 'Pending' },
-  { key: 'processing', label: 'Perlu Dikirim' },
+  { key: 'processing', label: 'Sedang Diproses' },
   { key: 'shipped', label: 'Dikirim' },
   { key: 'completed', label: 'Selesai' },
   { key: 'canceled', label: 'Dibatalkan' },
@@ -335,7 +335,7 @@ const statusTabsWithCount = computed(() => {
   return [
     { key: '', label: 'Semua', count: totalCount },
     { key: 'pending', label: 'Pending', count: sum.pending_count },
-    { key: 'processing', label: 'Perlu Dikirim', count: sum.processing_count },
+    { key: 'processing', label: 'Sedang Diproses', count: sum.processing_count },
     { key: 'shipped', label: 'Dikirim', count: sum.shipped_count },
     { key: 'completed', label: 'Selesai', count: sum.all_completed_count },
     { key: 'canceled', label: 'Dibatalkan', count: sum.canceled_count },

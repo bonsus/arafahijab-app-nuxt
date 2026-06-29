@@ -189,7 +189,7 @@ const userInitials = computed(() => {
         </div>
         <div class="flex items-center gap-1">
           <!-- Notifications -->
-          <PopoverRoot>
+          <!-- <PopoverRoot>
             <PopoverTrigger
               class="relative rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
             >
@@ -225,7 +225,7 @@ const userInitials = computed(() => {
                 </div>
               </PopoverContent>
             </PopoverPortal>
-          </PopoverRoot>
+          </PopoverRoot> -->
 
           <!-- Close sidebar (mobile) -->
           <button

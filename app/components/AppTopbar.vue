@@ -34,7 +34,7 @@ const unreadCount = computed(() => notifications.filter((n) => !n.read).length)
     </div>
 
     <!-- Right: Notification -->
-    <PopoverRoot>
+    <!-- <PopoverRoot>
       <PopoverTrigger
         class="relative rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
       >
@@ -70,6 +70,6 @@ const unreadCount = computed(() => notifications.filter((n) => !n.read).length)
           </div>
         </PopoverContent>
       </PopoverPortal>
-    </PopoverRoot>
+    </PopoverRoot> -->
   </header>
 </template>
