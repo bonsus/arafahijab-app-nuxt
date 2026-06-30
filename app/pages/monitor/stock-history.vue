@@ -6,6 +6,11 @@ import { formatDateTime } from '~/composables/useFormatters'
 
 definePageMeta({ middleware: 'auth' })
 
+interface VariantOption {
+  name: string
+  value: string
+}
+
 interface StockHistoryItem {
   id: string
   store_id: string
@@ -14,13 +19,13 @@ interface StockHistoryItem {
   product_name: string
   sku_id: string
   sku: string
-  variant: Record<string, any> | null
+  variant: VariantOption[] | null
   stock: number
   mp_product_id: string
   mp_product_name: string
   mp_sku_id: string
   mp_sku: string
-  mp_variants: Record<string, any> | null
+  mp_variants: VariantOption[] | null
   status: string
   error: string
   created_at: string
@@ -170,9 +175,9 @@ function relativeTime(dateStr: string | null | undefined): string {
   return `${days} hari lalu`
 }
 
-function variantText(v: Record<string, any> | null): string {
-  if (!v || typeof v !== 'object') return ''
-  return Object.values(v).filter(Boolean).join(', ')
+function variantText(v: VariantOption[] | null): string {
+  if (!Array.isArray(v)) return ''
+  return v.map(o => o?.value).filter(Boolean).join(', ')
 }
 
 // ---- Detail modal ----
