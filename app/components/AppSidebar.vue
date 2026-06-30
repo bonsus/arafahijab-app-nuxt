@@ -25,6 +25,7 @@ import {
   Settings,
   Wallet,
   Activity,
+  Boxes,
   ChevronDown,
   ChevronsUpDown,
   LogOut,
@@ -98,6 +99,7 @@ const iconMap: Record<string, Component> = {
   'settings': Settings,
   'wallet': Wallet,
   'activity': Activity,
+  'boxes': Boxes,
 }
 
 function getIcon(name: string): Component {

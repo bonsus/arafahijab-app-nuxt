@@ -116,9 +116,11 @@ export function useSidebarMenu(): MenuItem[] {
     {
       label: 'Monitor Worker',
       icon: 'activity',
-      to: '/monitor/worker',
-      permission: 'monitor.read',
-    },
+      children: [
+        { label: 'Monitor Worker', to: '/monitor/worker', permission: 'monitor.read' },
+        { label: 'Monitor Stok MP', to: '/monitor/stock-history', permission: 'monitor.read' },
+      ],
+    }, 
     {
       label: 'Pengaturan',
       icon: 'settings',
