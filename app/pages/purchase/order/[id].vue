@@ -190,6 +190,14 @@ const visibleLogs = computed(() => {
   return all.slice(0, 3)
 })
 
+const totalQty = computed(() =>
+  (po.value?.items || []).reduce((sum, item) => sum + Number(item.qty || 0), 0),
+)
+
+const totalQtyReceived = computed(() =>
+  (po.value?.items || []).reduce((sum, item) => sum + Number(item.qty_received || 0), 0),
+)
+
 async function updateStatus(newStatus: 'approved' | 'rejected' | 'waiting_approval' | 'completed') {
   const labels: Record<string, { action: string; title: string; confirm: string; variant: 'info' | 'danger' | 'warning' }> = {
     approved: { action: 'menyetujui', title: 'Setujui PO', confirm: 'Approve', variant: 'info' },
@@ -604,6 +612,19 @@ onMounted(() => {
                     <td class="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">Rp{{ formatCurrency(item.total) }}</td>
                   </tr>
                 </tbody>
+                <tfoot v-if="po.items?.length">
+                  <tr class="border-t border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900">
+                    <td class="px-4 py-3 text-left">Total</td>
+                    <td class="px-4 py-3 text-center">{{ totalQty }}</td>
+                    <td class="px-4 py-3 text-center">
+                      <span :class="totalQtyReceived >= totalQty ? 'text-green-600' : 'text-gray-900'">
+                        {{ totalQtyReceived }}
+                      </span>
+                    </td>
+                    <td colspan="2" />
+                    <td class="px-4 py-3 text-right">Rp{{ formatCurrency(po.total) }}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
             <div v-if="!po.items?.length" class="px-4 py-8 text-center text-sm text-gray-400">

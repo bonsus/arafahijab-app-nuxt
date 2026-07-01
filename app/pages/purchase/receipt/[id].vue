@@ -29,6 +29,7 @@ interface ReceiptItem {
   discount: number
   total: number
   qty_returned: number
+  qty_good: number
 }
 
 interface ReceiptLog {
@@ -237,6 +238,19 @@ const visibleLogs = computed(() => {
   const all = receipt.value?.logs || []
   return all.slice(0, 3)
 })
+
+const totalQty = computed(() =>
+  (receipt.value?.items || []).reduce((sum, item) => sum + Number(item.qty || 0), 0),
+)
+
+const totalQtyReturned = computed(() =>
+  (receipt.value?.items || []).reduce((sum, item) => sum + Number(item.qty_returned || 0), 0),
+)
+
+const totalQtyGood = computed(() =>
+  (receipt.value?.items || []).reduce((sum, item) => sum + Number(item.qty_good || 0), 0),
+)
+
 
 async function updateStatus(newStatus: 'draft' | 'completed') {
   const labels: Record<string, { action: string; title: string; confirm: string; variant: 'info' | 'warning' }> = {
@@ -668,6 +682,7 @@ onMounted(() => {
                     <th class="px-4 py-2.5 text-left">Produk</th>
                     <th class="px-4 py-2.5 text-center">Qty</th>
                     <th class="px-4 py-2.5 text-center">Diretur</th>
+                    <th class="px-4 py-2.5 text-center">Baik</th>
                     <th class="px-4 py-2.5 text-right">Harga</th>
                     <th class="px-4 py-2.5 text-right">Diskon</th>
                     <th class="px-4 py-2.5 text-right">Total</th>
@@ -690,11 +705,26 @@ onMounted(() => {
                         {{ item.qty_returned }}
                       </span>
                     </td>
+                    <td class="px-4 py-3 text-center font-medium text-gray-900">
+                      {{ Number(item.qty) - Number(item.qty_returned) }}
+                    </td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">Rp{{ formatCurrency(Number(item.price)) }}</td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">{{ Number(item.discount) ? `Rp${formatCurrency(Number(item.discount))}` : '-' }}</td>
                     <td class="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">Rp{{ formatCurrency(Number(item.total)) }}</td>
                   </tr>
                 </tbody>
+                <tfoot v-if="receipt.items?.length">
+                  <tr class="border-t border-gray-200 bg-gray-50 text-sm font-semibold text-gray-900">
+                    <td class="px-4 py-3 text-right">Total</td>
+                    <td class="px-4 py-3 text-center">{{ totalQty }}</td>
+                    <td class="px-4 py-3 text-center">
+                      <span :class="totalQtyReturned > 0 ? 'text-red-600' : 'text-gray-900'">{{ totalQtyReturned }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-center text-green-600">{{ totalQtyGood }}</td>
+                    <td colspan="2" />
+                    <td class="px-4 py-3 text-right">Rp{{ formatCurrency(Number(receipt.total)) }}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
             <div v-if="!receipt.items?.length" class="px-4 py-8 text-center text-sm text-gray-400">
