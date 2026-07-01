@@ -706,7 +706,7 @@ onMounted(() => {
                       </span>
                     </td>
                     <td class="px-4 py-3 text-center font-medium text-gray-900">
-                      {{ Number(item.qty) - Number(item.qty_returned) }}
+                      {{ Number(item.qty_good) }}
                     </td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">Rp{{ formatCurrency(Number(item.price)) }}</td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">{{ Number(item.discount) ? `Rp${formatCurrency(Number(item.discount))}` : '-' }}</td>
