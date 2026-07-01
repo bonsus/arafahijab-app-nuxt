@@ -228,7 +228,7 @@ onMounted(() => {
               <th class="px-4 py-3 text-center">Qty Scan</th>
               <th class="px-4 py-3 text-left">Waktu Scan</th>
               <th class="px-4 py-3 text-left">Staff</th>
-              <th class="px-4 py-3 text-left">Status</th>
+              <!-- <th class="px-4 py-3 text-left">Status</th> -->
             </tr>
           </thead>
           <tbody>
@@ -284,11 +284,11 @@ onMounted(() => {
                   <span class="text-xs text-gray-900">{{ order.staff_name }}</span>
                 </div>
               </td>
-              <td class="px-4 py-3">
+              <!-- <td class="px-4 py-3">
                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200">
-                  Siap Dikirim
+                  
                 </span>
-              </td>
+              </td> -->
             </tr>
           </tbody>
         </table>
