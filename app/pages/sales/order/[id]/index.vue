@@ -664,7 +664,7 @@ onMounted(fetchOrder)
             <p v-else class="text-sm text-gray-400">Belum ada info pengiriman</p>
 
             <!-- Dropship -->
-            <div v-if="order.dropship" class="mt-3 rounded-lg bg-amber-50/60 p-3 ring-1 ring-amber-100">
+            <div v-if="order.dropship?.type" class="mt-3 rounded-lg bg-amber-50/60 p-3 ring-1 ring-amber-100">
               <div class="mb-1.5 flex items-center gap-1.5">
                 <Box class="h-3.5 w-3.5 text-amber-600" />
                 <span class="text-xs font-semibold text-amber-700">Dropship</span>
