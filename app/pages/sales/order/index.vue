@@ -893,7 +893,7 @@ async function fetchOrders() {
     const params: Record<string, string> = {
       page: String(page.value),
       per_page: String(perPage.value),
-      sort_by: 'created_at',
+      sort_by: 'date_created',
       sorting: 'desc',
     }
     if (search.value) params.search = search.value

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Search, Pencil, Trash2, Store, ExternalLink, ToggleLeft, ToggleRight, Loader2, Globe, ShoppingBag, Tag } from 'lucide-vue-next'
+import { Plus, Search, Pencil, Trash2, Store, ExternalLink, ToggleLeft, ToggleRight, Loader2, Globe, ShoppingBag, Tag, RefreshCw } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -222,6 +222,24 @@ async function toggleStatus(s: StoreItem) {
   }
 }
 
+// ─── Refresh token ─────────────────────────────────────────────────────────────
+const refreshingIds = ref<Set<string>>(new Set())
+const oauthSources = ['shopee', 'lazada', 'tiktok']
+
+async function refreshToken(s: StoreItem) {
+  refreshingIds.value.add(s.id)
+  try {
+    await api.post(`/stores/${s.source}/refresh-token?store_id=${encodeURIComponent(s.id)}`, {})
+    toast.success('Token berhasil diperbarui')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal memperbarui token')
+  }
+  finally {
+    refreshingIds.value.delete(s.id)
+  }
+}
+
 // ─── Delete ────────────────────────────────────────────────────────────────────
 async function handleDelete(s: StoreItem) {
   const ok = await confirm({
@@ -364,6 +382,16 @@ onMounted(() => fetchStores())
               </span>
             </button>
             <div class="flex items-center gap-1">
+              <button
+                v-if="oauthSources.includes(s.source)"
+                type="button"
+                class="rounded-lg p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600 disabled:opacity-50"
+                :disabled="refreshingIds.has(s.id)"
+                title="Refresh token"
+                @click="refreshToken(s)"
+              >
+                <RefreshCw class="h-4 w-4" :class="refreshingIds.has(s.id) ? 'animate-spin' : ''" />
+              </button>
               <button
                 type="button"
                 class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
