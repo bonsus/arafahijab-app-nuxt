@@ -63,7 +63,8 @@ const bankOptions = [
   { id: '427', name: 'BNI Syariah', icon: 'bnis' },
   { id: '536', name: 'BCA Syariah', icon: 'bcas' },
   { id: '506', name: 'BSM', icon: 'bsm' },
-    { id: '011', name: 'Seabank', icon: 'seabank' },
+  { id: '011', name: 'Seabank', icon: 'seabank' },
+  { id: 'other', name: 'Bank Lainnya', icon: 'other' },
 ]
 
 function getBankIcon(bankId: string): string {
