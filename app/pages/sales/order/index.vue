@@ -71,6 +71,15 @@ interface SalesOrder {
   payment_provider?: string | null
   staff?: { id: string; name: string } | null
   customer_category?: { id: string; name: string } | null
+  print_labels?: {
+    id: string
+    business_id?: string
+    order_id: string
+    type: string
+    date: string
+    user_id: string
+    user_name: string
+  }[]
   tags: string[] 
   created_at: string
   date_created: string
@@ -126,6 +135,7 @@ const filterStaff = ref<string[]>([])
 const filterPreorder = ref('')
 const filterSource = ref<string[]>([])
 const filterTags = ref<string[]>([])
+const filterShippingLabel = ref('')
 
 // Data for filter dropdowns
 const stores = ref<StoreOption[]>([])
@@ -218,6 +228,11 @@ const codOptions = [
 const preorderOptions = [
   { value: 'yes', label: 'Preorder' },
   { value: 'no', label: 'Ready Stok' },
+]
+
+const shippingLabelOptions = [
+  { value: 'yes', label: 'Sudah Print Label' },
+  { value: 'no', label: 'Belum Print Label' },
 ]
 
 const sourceOptions = [
@@ -361,6 +376,39 @@ function toggleItems(event: MouseEvent, orderId: string) {
   openItemsId.value = orderId
 }
 
+// ─── Print labels history popover ─────────────────────────────────────────────
+const openPrintLabelsId = ref<string | null>(null)
+const printLabelsPos = ref({ top: '0px', left: '0px' })
+const openPrintLabelsOrder = computed(() =>
+  openPrintLabelsId.value ? orders.value.find(o => o.id === openPrintLabelsId.value) : null,
+)
+
+function sortedPrintLabels(order: SalesOrder | null | undefined) {
+  if (!order?.print_labels?.length) return []
+  return [...order.print_labels].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  )
+}
+
+function latestPrintLabel(order: SalesOrder) {
+  return sortedPrintLabels(order)[0] || null
+}
+
+function togglePrintLabels(event: MouseEvent, orderId: string) {
+  if (openPrintLabelsId.value === orderId) {
+    openPrintLabelsId.value = null
+    return
+  }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const vw = import.meta.client ? window.innerWidth : 1280
+  const left = Math.min(rect.left, vw - 336)
+  printLabelsPos.value = {
+    top: `${rect.bottom + 4}px`,
+    left: `${Math.max(8, left)}px`,
+  }
+  openPrintLabelsId.value = orderId
+}
+
 // ─── Action dropdown ──────────────────────────────────────────────────────────
 const openMenuId = ref<string | null>(null)
 const menuPos = ref({ top: '0px', left: '0px' })
@@ -437,6 +485,7 @@ async function exportOrders(endpoint: string = '/sales/order-export/order') {
     if (filterPreorder.value) params.preorder = filterPreorder.value
     if (filterSource.value.length) params.source = filterSource.value.join(',')
     if (filterTags.value.length) params.tag = filterTags.value.join(',')
+    if (filterShippingLabel.value) params.shipping_label = filterShippingLabel.value
 
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], {
@@ -787,7 +836,8 @@ const hasActiveFilters = computed(() =>
     || filterStaff.value.length
     || filterPreorder.value.length
     || filterSource.value.length
-    || filterTags.value.length),
+    || filterTags.value.length
+    || filterShippingLabel.value.length),
 )
 
 // ─── URL query sync ───────────────────────────────────────────────────────────
@@ -807,6 +857,7 @@ function initFromQuery() {
   filterPreorder.value = (q.preorder as string) || ''
   filterSource.value = q.source ? (q.source as string).split(',') : []
   filterTags.value = q.tags ? (q.tags as string).split(',') : []
+  filterShippingLabel.value = (q.shipping_label as string) || ''
   page.value = q.page ? Number.parseInt(q.page as string, 10) : 1
   perPage.value = q.per_page ? Number.parseInt(q.per_page as string, 10) : 20
 }
@@ -828,6 +879,7 @@ function buildQuery(): Record<string, string> {
   if (filterPreorder.value) q.preorder = filterPreorder.value
   if (filterSource.value.length) q.source = filterSource.value.join(',')
   if (filterTags.value.length) q.tags = filterTags.value.join(',')
+  if (filterShippingLabel.value) q.shipping_label = filterShippingLabel.value
   if (page.value > 1) q.page = String(page.value)
   if (perPage.value !== 20) q.per_page = String(perPage.value)
   return q
@@ -859,6 +911,7 @@ async function fetchOrders() {
     if (filterPreorder.value) params.preorder = filterPreorder.value
     if (filterSource.value.length) params.source = filterSource.value.join(',')
     if (filterTags.value.length) params.tag = filterTags.value.join(',')
+    if (filterShippingLabel.value) params.shipping_label = filterShippingLabel.value
 
     const res = await api.get<{ data: Paginated }>('/sales/orders/index', params)
     orders.value = res.data?.data || []
@@ -1010,6 +1063,7 @@ function resetFilters() {
   filterPreorder.value = ''
   filterSource.value = []
   filterTags.value = []
+  filterShippingLabel.value = ''
   page.value = 1
   fetchOrders()
 }
@@ -1424,6 +1478,13 @@ onUnmounted(() => {
             placeholder="Tag"
             @update:model-value="v => { filterTags = v as string[]; onFilterChange() }"
           />
+          <AppFilterSelect
+            :model-value="filterShippingLabel"
+            :options="shippingLabelOptions"
+            :searchable="false"
+            placeholder="Print Label"
+            @update:model-value="v => { filterShippingLabel = v as string; onFilterChange() }"
+          />
         </div>
       </div>
     </div>
@@ -1775,6 +1836,18 @@ onUnmounted(() => {
                     {{ getStatusLabel(order.status, order.sub_status)?.label || order.status }}
                   </span>
                   <!-- <p v-if="order.sub_status" class="text-xs text-gray-400">{{ order.sub_status }}</p> -->
+
+                  <!-- Print label indicator -->
+                  <button
+                    v-if="order.print_labels?.length"
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 transition-colors hover:bg-gray-200"
+                    title="Lihat riwayat cetak label"
+                    @click.stop="togglePrintLabels($event, order.id)"
+                  >
+                    <Printer class="h-3 w-3 text-gray-400" />
+                    {{ order.print_labels.length }}
+                  </button>
                 </div>
               </td>
 
@@ -1838,9 +1911,9 @@ onUnmounted(() => {
   <Teleport to="body">
     <!-- backdrop: closes both items popover and action menu -->
     <div
-      v-if="openItemsId || openMenuId || openCustomerId"
+      v-if="openItemsId || openMenuId || openCustomerId || openPrintLabelsId"
       class="fixed inset-0 z-20"
-      @click="openItemsId = null; openMenuId = null; openCustomerId = null"
+      @click="openItemsId = null; openMenuId = null; openCustomerId = null; openPrintLabelsId = null"
     />
     <Transition
       enter-active-class="transition duration-100 ease-out"
@@ -1886,6 +1959,46 @@ onUnmounted(() => {
         <div class="flex items-center justify-between border-t border-gray-100 bg-gray-50/80 px-4 py-2">
           <span class="text-xs text-gray-400">{{ openItemsOrder.items?.length }} produk</span>
           <span class="text-xs font-semibold text-gray-800">Rp{{ formatCurrency(openItemsOrder.subtotal) }}</span>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Print labels history popover -->
+    <Transition
+      enter-active-class="transition duration-100 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition duration-75 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div
+        v-if="openPrintLabelsId && openPrintLabelsOrder"
+        class="fixed z-30 w-80 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-gray-200"
+        :style="{ top: printLabelsPos.top, left: printLabelsPos.left }"
+        @click.stop
+      >
+        <div class="flex items-center gap-2 border-b border-gray-100 px-4 py-2.5">
+          <Printer class="h-3.5 w-3.5 text-gray-400" />
+          <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Riwayat Cetak Label</p>
+        </div>
+        <div class="max-h-72 overflow-y-auto divide-y divide-gray-50">
+          <div
+            v-for="(label, idx) in sortedPrintLabels(openPrintLabelsOrder)"
+            :key="label.id"
+            class="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50"
+          >
+            <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-semibold text-gray-500">
+              {{ sortedPrintLabels(openPrintLabelsOrder).length - idx }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-medium text-gray-800">{{ formatDateTimeDay(label.date) }}</p>
+              <p v-if="label.user_name" class="text-[11px] text-gray-500">oleh {{ label.user_name }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 bg-gray-50/80 px-4 py-2">
+          <span class="text-xs text-gray-500">{{ openPrintLabelsOrder.print_labels?.length }}x total cetak</span>
         </div>
       </div>
     </Transition>
