@@ -176,7 +176,6 @@ function openCreateCustomer() {
   })
   custErrors.value = {}
   view.value = 'create_customer'
-  custAddr.fetchProvinces()
 }
 
 async function submitCreateCustomer() {
@@ -240,7 +239,6 @@ function openCreateAddress() {
   })
   addrErrors.value = {}
   view.value = 'address_form'
-  addrSelect.fetchProvinces()
 }
 
 function openEditAddress(addr: SalesCustomerAddress) {
@@ -257,7 +255,7 @@ function openEditAddress(addr: SalesCustomerAddress) {
   })
   addrErrors.value = {}
   view.value = 'address_form'
-  addrSelect.initFromState()
+  addrSelect.fetchZipcodes()
 }
 
 async function submitAddressForm() {
@@ -420,7 +418,7 @@ function getAddrError(key: string) { return addrErrors.value[key]?.[0] }
             <!-- ── VIEW: create_customer ────────────────────────────────── -->
             <div v-else-if="view === 'create_customer'" class="space-y-3 p-4">
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">Nama <span class="text-red-500">*</span></label>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Nama x<span class="text-red-500">*</span></label>
                 <input v-model="custForm.name" type="text" class="form-input" placeholder="Nama lengkap pelanggan" />
                 <p v-if="getCustError('name')" class="mt-1 text-xs text-red-600">{{ getCustError('name') }}</p>
               </div>
@@ -437,53 +435,30 @@ function getAddrError(key: string) { return addrErrors.value[key]?.[0] }
                 </div>
               </div>
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">Provinsi <span class="text-red-500">*</span></label>
-                <AppSearchSelect
-                  :model-value="custForm.province"
-                  :options="custAddr.provinces.value"
-                  :loading="custAddr.loadingProvinces.value"
-                  placeholder="Pilih Provinsi"
-                  @update:model-value="custAddr.onProvinceChange"
+                <label class="mb-1 block text-xs font-medium text-gray-600">Kecamatan <span class="text-red-500">*</span></label>
+                <AppDistrictSearchSelect
+                  :province="custForm.province"
+                  :city="custForm.city"
+                  :district="custForm.district"
+                  placeholder="Cari kecamatan..."
+                  @select="custAddr.selectDistrict"
+                  @clear="() => { custForm.province = ''; custForm.city = ''; custForm.district = ''; custForm.postal_code = '' }"
                 />
-                <p v-if="getCustError('province')" class="mt-1 text-xs text-red-600">{{ getCustError('province') }}</p>
+                <p v-if="getCustError('province') || getCustError('city') || getCustError('district')" class="mt-1 text-xs text-red-600">
+                  {{ getCustError('province') || getCustError('city') || getCustError('district') }}
+                </p>
               </div>
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">Kota <span class="text-red-500">*</span></label>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Kode Pos <span class="text-red-500">*</span></label>
                 <AppSearchSelect
-                  :model-value="custForm.city"
-                  :options="custAddr.cities.value"
-                  :loading="custAddr.loadingCities.value"
-                  :disabled="!custForm.province"
-                  placeholder="Pilih Kota"
-                  @update:model-value="custAddr.onCityChange"
+                  :model-value="custForm.postal_code"
+                  :options="custAddr.zipcodes.value"
+                  :loading="custAddr.loadingZipcodes.value"
+                  :disabled="!custForm.district"
+                  placeholder="Kode Pos"
+                  @update:model-value="(v) => custForm.postal_code = v"
                 />
-                <p v-if="getCustError('city')" class="mt-1 text-xs text-red-600">{{ getCustError('city') }}</p>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600">Kecamatan <span class="text-red-500">*</span></label>
-                  <AppSearchSelect
-                    :model-value="custForm.district"
-                    :options="custAddr.districts.value"
-                    :loading="custAddr.loadingDistricts.value"
-                    :disabled="!custForm.city"
-                    placeholder="Kecamatan"
-                    @update:model-value="custAddr.onDistrictChange"
-                  />
-                  <p v-if="getCustError('district')" class="mt-1 text-xs text-red-600">{{ getCustError('district') }}</p>
-                </div>
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600">Kode Pos <span class="text-red-500">*</span></label>
-                  <AppSearchSelect
-                    :model-value="custForm.postal_code"
-                    :options="custAddr.zipcodes.value"
-                    :loading="custAddr.loadingZipcodes.value"
-                    :disabled="!custForm.district"
-                    placeholder="Kode Pos"
-                    @update:model-value="(v) => custForm.postal_code = v"
-                  />
-                  <p v-if="getCustError('zipcode')" class="mt-1 text-xs text-red-600">{{ getCustError('zipcode') }}</p>
-                </div>
+                <p v-if="getCustError('zipcode')" class="mt-1 text-xs text-red-600">{{ getCustError('zipcode') }}</p>
               </div>
               <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Alamat Lengkap <span class="text-red-500">*</span></label>
@@ -592,53 +567,30 @@ function getAddrError(key: string) { return addrErrors.value[key]?.[0] }
                 </div>
               </div>
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">Provinsi <span class="text-red-500">*</span></label>
-                <AppSearchSelect
-                  :model-value="addrForm.province"
-                  :options="addrSelect.provinces.value"
-                  :loading="addrSelect.loadingProvinces.value"
-                  placeholder="Pilih Provinsi"
-                  @update:model-value="addrSelect.onProvinceChange"
+                <label class="mb-1 block text-xs font-medium text-gray-600">Kecamatan <span class="text-red-500">*</span></label>
+                <AppDistrictSearchSelect
+                  :province="addrForm.province"
+                  :city="addrForm.city"
+                  :district="addrForm.district"
+                  placeholder="Cari kecamatan..."
+                  @select="addrSelect.selectDistrict"
+                  @clear="() => { addrForm.province = ''; addrForm.city = ''; addrForm.district = ''; addrForm.postal_code = '' }"
                 />
-                <p v-if="getAddrError('province')" class="mt-1 text-xs text-red-600">{{ getAddrError('province') }}</p>
+                <p v-if="getAddrError('province') || getAddrError('city') || getAddrError('district')" class="mt-1 text-xs text-red-600">
+                  {{ getAddrError('province') || getAddrError('city') || getAddrError('district') }}
+                </p>
               </div>
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600">Kota <span class="text-red-500">*</span></label>
+                <label class="mb-1 block text-xs font-medium text-gray-600">Kode Pos <span class="text-red-500">*</span></label>
                 <AppSearchSelect
-                  :model-value="addrForm.city"
-                  :options="addrSelect.cities.value"
-                  :loading="addrSelect.loadingCities.value"
-                  :disabled="!addrForm.province"
-                  placeholder="Pilih Kota"
-                  @update:model-value="addrSelect.onCityChange"
+                  :model-value="addrForm.postal_code"
+                  :options="addrSelect.zipcodes.value"
+                  :loading="addrSelect.loadingZipcodes.value"
+                  :disabled="!addrForm.district"
+                  placeholder="Kode Pos"
+                  @update:model-value="(v) => addrForm.postal_code = v"
                 />
-                <p v-if="getAddrError('city')" class="mt-1 text-xs text-red-600">{{ getAddrError('city') }}</p>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600">Kecamatan <span class="text-red-500">*</span></label>
-                  <AppSearchSelect
-                    :model-value="addrForm.district"
-                    :options="addrSelect.districts.value"
-                    :loading="addrSelect.loadingDistricts.value"
-                    :disabled="!addrForm.city"
-                    placeholder="Kecamatan"
-                    @update:model-value="addrSelect.onDistrictChange"
-                  />
-                  <p v-if="getAddrError('district')" class="mt-1 text-xs text-red-600">{{ getAddrError('district') }}</p>
-                </div>
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600">Kode Pos <span class="text-red-500">*</span></label>
-                  <AppSearchSelect
-                    :model-value="addrForm.postal_code"
-                    :options="addrSelect.zipcodes.value"
-                    :loading="addrSelect.loadingZipcodes.value"
-                    :disabled="!addrForm.district"
-                    placeholder="Kode Pos"
-                    @update:model-value="(v) => addrForm.postal_code = v"
-                  />
-                  <p v-if="getAddrError('zipcode')" class="mt-1 text-xs text-red-600">{{ getAddrError('zipcode') }}</p>
-                </div>
+                <p v-if="getAddrError('zipcode')" class="mt-1 text-xs text-red-600">{{ getAddrError('zipcode') }}</p>
               </div>
               <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Alamat Lengkap <span class="text-red-500">*</span></label>

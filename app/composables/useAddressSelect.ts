@@ -146,6 +146,16 @@ export function useAddressSelect(state: AddressState) {
     if (val) fetchZipcodes()
   }
 
+  /** Select a district from the district search (auto-fills province, city, district) */
+  function selectDistrict(result: { province: string; city: string; district: string }) {
+    state.province = result.province
+    state.city = result.city
+    state.district = result.district
+    state.postal_code = ''
+    zipcodes.value = []
+    if (result.district) fetchZipcodes()
+  }
+
   function onPostalCodeChange(val: string) {
     state.postal_code = val
   }
@@ -187,6 +197,7 @@ export function useAddressSelect(state: AddressState) {
     onProvinceChange,
     onCityChange,
     onDistrictChange,
+    selectDistrict,
     onPostalCodeChange,
     initFromState,
   }
