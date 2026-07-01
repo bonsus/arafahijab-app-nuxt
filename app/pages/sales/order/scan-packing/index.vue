@@ -70,7 +70,7 @@ async function fetchOrders() {
     if (filterDate.value.to) params.date_to = filterDate.value.to
     if (search.value) params.search = search.value
 
-    const res = await api.get<{ data: PaginationData }>('/sales/orders/scan-packing/index', { params })
+    const res = await api.get<{ data: PaginationData }>('/sales/orders/scan-packing/index', params)
     
     orders.value = res.data.data
     pagination.value = {
