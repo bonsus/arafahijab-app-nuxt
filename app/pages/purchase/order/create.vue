@@ -109,6 +109,7 @@ function updateItemTotal(item: ItemRow) {
 
 // Summary
 const subtotal = computed(() => items.value.reduce((sum, i) => sum + i.total, 0))
+const totalQty = computed(() => items.value.reduce((sum, i) => sum + Number(i.qty || 0), 0))
 const extraDiscount = ref(0)
 const shippingFee = ref(0)
 const tax = ref(0)
@@ -498,6 +499,13 @@ onMounted(() => {
                     </td>
                   </tr>
                 </tbody>
+                <tfoot>
+                  <tr class="border-t border-gray-200 text-sm font-semibold text-gray-900">
+                    <td class="py-3 pr-3 text-right">Total</td>
+                    <td class="px-2 py-3 text-center">{{ totalQty }}</td>
+                    <td colspan="4" />
+                  </tr>
+                </tfoot>
               </table>
             </div>
 

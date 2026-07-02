@@ -9,6 +9,7 @@ interface CustomerCategory {
   name: string
   description: string
   discount: number
+  min_transaction: number
   created_at: string
   updated_at: string
 }
@@ -52,6 +53,7 @@ const form = reactive({
   name: '',
   description: '',
   discount: 0 as number,
+  min_transaction: 0 as number,
 })
 
 function openCreate() {
@@ -59,6 +61,7 @@ function openCreate() {
   form.name = ''
   form.description = ''
   form.discount = 0
+  form.min_transaction = 0
   formErrors.value = {}
   showModal.value = true
 }
@@ -68,6 +71,7 @@ function openEdit(cat: CustomerCategory) {
   form.name = cat.name
   form.description = cat.description || ''
   form.discount = cat.discount || 0
+  form.min_transaction = cat.min_transaction || 0
   formErrors.value = {}
   showModal.value = true
 }
@@ -80,6 +84,7 @@ async function handleSave() {
       name: form.name,
       description: form.description,
       discount: form.discount,
+      min_transaction: form.min_transaction,
     }
     if (editingId.value) {
       await api.put(`/customers/categories/${editingId.value}`, body)
@@ -195,6 +200,12 @@ onMounted(() => fetchCategories())
                 <Percent class="h-3 w-3" />
                 {{ cat.discount }}%
               </span>
+              <span
+                v-if="cat.min_transaction"
+                class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200"
+              >
+                Min. Rp{{ Number(cat.min_transaction).toLocaleString('id-ID') }}
+              </span>
             </div>
             <p v-if="cat.description" class="mt-1 text-xs text-gray-500">{{ cat.description }}</p>
             <!-- <p class="mt-1.5 text-xs text-gray-400">Dibuat {{ formatDate(cat.created_at) }}</p> -->
@@ -249,6 +260,11 @@ onMounted(() => fetchCategories())
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Diskon (%)</label>
                 <input v-model.number="form.discount" type="number" min="0" class="form-input" placeholder="0" />
                 <p v-if="formErrors.discount" class="mt-1 text-xs text-red-500">{{ formErrors.discount[0] }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Minimal Transaksi</label>
+                <input v-model.number="form.min_transaction" type="number" min="0" class="form-input" placeholder="0" />
+                <p v-if="formErrors.min_transaction" class="mt-1 text-xs text-red-500">{{ formErrors.min_transaction[0] }}</p>
               </div>
             </div>
           </div>
