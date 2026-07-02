@@ -458,14 +458,14 @@ onMounted(fetchOrder)
                 <ShoppingCart class="h-4 w-4 text-primary-500" />
                 Informasi Order
               </h2>
-              <button
+              <!-- <button
                 v-if="order.status === 'pending'"
                 class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600"
                 title="Edit Detail"
                 @click="showDetailModal = true"
               >
                 <Pencil class="h-4 w-4" />
-              </button>
+              </button> -->
             </div>
             <dl class="space-y-2 text-sm">
               <div class="flex justify-between gap-2">
@@ -593,14 +593,14 @@ onMounted(fetchOrder)
                 <MapPin class="h-4 w-4 text-primary-500" />
                 Alamat Pengiriman
               </h2>
-              <button
+              <!-- <button
                 v-if="order.status === 'pending'"
                 class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600"
                 title="Edit Alamat"
                 @click="showAddressModal = true"
               >
                 <Pencil class="h-4 w-4" />
-              </button>
+              </button> -->
             </div>
             <div v-if="order.address" class="space-y-0.5 text-sm text-gray-700">
               <p class="font-semibold text-gray-900">{{ order.address.name }}</p>
@@ -619,14 +619,14 @@ onMounted(fetchOrder)
                 <Truck class="h-4 w-4 text-primary-500" />
                 Pengiriman
               </h2>
-              <button
+              <!-- <button
                 v-if="order.status === 'pending'"
                 class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600"
                 title="Edit Pengiriman"
                 @click="showShipmentModal = true"
               >
                 <Pencil class="h-4 w-4" />
-              </button>
+              </button> -->
             </div>
             <div v-if="order.shipment" class="space-y-2 text-sm">
               <div class="flex items-center gap-2">
