@@ -2077,7 +2077,7 @@ onUnmounted(() => {
           <Eye class="h-4 w-4 text-gray-400" />
           Lihat Detail
         </NuxtLink>
-        <NuxtLink
+        <!-- <NuxtLink
           v-if="openMenuOrder.status === 'pending'"
           :to="`/sales/order/create?edit=${openMenuOrder.id}`"
           class="flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -2085,7 +2085,7 @@ onUnmounted(() => {
         >
           <Pencil class="h-4 w-4 text-gray-400" />
           Edit Order
-        </NuxtLink>
+        </NuxtLink> -->
         <button
           v-if="openMenuOrder.payment_status === 'unpaid' && openMenuOrder.payment_provider == 'internal' && openMenuOrder.payment_method == 'bank_transfer'"
           class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-green-600 hover:bg-green-50"

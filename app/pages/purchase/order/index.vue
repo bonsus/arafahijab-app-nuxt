@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Plus, Search, Eye, Trash2,
-  Package, Loader2, Check, X, Pencil, Wallet, Calendar, RefreshCw, Download, ChevronDown,
+  Package, Loader2, Check, X, Pencil, Wallet, Calendar, RefreshCw, Download, ChevronDown, Printer,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -239,6 +239,27 @@ async function resetFilters() {
   filterDate.value = { from: '', to: '' }
   filterSupplierIds.value = []
   await fetchOrders()
+}
+
+// ─── Print ──────────────────────────────────────────────────────────────────────
+const printingId = ref<string | null>(null)
+
+async function printPO(po: PurchaseOrder) {
+  if (printingId.value) return
+  printingId.value = po.id
+  try {
+    const response = await api.get<Blob>(`/purchases/${po.id}/print`, {}, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], { type: 'application/pdf' })
+    const blobUrl = window.URL.createObjectURL(blob)
+    window.open(blobUrl, '_blank')
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000)
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak PO')
+  }
+  finally {
+    printingId.value = null
+  }
 }
 
 // ─── Export ───────────────────────────────────────────────────────────────────
@@ -606,6 +627,17 @@ onMounted(() => {
                   >
                     <Eye class="h-4 w-4" />
                   </NuxtLink>
+
+                  <!-- Print -->
+                  <button
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+                    title="Print PO"
+                    :disabled="printingId === po.id"
+                    @click="printPO(po)"
+                  >
+                    <Loader2 v-if="printingId === po.id" class="h-4 w-4 animate-spin" />
+                    <Printer v-else class="h-4 w-4" />
+                  </button>
 
                   <!-- Hapus: draft only -->
                   <button
