@@ -4,7 +4,7 @@ import {
   RefreshCw, ShoppingCart, X, Truck,
   MoreVertical, Loader2, CheckSquare, CreditCard,
   RefreshCcw, Printer, FileText, Scan, History, ChevronDown,
-  Copy, Check, Download, Box
+  Copy, Check, Download, Box, FileUp
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -540,6 +540,24 @@ const printLabelOrderIds = ref<string[]>([])
 
 // ─── Print Invoice modal ───────────────────────────────────────────────────────
 const printInvoiceOrderIds = ref<string[]>([])
+
+// ─── Bulk Change Resi modal ────────────────────────────────────────────────────
+const bulkResiOrderIds = ref<string[]>([])
+
+function openBulkResiModal(orderIds: string[]) {
+  bulkResiOrderIds.value = orderIds
+  closeMenu()
+}
+
+function closeBulkResiModal() {
+  bulkResiOrderIds.value = []
+}
+
+async function onBulkResiSuccess() {
+  closeBulkResiModal()
+  clearSelection()
+  await fetchOrders()
+}
 
 // Helper function: Check if order can print label
 function canOrderPrintLabel(order: SalesOrder): boolean {
@@ -1244,10 +1262,24 @@ onUnmounted(() => {
                   <Download class="h-4 w-4 text-gray-400" />
                   Everpro
                 </button>
+                <button
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  @click="exportOrders('/sales/order-export/order-idexpress'); showExportDropdown = false"
+                >
+                  <Download class="h-4 w-4 text-gray-400" />
+                  ID Express
+                </button>
               </div>
             </div>
           </Transition>
         </div>
+        <NuxtLink
+          to="/sales/order/import-resi"
+          class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+        >
+          <FileUp class="h-4 w-4" />
+          Import Resi
+        </NuxtLink>
         <NuxtLink
           to="/sales/order/create"
           class="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
@@ -1551,6 +1583,16 @@ onUnmounted(() => {
             >
               <FileText class="h-3.5 w-3.5" />
               Cetak Invoice
+            </button>
+
+            <!-- Bulk Change Resi Button -->
+            <button
+              v-if="selectedIds.length"
+              class="ml-2 flex shrink-0 items-center gap-1.5 rounded-lg border-2 border-gray-600 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              @click="openBulkResiModal(selectedIds)"
+            >
+              <Truck class="h-3.5 w-3.5" />
+              Ubah Resi Massal
             </button>
           </div>
           <button
@@ -2189,6 +2231,14 @@ onUnmounted(() => {
     :orders="orders"
     @close="closePrintInvoiceModal"
     @success="onPrintInvoiceSuccess"
+  />
+  
+  <!-- Bulk Change Resi Modal -->
+  <AppBulkChangeResiModal
+    :order-ids="bulkResiOrderIds"
+    :orders="orders"
+    @close="closeBulkResiModal"
+    @success="onBulkResiSuccess"
   />
   
   <!-- Scan Picking Modal -->
