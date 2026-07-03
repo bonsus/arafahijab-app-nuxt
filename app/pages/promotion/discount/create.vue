@@ -1262,13 +1262,14 @@ onMounted(() => {
                     </tr>
                     <!-- Bulk Edit Row -->
                     <tr class="border-b border-gray-300 bg-primary-50">
-                      <td class="sticky left-0 z-10 bg-primary-50 px-3 py-3" colspan="2">
+                      <td class="sticky left-0 z-10 bg-primary-50 px-3 py-3">
                         <div class="flex flex-col gap-0.5">
                           <span class="text-xs font-semibold text-gray-700">Edit Massal</span>
                           <span v-if="selectedSkuIds.length" class="text-[10px] text-primary-600">{{ selectedSkuIds.length }} SKU dipilih</span>
                           <span v-else class="text-[10px] text-gray-400">Semua SKU</span>
                         </div>
                       </td> 
+                      <td class="px-3 py-3"></td>
                       <td v-for="cat in customerCategories" :key="cat.id" class="px-3 py-2">
                         <div class="relative">
                           <span v-if="form.discount_type==='fixed'" class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
