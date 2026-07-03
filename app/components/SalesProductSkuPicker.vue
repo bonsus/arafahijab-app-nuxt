@@ -68,6 +68,36 @@ const filterPreorder = ref(false)
 const filterHideOutOfStock = ref(true)
 
 let debounceTimer: ReturnType<typeof setTimeout>
+let lastApiQuery = ''
+
+// Search syntax: "query, variant" — the part before the first comma is sent to
+// the API as the product search, the parts after are used to filter variants
+// on the frontend only (a SKU must match every variant filter term).
+const apiQuery = computed(() => (query.value.split(',')[0] || '').trim())
+
+const variantFilters = computed(() =>
+  query.value
+    .split(',')
+    .slice(1)
+    .map(p => p.trim().toLowerCase())
+    .filter(Boolean),
+)
+
+const filteredResults = computed<SalesProduct[]>(() => {
+  if (!variantFilters.value.length) return results.value
+  return results.value
+    .map((product) => {
+      const skus = product.skus.filter((sku) => {
+        const haystack = [
+          ...(sku.variants || []).map(v => v.value),
+          sku.sku,
+        ].join(' ').toLowerCase()
+        return variantFilters.value.every(f => haystack.includes(f))
+      })
+      return { ...product, skus }
+    })
+    .filter(product => product.skus.length > 0)
+})
 
 function openModal() {
   if (!props.customerId) return
@@ -77,7 +107,12 @@ function openModal() {
 
 function onSearch() {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(fetchProducts, 350)
+  debounceTimer = setTimeout(() => {
+    // Only hit the API when the query part (before the comma) changes.
+    // Variant filters are applied on the frontend via `filteredResults`.
+    if (apiQuery.value === lastApiQuery) return
+    fetchProducts()
+  }, 350)
 }
 
 function clearSearch() {
@@ -90,7 +125,7 @@ async function fetchProducts() {
   loading.value = true
   try {
     const params: Record<string, string> = {}
-    if (query.value) params.search = query.value
+    if (apiQuery.value) params.search = apiQuery.value
     if (props.customerCategoryId) params.customer_category_id = props.customerCategoryId
     if (filterPreorder.value) params.is_preorder = 'true'
     if (filterHideOutOfStock.value) params.hide_out_of_stock = 'true'
@@ -98,6 +133,7 @@ async function fetchProducts() {
     const payload = res.data
     results.value = (payload?.data || []) as SalesProduct[]
     total.value = payload?.total || 0
+    lastApiQuery = apiQuery.value
     expandedIds.value = results.value.slice(0, 1).map(p => p.id)
   }
   catch {
@@ -110,6 +146,9 @@ async function fetchProducts() {
 }
 
 function isExpanded(id: string) {
+  // When a variant filter is active, expand every matching product so the
+  // filtered SKUs are immediately visible.
+  if (variantFilters.value.length) return true
   return expandedIds.value.includes(id)
 }
 
@@ -214,7 +253,7 @@ function priceRange(product: SalesProduct): string {
               <input
                 v-model="query"
                 type="text"
-                placeholder="Cari nama produk atau SKU..."
+                placeholder="Cari produk, variant (pisah koma). Contoh: Livia, merah"
                 class="w-full rounded-xl border border-gray-300 py-2 pl-10 pr-9 text-sm placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                 @input="onSearch"
               />
@@ -227,6 +266,16 @@ function priceRange(product: SalesProduct): string {
               </button>
             </div>
             
+            <!-- Variant filter hint -->
+            <div v-if="variantFilters.length" class="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+              <span>Filter variant:</span>
+              <span
+                v-for="f in variantFilters"
+                :key="f"
+                class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700"
+              >{{ f }}</span>
+            </div>
+
             <!-- Filters -->
             <div class="flex flex-wrap items-center gap-3">
               <label class="flex items-center gap-1.5 cursor-pointer">
@@ -258,7 +307,7 @@ function priceRange(product: SalesProduct): string {
             </div>
 
             <!-- Empty -->
-            <div v-else-if="!results.length" class="py-16 text-center">
+            <div v-else-if="!filteredResults.length" class="py-16 text-center">
               <Package class="mx-auto mb-3 h-12 w-12 text-gray-200" />
               <p class="text-sm font-medium text-gray-500">Produk tidak ditemukan</p>
               <p class="mt-1 text-xs text-gray-400">Coba kata kunci lain</p>
@@ -266,7 +315,7 @@ function priceRange(product: SalesProduct): string {
 
             <!-- Product list -->
             <div v-else class="divide-y divide-gray-100">
-              <div v-for="product in results" :key="product.id">
+              <div v-for="product in filteredResults" :key="product.id">
 
                 <!-- Product header row -->
                 <button
@@ -389,7 +438,10 @@ function priceRange(product: SalesProduct): string {
           <!-- Footer -->
           <div class="flex shrink-0 items-center justify-between border-t border-gray-100 px-4 py-2.5">
             <p class="text-xs text-gray-400">
-              <template v-if="total > results.length">
+              <template v-if="variantFilters.length">
+                {{ filteredResults.length }} produk cocok dengan filter variant
+              </template>
+              <template v-else-if="total > results.length">
                 Menampilkan {{ results.length }} dari {{ total }} produk · Gunakan pencarian untuk memfilter
               </template>
               <template v-else-if="results.length">
