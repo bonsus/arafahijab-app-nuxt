@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  ArrowLeft, Loader2, ChevronDown, Plus, Pencil, Check, X, Copy, Image as ImageIcon,
+  ArrowLeft, Loader2, ChevronDown, Plus, Pencil, Check, X, Copy, Image as ImageIcon, Eye, EyeOff,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -160,6 +160,58 @@ function sortSkus() {
     if (d1 !== 0) return d1
     return rank(a.variant_2, v2Order) - rank(b.variant_2, v2Order)
   })
+}
+
+// --- Selection for scoped bulk edit ---
+// Each SKU is uniquely identified by its variant combination.
+const selectedSkuKeys = ref<string[]>([])
+const showOnlySelected = ref(false)
+const openVariantDropdown = ref<'v1' | 'v2' | null>(null)
+
+function skuKey(sku: SkuRow): string {
+  return `${sku.variant_1}||${sku.variant_2}`
+}
+
+function isSkuSelected(sku: SkuRow): boolean {
+  return selectedSkuKeys.value.includes(skuKey(sku))
+}
+
+function toggleSkuSelection(sku: SkuRow) {
+  const key = skuKey(sku)
+  const i = selectedSkuKeys.value.indexOf(key)
+  if (i >= 0) selectedSkuKeys.value.splice(i, 1)
+  else selectedSkuKeys.value.push(key)
+}
+
+const allSkusSelected = computed(() =>
+  skus.value.length > 0 && selectedSkuKeys.value.length === skus.value.length,
+)
+
+function toggleAllSkus() {
+  selectedSkuKeys.value = allSkusSelected.value ? [] : skus.value.map(skuKey)
+}
+
+// Variant-based selection (check a variant value to select all matching SKUs)
+function skuKeysWithVariant(isVariant1: boolean, value: string): string[] {
+  return skus.value
+    .filter(s => (isVariant1 ? s.variant_1 : s.variant_2) === value)
+    .map(skuKey)
+}
+
+function isVariantValueSelected(isVariant1: boolean, value: string): boolean {
+  const keys = skuKeysWithVariant(isVariant1, value)
+  return keys.length > 0 && keys.every(k => selectedSkuKeys.value.includes(k))
+}
+
+function toggleVariantValue(isVariant1: boolean, value: string) {
+  const keys = skuKeysWithVariant(isVariant1, value)
+  if (isVariantValueSelected(isVariant1, value)) {
+    selectedSkuKeys.value = selectedSkuKeys.value.filter(k => !keys.includes(k))
+  } else {
+    const set = new Set(selectedSkuKeys.value)
+    keys.forEach(k => set.add(k))
+    selectedSkuKeys.value = Array.from(set)
+  }
 }
 
 function getSkuError(index: number, field: string): string | undefined {
@@ -327,7 +379,10 @@ function generateNewSkusForValue(newValue: string, isVariant1: boolean) {
 
 function applyBulkUpdate() {
   let applied = 0
-  skus.value.forEach(s => {
+  const targets = selectedSkuKeys.value.length
+    ? skus.value.filter(s => selectedSkuKeys.value.includes(skuKey(s)))
+    : skus.value
+  targets.forEach(s => {
     if (bulkFields.value.weight !== null) {
       s.weight = bulkFields.value.weight
       applied++
@@ -709,6 +764,85 @@ async function handleSubmit() {
           </div>
         </div>
 
+        <!-- Selection controls: variant-based checklist + show/hide -->
+        <div
+          v-if="variant1Values.length || variant2Values.length || selectedSkuKeys.length"
+          class="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-3 sm:px-6"
+        >
+          <span v-if="variant1Values.length || variant2Values.length" class="text-xs font-medium text-gray-500">Ceklis berdasarkan variant:</span>
+          <!-- Variant 1 dropdown -->
+          <div v-if="variant1Values.length" class="relative">
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              @click="openVariantDropdown = openVariantDropdown === 'v1' ? null : 'v1'"
+            >
+              <span>Semua {{ variantName1 || 'Varian 1' }}</span>
+              <ChevronDown class="h-4 w-4 text-gray-400 transition-transform" :class="openVariantDropdown === 'v1' ? 'rotate-180' : ''" />
+            </button>
+            <div
+              v-if="openVariantDropdown === 'v1'"
+              class="absolute left-0 top-full z-30 mt-1 max-h-64 w-52 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1.5 shadow-lg"
+            >
+              <label
+                v-for="v in variant1Values"
+                :key="v.value"
+                class="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  :checked="isVariantValueSelected(true, v.value)"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  @change="toggleVariantValue(true, v.value)"
+                />
+                <span class="text-sm text-gray-700">{{ v.value }}</span>
+              </label>
+            </div>
+          </div>
+          <!-- Variant 2 dropdown -->
+          <div v-if="variant2Values.length" class="relative">
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              @click="openVariantDropdown = openVariantDropdown === 'v2' ? null : 'v2'"
+            >
+              <span>Semua {{ variantName2 || 'Varian 2' }}</span>
+              <ChevronDown class="h-4 w-4 text-gray-400 transition-transform" :class="openVariantDropdown === 'v2' ? 'rotate-180' : ''" />
+            </button>
+            <div
+              v-if="openVariantDropdown === 'v2'"
+              class="absolute left-0 top-full z-30 mt-1 max-h-64 w-52 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1.5 shadow-lg"
+            >
+              <label
+                v-for="v in variant2Values"
+                :key="v.value"
+                class="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  :checked="isVariantValueSelected(false, v.value)"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  @change="toggleVariantValue(false, v.value)"
+                />
+                <span class="text-sm text-gray-700">{{ v.value }}</span>
+              </label>
+            </div>
+          </div>
+          <!-- Show only checked toggle -->
+          <button
+            v-if="selectedSkuKeys.length"
+            type="button"
+            class="ml-auto flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="showOnlySelected ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'"
+            @click="showOnlySelected = !showOnlySelected"
+          >
+            <component :is="showOnlySelected ? EyeOff : Eye" class="h-4 w-4" />
+            <span>{{ showOnlySelected ? 'Tampilkan Semua' : 'Tampilkan yang Diceklis Saja' }}</span>
+          </button>
+          <!-- Click-outside overlay -->
+          <div v-if="openVariantDropdown" class="fixed inset-0 z-20" @click="openVariantDropdown = null" />
+        </div>
+
         <div class="overflow-x-auto -mx-px">
           <table class="w-full min-w-[700px] text-left text-sm sm:min-w-[900px]">
             <thead>
@@ -716,6 +850,7 @@ async function handleSubmit() {
               <tr v-if="showBulk" class="border-b border-amber-200 bg-amber-50/60">
                 <td class="sticky left-0 z-10 min-w-[6rem] bg-amber-50 px-3 py-2 sm:min-w-[8rem]">
                   <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-600">Massal</span>
+                  <span v-if="selectedSkuKeys.length" class="block text-[9px] font-medium text-primary-600">{{ selectedSkuKeys.length }} dipilih</span>
                 </td>
                 <td v-if="variantName2" :class="isMobile ? 'bg-amber-50 px-3 py-2 min-w-[6rem]' : 'sticky left-[8rem] z-10 min-w-[8rem] bg-amber-50 px-3 py-2'" />
                 <td :class="isMobile ? 'bg-amber-50 px-3 py-2 min-w-[8rem]' : 'sticky z-10 min-w-[10rem] bg-amber-50 px-3 py-2 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]'" :style="!isMobile ? { left: stickySkuLeft } : {}" />
@@ -783,7 +918,17 @@ async function handleSubmit() {
               </tr>
               <!-- Column headers -->
               <tr class="border-b border-gray-200 bg-gray-50">
-                <th class="sticky left-0 z-10 min-w-[6rem] whitespace-nowrap bg-gray-50 px-3 py-2.5 font-medium text-gray-600 sm:min-w-[8rem]">{{ variantName1 || 'Varian 1' }}</th>
+                <th class="sticky left-0 z-10 min-w-[6rem] whitespace-nowrap bg-gray-50 px-3 py-2.5 font-medium text-gray-600 sm:min-w-[8rem]">
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      :checked="allSkusSelected"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      @change="toggleAllSkus"
+                    />
+                    <span>{{ variantName1 || 'Varian 1' }}</span>
+                  </div>
+                </th>
                 <th v-if="variantName2" :class="isMobile ? 'whitespace-nowrap bg-gray-50 px-3 py-2.5 font-medium text-gray-600 min-w-[6rem]' : 'sticky left-[8rem] z-10 min-w-[8rem] whitespace-nowrap bg-gray-50 px-3 py-2.5 font-medium text-gray-600'">{{ variantName2 }}</th>
                 <th :class="isMobile ? 'whitespace-nowrap bg-gray-50 px-3 py-2.5 font-medium text-gray-600 min-w-[8rem]' : 'sticky z-10 min-w-[10rem] whitespace-nowrap bg-gray-50 px-3 py-2.5 font-medium text-gray-600 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]'" :style="!isMobile ? { left: stickySkuLeft } : {}">Kode SKU</th>
                 <th class="whitespace-nowrap px-3 py-2.5 font-medium text-gray-600">Gambar</th>
@@ -802,11 +947,24 @@ async function handleSubmit() {
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-for="(sku, si) in skus" :key="sku.id || si" class="hover:bg-gray-50/50">
-                <td class="sticky left-0 z-10 min-w-[6rem] bg-white px-3 py-2 sm:min-w-[8rem]">
-                  <span class="inline-block rounded-full px-2.5 py-1 text-xs font-medium" :class="sku.id ? 'bg-primary-50 text-primary-700' : 'bg-green-50 text-green-700'">
-                    {{ sku.variant_1 }}
-                  </span>
+              <tr
+                v-for="(sku, si) in skus"
+                v-show="!showOnlySelected || !selectedSkuKeys.length || isSkuSelected(sku)"
+                :key="sku.id || si"
+                :class="isSkuSelected(sku) ? 'bg-primary-50/40' : 'hover:bg-gray-50/50'"
+              >
+                <td class="sticky left-0 z-10 min-w-[6rem] bg-white px-3 py-2 sm:min-w-[8rem]" :class="isSkuSelected(sku) ? 'bg-primary-50/60' : 'bg-white'">
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      :checked="isSkuSelected(sku)"
+                      class="h-4 w-4 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      @change="toggleSkuSelection(sku)"
+                    />
+                    <span class="inline-block rounded-full px-2.5 py-1 text-xs font-medium" :class="sku.id ? 'bg-primary-50 text-primary-700' : 'bg-green-50 text-green-700'">
+                      {{ sku.variant_1 }}
+                    </span>
+                  </div>
                 </td>
                 <td v-if="variantName2" :class="isMobile ? 'bg-white px-3 py-2 min-w-[6rem]' : 'sticky left-[8rem] z-10 min-w-[8rem] bg-white px-3 py-2'">
                   <span class="inline-block rounded-full px-2.5 py-1 text-xs font-medium" :class="sku.id ? 'bg-primary-50 text-primary-700' : 'bg-green-50 text-green-700'">

@@ -67,8 +67,8 @@ interface ProductDetail {
   } | string[] | null
   thumbnail_media: MediaFile[] | null
   images_media: MediaItem[] | null
-  variant1: string
-  variant2: string
+  variant_1: string
+  variant_2: string
   tags: string[]
   type: string
   status: string
@@ -530,14 +530,14 @@ watch(() => product.value?.description, () => {
               </div>
 
               <!-- Variant names -->
-              <div v-if="product.variant1" class="grid gap-4 sm:grid-cols-2">
+              <div v-if="product.variant_1" class="grid gap-4 sm:grid-cols-2">
                 <div>
                   <dt class="text-xs font-medium text-gray-500">Nama Varian 1</dt>
-                  <dd class="mt-1 text-sm text-gray-700">{{ product.variant1 }}</dd>
+                  <dd class="mt-1 text-sm text-gray-700">{{ product.variant_1 }}</dd>
                 </div>
-                <div v-if="product.variant2">
+                <div v-if="product.variant_2">
                   <dt class="text-xs font-medium text-gray-500">Nama Varian 2</dt>
-                  <dd class="mt-1 text-sm text-gray-700">{{ product.variant2 }}</dd>
+                  <dd class="mt-1 text-sm text-gray-700">{{ product.variant_2 }}</dd>
                 </div>
               </div>
 
@@ -708,24 +708,24 @@ watch(() => product.value?.description, () => {
                 <tr class="border-b border-gray-200 bg-gray-50">
                   <th
                     class="sticky left-0 z-10 min-w-[120px] whitespace-nowrap bg-gray-50 px-4 py-2.5 font-medium text-gray-600"
-                    :class="!product.variant1 ? 'sku-shadow' : ''"
+                    :class="!product.variant_1 ? 'sku-shadow' : ''"
                   >
                     SKU
                   </th>
                   <th
-                    v-if="product.variant1"
+                    v-if="product.variant_1"
                     class="sticky z-10 min-w-[100px] whitespace-nowrap bg-gray-50 px-4 py-2.5 font-medium text-gray-600"
                     :style="{ left: '120px' }"
-                    :class="!product.variant2 ? 'sku-shadow' : ''"
+                    :class="!product.variant_2 ? 'sku-shadow' : ''"
                   >
-                    {{ product.variant1 }}
+                    {{ product.variant_1 }}
                   </th>
                   <th
-                    v-if="product.variant2"
+                    v-if="product.variant_2"
                     class="sticky z-10 min-w-[100px] whitespace-nowrap bg-gray-50 px-4 py-2.5 font-medium text-gray-600 sku-shadow"
                     :style="{ left: '220px' }"
                   >
-                    {{ product.variant2 }}
+                    {{ product.variant_2 }}
                   </th>
                   <th class="whitespace-nowrap px-4 py-2.5 font-medium text-gray-600">Gambar</th>
                   <th class="whitespace-nowrap px-4 py-2.5 font-medium text-gray-600">Berat</th>
@@ -748,22 +748,22 @@ watch(() => product.value?.description, () => {
                   <tr class="group/row hover:bg-gray-50/50">
                     <td
                       class="sticky left-0 z-10 min-w-[120px] whitespace-nowrap bg-white px-4 py-2.5 font-mono text-xs text-gray-900 group-hover/row:bg-gray-50/50"
-                      :class="!product.variant1 ? 'sku-shadow' : ''"
+                      :class="!product.variant_1 ? 'sku-shadow' : ''"
                     >
                       {{ sku.sku }}
                     </td>
                     <td
-                      v-if="product.variant1"
+                      v-if="product.variant_1"
                       class="sticky z-10 min-w-[100px] bg-white px-4 py-2.5 group-hover/row:bg-gray-50/50"
                       :style="{ left: '120px' }"
-                      :class="!product.variant2 ? 'sku-shadow' : ''"
+                      :class="!product.variant_2 ? 'sku-shadow' : ''"
                     >
                       <span class="inline-block rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
                         {{ sku.variants?.[0]?.value || '-' }}
                       </span>
                     </td>
                     <td
-                      v-if="product.variant2"
+                      v-if="product.variant_2"
                       class="sticky z-10 min-w-[100px] bg-white px-4 py-2.5 group-hover/row:bg-gray-50/50 sku-shadow"
                       :style="{ left: '220px' }"
                     >
