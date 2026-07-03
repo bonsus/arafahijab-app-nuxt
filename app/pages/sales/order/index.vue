@@ -1729,7 +1729,7 @@ onUnmounted(() => {
                     </button>
                   </div>
                   <p class="text-xs text-gray-500 whitespace-nowrap">
-                    {{ formatDateTimeDay(order.date_created || order.created_at) }}
+                    {{ formatDateTimeDay(order.date_created) }}
                   </p>
                   <div class="flex flex-wrap gap-1">
                     <span
