@@ -147,6 +147,21 @@ function createEmptyPrices(): SkuPrice[] {
   }))
 }
 
+// Sort SKU rows to follow the variant value order (variant 1, then variant 2)
+function sortSkus() {
+  const v1Order = variant1Values.value.map(v => v.value)
+  const v2Order = variant2Values.value.map(v => v.value)
+  const rank = (val: string, order: string[]) => {
+    const i = order.indexOf(val)
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i
+  }
+  skus.value.sort((a, b) => {
+    const d1 = rank(a.variant_1, v1Order) - rank(b.variant_1, v1Order)
+    if (d1 !== 0) return d1
+    return rank(a.variant_2, v2Order) - rank(b.variant_2, v2Order)
+  })
+}
+
 function getSkuError(index: number, field: string): string | undefined {
   const key1 = `skus[${index}].${field}`
   const key2 = `skus[${index}].${field.replace(/_([a-z])/g, (_, c) => c.toUpperCase())}`
@@ -241,6 +256,7 @@ function addVariant1() {
   variant1Values.value.push({ value: val, original: false, editing: false, editValue: '' })
   newVar1.value = ''
   generateNewSkusForValue(val, true)
+  sortSkus()
 }
 
 function addVariant2() {
@@ -253,6 +269,7 @@ function addVariant2() {
   variant2Values.value.push({ value: val, original: false, editing: false, editValue: '' })
   newVar2.value = ''
   generateNewSkusForValue(val, false)
+  sortSkus()
 }
 
 function generateNewSkusForValue(newValue: string, isVariant1: boolean) {
@@ -412,6 +429,7 @@ async function loadProduct() {
           })),
         }
       })
+      sortSkus()
     }
   }
   catch (err: any) {
