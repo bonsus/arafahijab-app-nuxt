@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, X, Loader2, Package, Plus } from 'lucide-vue-next'
+import { Search, X, Loader2, Package, Plus, Check } from 'lucide-vue-next'
 
 export interface SkuPrice {
   customer_category_id: string
@@ -213,6 +213,22 @@ function formatVariants(variants: any): string {
                     </div>
                     <p class="text-xs font-semibold text-gray-700">{{ product.name }}</p>
                     <span class="ml-auto text-[10px] text-gray-400">{{ product.skus?.length || 0 }} SKU</span>
+                    <button
+                      v-if="!isProductFullyAdded(product)"
+                      type="button"
+                      class="flex shrink-0 items-center gap-1 rounded-lg bg-primary-100 px-2.5 py-1 text-[11px] font-semibold text-primary-700 transition-colors hover:bg-primary-200"
+                      @click="selectAllSkus(product)"
+                    >
+                      <Plus class="h-3 w-3" />
+                      Pilih Semua
+                    </button>
+                    <span
+                      v-else
+                      class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-600"
+                    >
+                      <Check class="h-3 w-3" />
+                      Semua Ditambahkan
+                    </span>
                   </div>
 
                   <!-- Individual SKU rows -->

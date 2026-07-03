@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Loader2, Percent, Package, Box, Trash2, ToggleRight, ToggleLeft } from 'lucide-vue-next'
+import { ArrowLeft, Loader2, Percent, Package, Box, Trash2, ToggleRight, ToggleLeft, ChevronDown, Eye, EyeOff } from 'lucide-vue-next'
 import { convertIsoToDatetimeLocal, formatDateTimeForApi } from '~/composables/useFormatters'
 import type { PromotionProduct } from '~/components/AppPromotionProductPicker.vue'
 import type { PromotionSku } from '~/components/AppPromotionSkuPicker.vue'
@@ -144,6 +144,132 @@ const bulkDiscountValues = ref<Record<string, number | null>>({})
 const bulkMinQty = ref<number | null>(null)
 const bulkMaxQty = ref<number | null>(null)
 
+// Selection for scoped bulk edit — when items are checked, bulk edit only
+// applies to them; otherwise it applies to all items.
+const selectedProductIds = ref<string[]>([])
+const selectedSkuIds = ref<string[]>([])
+
+// Show only checked items (hide unchecked)
+const showOnlySelected = ref(false)
+
+function toggleProductSelection(id: string) {
+  const i = selectedProductIds.value.indexOf(id)
+  if (i >= 0) selectedProductIds.value.splice(i, 1)
+  else selectedProductIds.value.push(id)
+}
+
+function toggleSkuSelection(id: string) {
+  const i = selectedSkuIds.value.indexOf(id)
+  if (i >= 0) selectedSkuIds.value.splice(i, 1)
+  else selectedSkuIds.value.push(id)
+}
+
+const allProductsSelected = computed(() =>
+  productItems.value.length > 0 && selectedProductIds.value.length === productItems.value.length,
+)
+
+function toggleAllProducts() {
+  selectedProductIds.value = allProductsSelected.value ? [] : productItems.value.map(p => p.product_id)
+}
+
+const allSkusSelected = computed(() =>
+  skuItems.value.length > 0 && selectedSkuIds.value.length === skuItems.value.length,
+)
+
+function toggleAllSkus() {
+  selectedSkuIds.value = allSkusSelected.value ? [] : skuItems.value.map(s => s.sku_id)
+}
+
+function isSkuGroupSelected(skus: SkuItem[]): boolean {
+  return skus.length > 0 && skus.every(s => selectedSkuIds.value.includes(s.sku_id))
+}
+
+function toggleSkuGroup(skus: SkuItem[]) {
+  const ids = skus.map(s => s.sku_id)
+  if (isSkuGroupSelected(skus)) {
+    selectedSkuIds.value = selectedSkuIds.value.filter(id => !ids.includes(id))
+  } else {
+    const set = new Set(selectedSkuIds.value)
+    ids.forEach(id => set.add(id))
+    selectedSkuIds.value = Array.from(set)
+  }
+}
+
+// ─── Variant-based selection (SKU only) ─────────────────────────────────────
+// Build variant groups (e.g. Warna, Ukuran) from the added SKUs, then let the
+// user check a variant value to auto-select every SKU that has it.
+const openVariantDropdown = ref<string | null>(null)
+
+function getVariantPairs(variants: any): { name: string; value: string }[] {
+  if (!variants) return []
+  if (Array.isArray(variants)) {
+    return variants
+      .map(v => ({ name: String(v?.name ?? ''), value: String(v?.value ?? v?.name ?? v) }))
+      .filter(v => v.name && v.value)
+  }
+  if (typeof variants === 'object') {
+    return Object.entries(variants).map(([name, value]) => ({
+      name,
+      value: typeof value === 'object' && value !== null
+        ? String((value as any).value || (value as any).name || value)
+        : String(value),
+    })).filter(v => v.name && v.value)
+  }
+  return []
+}
+
+const variantGroups = computed(() => {
+  const groups: Record<string, string[]> = {}
+  skuItems.value.forEach(item => {
+    getVariantPairs(item.sku_variants).forEach(({ name, value }) => {
+      if (!groups[name]) groups[name] = []
+      if (!groups[name]!.includes(value)) groups[name]!.push(value)
+    })
+  })
+  return Object.entries(groups).map(([name, values]) => ({ name, values }))
+})
+
+function skuIdsWithVariant(name: string, value: string): string[] {
+  return skuItems.value
+    .filter(item => getVariantPairs(item.sku_variants).some(v => v.name === name && v.value === value))
+    .map(item => item.sku_id)
+}
+
+function isVariantValueSelected(name: string, value: string): boolean {
+  const ids = skuIdsWithVariant(name, value)
+  return ids.length > 0 && ids.every(id => selectedSkuIds.value.includes(id))
+}
+
+function toggleVariantValue(name: string, value: string) {
+  const ids = skuIdsWithVariant(name, value)
+  if (isVariantValueSelected(name, value)) {
+    selectedSkuIds.value = selectedSkuIds.value.filter(id => !ids.includes(id))
+  } else {
+    const set = new Set(selectedSkuIds.value)
+    ids.forEach(id => set.add(id))
+    selectedSkuIds.value = Array.from(set)
+  }
+}
+
+function isVariantGroupSelected(name: string): boolean {
+  const group = variantGroups.value.find(g => g.name === name)
+  return !!group && group.values.length > 0 && group.values.every(v => isVariantValueSelected(name, v))
+}
+
+function toggleVariantGroup(name: string) {
+  const group = variantGroups.value.find(g => g.name === name)
+  if (!group) return
+  const ids = new Set<string>()
+  group.values.forEach(v => skuIdsWithVariant(name, v).forEach(id => ids.add(id)))
+  if (isVariantGroupSelected(name)) {
+    selectedSkuIds.value = selectedSkuIds.value.filter(id => !ids.has(id))
+  } else {
+    const set = new Set(selectedSkuIds.value)
+    ids.forEach(id => set.add(id))
+    selectedSkuIds.value = Array.from(set)
+  }
+}
+
 function applyBulkDiscount() {
   const hasValues = Object.values(bulkDiscountValues.value).some(v => v !== null && v !== undefined)
   
@@ -170,7 +296,10 @@ function applyBulkDiscount() {
   let appliedCount = 0
   
   if (form.item_type === 'product') {
-    productItems.value.forEach(item => {
+    const targets = selectedProductIds.value.length
+      ? productItems.value.filter(i => selectedProductIds.value.includes(i.product_id))
+      : productItems.value
+    targets.forEach(item => {
       item.prices.forEach(price => {
         const value = bulkDiscountValues.value[price.customer_category_id]
         if (value !== null && value !== undefined) {
@@ -188,7 +317,10 @@ function applyBulkDiscount() {
     })
     toast.success(`Diskon diterapkan`)
   } else {
-    skuItems.value.forEach(item => {
+    const targets = selectedSkuIds.value.length
+      ? skuItems.value.filter(i => selectedSkuIds.value.includes(i.sku_id))
+      : skuItems.value
+    targets.forEach(item => {
       item.prices.forEach(price => {
         const value = bulkDiscountValues.value[price.customer_category_id]
         if (value !== null && value !== undefined) {
@@ -493,6 +625,28 @@ const customerCategories = computed(() => {
 const groupedSkuItems = computed(() => {
   const grouped: Record<string, SkuItem[]> = {}
   skuItems.value.forEach(sku => {
+    if (!grouped[sku.product_id]) {
+      grouped[sku.product_id] = []
+    }
+    grouped[sku.product_id]!.push(sku)
+  })
+  return grouped
+})
+
+// Product items to display (respects "show only checked" toggle)
+const displayedProductItems = computed(() =>
+  showOnlySelected.value && selectedProductIds.value.length
+    ? productItems.value.filter(i => selectedProductIds.value.includes(i.product_id))
+    : productItems.value,
+)
+
+// Grouped SKU items to display (respects "show only checked" toggle)
+const displayedGroupedSkuItems = computed(() => {
+  const source = showOnlySelected.value && selectedSkuIds.value.length
+    ? skuItems.value.filter(i => selectedSkuIds.value.includes(i.sku_id))
+    : skuItems.value
+  const grouped: Record<string, SkuItem[]> = {}
+  source.forEach(sku => {
     if (!grouped[sku.product_id]) {
       grouped[sku.product_id] = []
     }
@@ -830,11 +984,33 @@ onMounted(() => {
               </div>
 
               <div v-else class="space-y-4">
+                <!-- Show only checked toggle -->
+                <div v-if="selectedProductIds.length" class="flex justify-end">
+                  <button
+                    type="button"
+                    class="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
+                    :class="showOnlySelected ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'"
+                    @click="showOnlySelected = !showOnlySelected"
+                  >
+                    <component :is="showOnlySelected ? EyeOff : Eye" class="h-4 w-4" />
+                    <span>{{ showOnlySelected ? 'Tampilkan Semua' : 'Tampilkan yang Diceklis Saja' }}</span>
+                  </button>
+                </div>
                 <div class="overflow-x-auto">
                 <table class="w-full min-w-[1200px] text-left text-sm">
                   <thead>
                     <tr class="border-b-2 border-gray-200 bg-gray-50">
-                      <th class="sticky left-0 z-10 min-w-[200px] bg-gray-50 px-3 py-3 font-semibold text-gray-700">Produk</th>
+                      <th class="sticky left-0 z-10 min-w-[200px] bg-gray-50 px-3 py-3 font-semibold text-gray-700">
+                        <div class="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            :checked="allProductsSelected"
+                            class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            @change="toggleAllProducts"
+                          />
+                          <span>Produk</span>
+                        </div>
+                      </th>
                       <th class="px-3 py-3 text-center font-semibold text-gray-700 text-nowrap">Range Harga</th>
                       <th v-for="cat in customerCategories" :key="cat.id" class="px-3 py-3 text-center font-semibold text-gray-700">
                         <div class="flex flex-col">
@@ -849,8 +1025,10 @@ onMounted(() => {
                     <!-- Bulk Edit Row -->
                     <tr class="border-b border-gray-300 bg-primary-50">
                       <td class="sticky left-0 z-10 bg-primary-50 px-3 py-3">
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-col gap-0.5">
                           <span class="text-xs font-semibold text-gray-700">Edit Massal</span>
+                          <span v-if="selectedProductIds.length" class="text-[10px] text-primary-600">{{ selectedProductIds.length }} produk dipilih</span>
+                          <span v-else class="text-[10px] text-gray-400">Semua produk</span>
                         </div>
                       </td>
                       <td class="px-3 py-3"></td>
@@ -903,12 +1081,22 @@ onMounted(() => {
                   </thead>
                   <tbody>
                     <tr
-                      v-for="(item, idx) in productItems"
+                      v-for="(item, idx) in displayedProductItems"
                       :key="item.product_id"
-                      class="border-b border-gray-100 hover:bg-gray-50"
+                      class="border-b border-gray-100"
+                      :class="selectedProductIds.includes(item.product_id) ? 'bg-primary-50/60' : 'hover:bg-gray-50'"
                     >
-                      <td class="sticky left-0 z-10 bg-white px-3 py-3">
+                      <td
+                        class="sticky left-0 z-10 px-3 py-3"
+                        :class="selectedProductIds.includes(item.product_id) ? 'bg-primary-50' : 'bg-white'"
+                      >
                         <div class="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            :checked="selectedProductIds.includes(item.product_id)"
+                            class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            @change="toggleProductSelection(item.product_id)"
+                          />
                           <img
                             v-if="item.product_thumbnail"
                             :src="item.product_thumbnail"
@@ -988,11 +1176,79 @@ onMounted(() => {
               </div>
 
               <div v-else class="space-y-4">
+                <!-- Variant-based selection + show/hide toggle -->
+                <div v-if="variantGroups.length || selectedSkuIds.length" class="flex flex-wrap items-center gap-3">
+                  <template v-if="variantGroups.length">
+                    <span class="text-xs font-medium text-gray-500">Ceklist berdasarkan variant:</span>
+                    <div v-for="group in variantGroups" :key="group.name" class="relative">
+                      <button
+                        type="button"
+                        class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                        @click="openVariantDropdown = openVariantDropdown === group.name ? null : group.name"
+                      >
+                        <span>Semua {{ group.name }}</span>
+                        <ChevronDown class="h-4 w-4 text-gray-400 transition-transform" :class="openVariantDropdown === group.name ? 'rotate-180' : ''" />
+                      </button>
+                      <div
+                        v-if="openVariantDropdown === group.name"
+                        class="absolute left-0 top-full z-30 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1.5 shadow-lg"
+                      >
+                        <label class="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            :checked="isVariantGroupSelected(group.name)"
+                            class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            @change="toggleVariantGroup(group.name)"
+                          />
+                          <span class="text-sm font-medium text-gray-700">Semua {{ group.name }}</span>
+                        </label>
+                        <div class="my-1 border-t border-gray-100"></div>
+                        <label
+                          v-for="value in group.values"
+                          :key="value"
+                          class="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-gray-50"
+                        >
+                          <input
+                            type="checkbox"
+                            :checked="isVariantValueSelected(group.name, value)"
+                            class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            @change="toggleVariantValue(group.name, value)"
+                          />
+                          <span class="text-sm text-gray-700">{{ value }}</span>
+                        </label>
+                      </div>
+                    </div>
+                  </template>
+                  <!-- Show only checked toggle -->
+                  <button
+                    v-if="selectedSkuIds.length"
+                    type="button"
+                    class="ml-auto flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+                    :class="showOnlySelected ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'"
+                    @click="showOnlySelected = !showOnlySelected"
+                  >
+                    <component :is="showOnlySelected ? EyeOff : Eye" class="h-4 w-4" />
+                    <span>{{ showOnlySelected ? 'Tampilkan Semua' : 'Tampilkan yang Diceklis Saja' }}</span>
+                  </button>
+                  <!-- Click-outside overlay -->
+                  <div v-if="openVariantDropdown" class="fixed inset-0 z-20" @click="openVariantDropdown = null" />
+                </div>
+
                 <div class="overflow-x-auto">
                 <table class="w-full min-w-[1200px] text-left text-sm">
                   <thead>
                     <tr class="border-b-2 border-gray-200 bg-gray-50">
-                      <th class="sticky left-0 z-10 min-w-[200px] bg-gray-50 px-3 py-3 font-semibold text-gray-700">Produk / SKU</th>
+                      <th class="sticky left-0 z-10 min-w-[200px] bg-gray-50 px-3 py-3 font-semibold text-gray-700">
+                        <div class="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            :checked="allSkusSelected"
+                            class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            @change="toggleAllSkus"
+                          />
+                          <span>Produk / SKU</span>
+                        </div>
+                      </th>
                       <th class="px-3 py-3 text-center font-semibold text-gray-700 text-nowrap">Range Harga</th>
                       <th v-for="cat in customerCategories" :key="cat.id" class="px-3 py-3 text-center font-semibold text-gray-700">
                         <div class="flex flex-col">
@@ -1007,8 +1263,10 @@ onMounted(() => {
                     <!-- Bulk Edit Row -->
                     <tr class="border-b border-gray-300 bg-primary-50">
                       <td class="sticky left-0 z-10 bg-primary-50 px-3 py-3" colspan="2">
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-col gap-0.5">
                           <span class="text-xs font-semibold text-gray-700">Edit Massal</span>
+                          <span v-if="selectedSkuIds.length" class="text-[10px] text-primary-600">{{ selectedSkuIds.length }} SKU dipilih</span>
+                          <span v-else class="text-[10px] text-gray-400">Semua SKU</span>
                         </div>
                       </td> 
                       <td v-for="cat in customerCategories" :key="cat.id" class="px-3 py-2">
@@ -1059,12 +1317,18 @@ onMounted(() => {
                     </tr>
                   </thead>
                   <tbody>
-                    <template v-for="(skus, productId) in groupedSkuItems" :key="productId">
+                    <template v-for="(skus, productId) in displayedGroupedSkuItems" :key="productId">
                       <!-- Product Parent Row -->
                       <tr class="border-b border-gray-200 bg-gray-100">
                         <td class="sticky left-0 z-10 bg-gray-100 px-3 py-2.5" colspan="2">
                           <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                :checked="isSkuGroupSelected(skus)"
+                                class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                @change="toggleSkuGroup(skus)"
+                              />
                               <Package class="h-4 w-4 text-gray-600" />
                               <span class="font-semibold text-gray-900">{{ skus[0]?.product_name || 'Produk' }}</span>
                               <span class="rounded-full bg-gray-300 px-2 py-0.5 text-xs font-medium text-gray-700 text-nowrap">
@@ -1088,10 +1352,20 @@ onMounted(() => {
                       <tr
                         v-for="item in skus"
                         :key="item.sku_id"
-                        class="border-b border-gray-100 hover:bg-gray-50"
+                        class="border-b border-gray-100"
+                        :class="selectedSkuIds.includes(item.sku_id) ? 'bg-primary-50/60' : 'hover:bg-gray-50'"
                       >
-                        <td class="sticky left-0 z-10 bg-white px-3 py-3">
+                        <td
+                          class="sticky left-0 z-10 px-3 py-3"
+                          :class="selectedSkuIds.includes(item.sku_id) ? 'bg-primary-50' : 'bg-white'"
+                        >
                           <div class="flex items-center gap-2 pl-6">
+                            <input
+                              type="checkbox"
+                              :checked="selectedSkuIds.includes(item.sku_id)"
+                              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              @change="toggleSkuSelection(item.sku_id)"
+                            />
                             <img
                               v-if="item.sku_thumbnail"
                               :src="item.sku_thumbnail"
@@ -1173,7 +1447,7 @@ onMounted(() => {
       </div>
 
       <!-- Actions -->
-      <div class="sticky bottom-0 -mx-4 mt-6 border-t border-gray-200 bg-white/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6">
+      <div class="sticky z-10 bottom-0 -mx-4 mt-6 border-t border-gray-200 bg-white/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6">
         <div class="flex items-center justify-end gap-3">
           <NuxtLink
             to="/promotion/discount"
