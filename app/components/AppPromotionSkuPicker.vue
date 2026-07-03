@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, X, Loader2, Package, Plus, Check } from 'lucide-vue-next'
+import { Search, X, Loader2, Package, Plus, Check, ChevronDown } from 'lucide-vue-next'
 
 export interface SkuPrice {
   customer_category_id: string
@@ -41,6 +41,19 @@ const query = ref('')
 const loading = ref(false)
 const results = ref<PromotionProductWithSkus[]>([])
 
+// Track which products have their SKU list expanded
+const expandedProducts = ref<string[]>([])
+
+function toggleExpand(id: string) {
+  const i = expandedProducts.value.indexOf(id)
+  if (i >= 0) expandedProducts.value.splice(i, 1)
+  else expandedProducts.value.push(id)
+}
+
+function isExpanded(id: string): boolean {
+  return expandedProducts.value.includes(id)
+}
+
 let timer: ReturnType<typeof setTimeout>
 
 function openModal() {
@@ -69,6 +82,8 @@ async function fetchSkus(search: string) {
   try {
     const res = await api.get<{ data: PromotionProductWithSkus[] }>('/promotions/products/skus', { search })
     results.value = res.data || []
+    // Collapse all product SKU lists on each new fetch
+    expandedProducts.value = []
     // add qty 
     if (results.value.length) {
       results.value = results.value.map(product => ({
@@ -207,12 +222,22 @@ function formatVariants(variants: any): string {
                 <template v-for="product in results" :key="product.id">
                   <!-- Product header row -->
                   <div class="flex items-center gap-2 bg-gray-50 px-4 py-2">
-                    <div class="h-6 w-6 shrink-0 overflow-hidden rounded bg-white ring-1 ring-gray-200">
-                      <img v-if="product.thumbnail" :src="product.thumbnail" :alt="product.name" class="h-full w-full object-cover" />
-                      <Package v-else class="h-full w-full p-1 text-gray-400" />
-                    </div>
-                    <p class="text-xs font-semibold text-gray-700">{{ product.name }}</p>
-                    <span class="ml-auto text-[10px] text-gray-400">{{ product.skus?.length || 0 }} SKU</span>
+                    <button
+                      type="button"
+                      class="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      @click="toggleExpand(product.id)"
+                    >
+                      <ChevronDown
+                        class="h-4 w-4 shrink-0 text-gray-400 transition-transform"
+                        :class="isExpanded(product.id) ? 'rotate-0' : '-rotate-90'"
+                      />
+                      <div class="h-6 w-6 shrink-0 overflow-hidden rounded bg-white ring-1 ring-gray-200">
+                        <img v-if="product.thumbnail" :src="product.thumbnail" :alt="product.name" class="h-full w-full object-cover" />
+                        <Package v-else class="h-full w-full p-1 text-gray-400" />
+                      </div>
+                      <p class="truncate text-xs font-semibold text-gray-700">{{ product.name }}</p>
+                      <span class="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-600">{{ product.skus?.length || 0 }} SKU</span>
+                    </button>
                     <button
                       v-if="!isProductFullyAdded(product)"
                       type="button"
@@ -233,7 +258,7 @@ function formatVariants(variants: any): string {
 
                   <!-- Individual SKU rows -->
                   <div
-                    v-for="sku in product.skus"
+                    v-for="sku in (isExpanded(product.id) ? product.skus : [])"
                     :key="sku.id"
                     class="flex items-center gap-3 px-4 py-3 transition-colors"
                     :class="addedSkuIds?.includes(sku.id) ? 'bg-gray-50 opacity-60' : 'hover:bg-primary-50'"
