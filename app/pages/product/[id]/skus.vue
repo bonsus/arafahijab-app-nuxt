@@ -1066,7 +1066,7 @@ async function handleSubmit() {
       </div>
 
       <!-- Actions -->
-      <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/80 px-2 py-3 backdrop-blur-sm sm:gap-3 sm:px-1 sm:py-4">
+      <div class="sticky z-10 bottom-0 flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/80 px-2 py-3 backdrop-blur-sm sm:gap-3 sm:px-1 sm:py-4">
         <NuxtLink
           to="/product/masters"
           class="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 sm:px-4 sm:py-2.5"
