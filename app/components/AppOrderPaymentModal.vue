@@ -40,6 +40,7 @@ const filePreview = ref<string | null>(null)
 const form = reactive({
   date: new Date().toISOString().slice(0, 10),
   amount: '',
+  actual_amount: '',
   bank_id: '',
   note: '',
 })
@@ -47,6 +48,7 @@ const form = reactive({
 watch(() => props.order, (newOrder) => {
   if (newOrder) {
     form.amount = newOrder.total
+    form.actual_amount = newOrder.total
     form.date = new Date().toISOString().slice(0, 10)
     form.bank_id = ''
     form.note = ''
@@ -133,6 +135,7 @@ async function handleSubmit() {
     formData.append('order_id', props.order.id)
     formData.append('date', form.date)
     formData.append('amount', form.amount)
+    formData.append('actual_amount', form.actual_amount)
     formData.append('bank_id', form.bank_id)
     if (form.note) formData.append('note', form.note)
     if (selectedFile.value) formData.append('file', selectedFile.value)
@@ -229,15 +232,32 @@ watch(() => props.order, (newOrder) => {
                   <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rp</span>
                     <input
-                      v-model="form.amount"
+                      :value="formatCurrency(form.amount)"
                       type="text"
                       readonly
                       required
                       class="w-full rounded-lg border border-gray-300 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                     />
                   </div>
-                  <p class="mt-1 text-xs text-gray-500">Rp{{ formatCurrency(form.amount) }}</p>
+                  <!-- <p class="mt-1 text-xs text-gray-500">Rp{{ formatCurrency(form.amount) }}</p> -->
                   <p v-if="errors.amount" class="mt-1 text-xs text-red-600">{{ errors.amount[0] }}</p>
+                </div>
+
+                <!-- actual amount -->
+                <div >
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700">
+                    Jumlah Aktual <span class="text-red-500">*</span>
+                  </label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rp</span>
+                    <input
+                      v-model="form.actual_amount"
+                      type="text"
+                      required
+                      class="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    />
+                  </div>
+                  <p v-if="errors.actual_amount" class="mt-1 text-xs text-red-600">{{ errors.actual_amount[0] }}</p>
                 </div>
 
                 <!-- Bank Tujuan -->
