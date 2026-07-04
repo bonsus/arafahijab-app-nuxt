@@ -155,6 +155,7 @@ interface StatusSummary {
   processing_process_count: number
   processing_packing_count: number
   processing_ready_count: number
+  processing_in_cancel_count: number
   shipped_count: number
   shipped_in_delivery_count: number
   shipped_delayed_count: number
@@ -203,6 +204,7 @@ const sub_statusOptions: { value: string; label: string; count?: number }[] = [
   { value: 'process', label: 'Sedang Diproses' },
   { value: 'packing', label: 'Sedang Dipacking' },
   { value: 'ready', label: 'Siap Dikirim' },
+  { value: 'in_cancel', label: 'Permintaan Batal' },
   // Delivery
   { value: 'in_delivery', label: 'Dalam Pengiriman' },
   { value: 'delayed', label: 'Pengiriman Bermasalah' },
@@ -254,6 +256,7 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
   processing: { label: 'Diproses', cls: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' },
   packing: { label: 'Dipacking', cls: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' },
   ready: { label: 'Siap Dikirim', cls: 'bg-green-50 text-green-700 ring-1 ring-green-200' },
+  in_cancel: { label: 'Permintaan Batal', cls: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200' },
   in_delivery: { label: 'Dikirim', cls: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200' },
   delayed: { label: 'Bermasalah', cls: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' },
   delivered: { label: 'Diterima', cls: 'bg-teal-50 text-teal-700 ring-1 ring-teal-200' },
@@ -275,6 +278,8 @@ function getStatusLabel(status: string, sub_status?: string) {
     return statusConfig["packing"]
   } else if (status === 'processing' && sub_status === 'ready') {
     return statusConfig["ready"]
+  } else if (status === 'processing' && sub_status === 'in_cancel') {
+    return statusConfig["in_cancel"]
   } else if (status === 'shipped' && sub_status === 'in_delivery') {
     return statusConfig["in_delivery"]
   } else if (status === 'shipped' && sub_status === 'delayed') {
@@ -807,6 +812,7 @@ const sub_statusOptionsWithCount = computed(() => {
     process: sum.processing_process_count,
     packing: sum.processing_packing_count,
     ready: sum.processing_ready_count,
+    in_cancel: sum.processing_in_cancel_count,
     in_delivery: sum.shipped_in_delivery_count,
     delayed: sum.shipped_delayed_count,
     delivered: sum.shipped_delivered_count,
@@ -831,7 +837,7 @@ const filteredsub_statusOptions = computed(() => {
   
   const mapping: Record<string, string[]> = {
     pending: ['unpaid', 'waiting_approval','waiting_confirmation'],
-    processing: ['open', 'process', 'packing', 'ready'],
+    processing: ['open', 'process', 'packing', 'ready', 'in_cancel'],
     shipped: ['in_delivery', 'delayed', 'delivered', 'returning'],
     completed: ['completed', 'returned'],
   }
