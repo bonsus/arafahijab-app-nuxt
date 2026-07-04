@@ -564,6 +564,39 @@ async function onBulkResiSuccess() {
   await fetchOrders()
 }
 
+// ─── Restore in_cancel ────────────────────────────────────────────────────────
+const restoring = ref(false)
+
+const canRestoreSelectedOrders = computed(() => {
+  if (selectedOrders.value.length === 0) return false
+  return selectedOrders.value.every(o => o.status === 'processing' && o.sub_status === 'in_cancel')
+})
+
+async function restoreInCancel(orderIds: string[]) {
+  if (!orderIds.length || restoring.value) return
+  const ok = await confirm({
+    title: 'Pulihkan Status Order',
+    message: `Pulihkan ${orderIds.length} order dari permintaan batal kembali ke status pemrosesan?`,
+    confirmText: 'Pulihkan',
+  })
+  if (!ok) return
+  restoring.value = true
+  try {
+    await api.post('/sales/orders/restore-in-cancel', { ids: orderIds })
+    toast.success('Status order berhasil dipulihkan')
+    closeMenu()
+    clearSelection()
+    await fetchOrders()
+    await fetchStatusSummary()
+  }
+  catch (e: any) {
+    toast.error(e?.message || 'Gagal memulihkan status order')
+  }
+  finally {
+    restoring.value = false
+  }
+}
+
 // Helper function: Check if order can print label
 function canOrderPrintLabel(order: SalesOrder): boolean {
   const normalizedsub_status = order.sub_status || (order as any).sub_status || ''
@@ -1565,6 +1598,18 @@ onUnmounted(() => {
             </template>
             <span v-else class="text-xs text-gray-500">Tidak ada aksi tersedia untuk order yang dipilih</span>
             
+            <!-- Restore in_cancel Button -->
+            <button
+              v-if="canRestoreSelectedOrders"
+              :disabled="restoring"
+              class="ml-2 flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+              @click="restoreInCancel(selectedIds)"
+            >
+              <Loader2 v-if="restoring" class="h-3.5 w-3.5 animate-spin" />
+              <RefreshCcw v-else class="h-3.5 w-3.5" />
+              Pulihkan Status
+            </button>
+            
             <!-- Print Label Button -->
             <button
               v-if="selectedIds.length"
@@ -2170,6 +2215,17 @@ onUnmounted(() => {
         >
           <FileText class="h-4 w-4 text-blue-400" />
           Cetak Invoice
+        </button>
+        
+        <!-- Restore in_cancel -->
+        <button
+          v-if="openMenuOrder.status === 'processing' && openMenuOrder.sub_status === 'in_cancel'"
+          :disabled="restoring"
+          class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-emerald-600 hover:bg-emerald-50 disabled:opacity-60"
+          @click="restoreInCancel([openMenuOrder.id])"
+        >
+          <RefreshCcw class="h-4 w-4" />
+          Pulihkan Status
         </button>
         
         <!-- Status Actions -->
