@@ -64,6 +64,7 @@ interface PickingListDetail {
   qty: number
   qty_picked: number
   items: PickingItem[]
+  items_canceled: PickingItem[]
   warehouse: Warehouse
 }
 
@@ -157,6 +158,16 @@ const progress = computed(() => {
 const sortedItems = computed(() => {
   if (!pickingList.value?.items) return []
   return [...pickingList.value.items].sort((a, b) => {
+    const locA = `${a.zone_code}-${a.rack_code}-${a.bin_code}`
+    const locB = `${b.zone_code}-${b.rack_code}-${b.bin_code}`
+    return locA.localeCompare(locB)
+  })
+})
+
+// Canceled items (order canceled → picking item auto-canceled)
+const canceledItems = computed(() => {
+  if (!pickingList.value?.items_canceled) return []
+  return [...pickingList.value.items_canceled].sort((a, b) => {
     const locA = `${a.zone_code}-${a.rack_code}-${a.bin_code}`
     const locB = `${b.zone_code}-${b.rack_code}-${b.bin_code}`
     return locA.localeCompare(locB)
@@ -460,6 +471,92 @@ const sortedItems = computed(() => {
               </table>
             </div>
           </div>
+
+        <!-- Canceled Items Table -->
+        <div v-if="canceledItems.length" class="rounded-xl bg-white shadow-sm ring-1 ring-red-200">
+          <div class="border-b border-red-100 bg-red-50/60 px-5 py-4">
+            <div class="flex items-center gap-2">
+              <AlertCircle class="h-4 w-4 text-red-500" />
+              <h2 class="text-lg font-semibold text-gray-900">Item Dibatalkan</h2>
+            </div>
+            <p class="text-xs text-gray-500 mt-0.5">{{ canceledItems.length }} item dibatalkan karena order-nya dibatalkan</p>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="border-b border-gray-200 bg-gray-50/80 text-xs font-medium uppercase tracking-wider text-gray-500">
+                <tr>
+                  <th class="px-4 py-2.5 text-left">Lokasi</th>
+                  <th class="px-4 py-2.5 text-left">Produk</th>
+                  <th class="px-4 py-2.5 text-center">Qty</th>
+                  <th class="px-4 py-2.5 text-left">Order</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr
+                  v-for="item in canceledItems"
+                  :key="item.id"
+                  class="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-red-50/30"
+                >
+                  <!-- Lokasi -->
+                  <td class="px-4 py-3 align-top">
+                    <div class="flex items-start gap-2 min-w-[120px]">
+                      <MapPin class="h-3.5 w-3.5 shrink-0 text-gray-400 mt-0.5" />
+                      <div>
+                        <p class="text-xs font-semibold text-gray-900">
+                          {{ item.zone_code }}-{{ item.rack_code }}-{{ item.bin_code }}
+                        </p> 
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Produk -->
+                  <td class="px-4 py-3 align-top">
+                    <div class="min-w-[240px]">
+                      <p class="text-sm font-medium text-gray-900">{{ item.product_name }}</p>
+                      <p class="text-xs text-gray-500 mt-0.5">SKU: {{ item.sku }}</p>
+                      <div
+                        v-if="item.variants && item.variants.length > 0"
+                        class="flex flex-wrap gap-1 mt-1.5"
+                      >
+                        <span
+                          v-for="(variant, idx) in item.variants"
+                          :key="idx"
+                          class="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
+                        >
+                          {{ variant.name }}: {{ variant.value }}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Qty -->
+                  <td class="px-4 py-3 text-center align-top">
+                    <span class="text-lg font-bold text-gray-400 line-through">{{ item.qty }}</span>
+                  </td>
+                  <!-- Order -->
+                  <td class="px-4 py-3 align-top">
+                    <div
+                      v-if="item.orders && item.orders.length > 0"
+                      class="flex flex-wrap gap-1 min-w-[120px]"
+                    >
+                      <span
+                        v-for="order in item.orders"
+                        :key="order.id"
+                        class="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 ring-1 ring-red-200"
+                      >
+                        {{ order.no }}
+                      </span>
+                    </div>
+                    <span v-else class="text-xs text-gray-300">—</span>
+                  </td>
+
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </template>
   </div>

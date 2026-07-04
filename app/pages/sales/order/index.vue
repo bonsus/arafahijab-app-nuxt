@@ -704,7 +704,7 @@ const availableMenuActions = computed(() => {
   }
   
   // Cancel order
-  if (order.status === 'pending' || (order.status === 'processing' && ['open', 'process', 'packing'].includes(order.sub_status))) {
+  if (order.status === 'pending' || (order.status === 'processing' && ['open', 'process', 'packing','ready','in_cancel'].includes(order.sub_status))) {
     actions.push({ key: 'cancel', label: 'Batalkan Order', color: 'red' })
   }
   

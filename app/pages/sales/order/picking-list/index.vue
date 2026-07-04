@@ -438,25 +438,25 @@ function goBack() {
 
               <!-- Order Count -->
               <td class="px-4 py-3 text-center align-top">
-                <span class="text-sm font-semibold text-gray-900">{{ item.order_count }}</span>
+                <span class="text-sm font-semibold text-gray-900">{{ item.order_count > 0 ? item.order_count : '-' }}</span>
               </td>
 
               <!-- Item Count -->
               <td class="px-4 py-3 text-center align-top">
                 <div class="text-xs text-gray-600">
-                  <p>{{ item.product_count }} produk</p>
-                  <p class="text-gray-400">{{ item.sku_count }} SKU</p>
+                  <p>{{ item.product_count > 0 ? item.product_count + ' produk' : '-' }}</p>
+                  <p class="text-gray-400">{{ item.sku_count > 0 ? item.sku_count + ' SKU' : '-' }}</p>
                 </div>
               </td>
 
               <!-- Qty -->
               <td class="px-4 py-3 text-center align-top">
-                <span class="text-sm font-semibold text-gray-900">{{ item.qty }}</span>
+                <span class="text-sm font-semibold text-gray-900">{{ item.qty > 0 ? item.qty : '-' }}</span>
               </td>
 
               <!-- Progress -->
               <td class="px-4 py-3 align-top">
-                <div class="space-y-1 min-w-[100px]">
+                <div class="space-y-1 min-w-[100px]" v-if="item.qty > 0">
                   <div class="flex items-center justify-between text-xs">
                     <span class="text-gray-500">{{ item.qty_picked }} / {{ item.qty }}</span>
                     <span class="font-medium text-gray-700">{{ item.qty > 0 ? Math.round((item.qty_picked / item.qty) * 100) : 0 }}%</span>
@@ -469,11 +469,12 @@ function goBack() {
                     />
                   </div>
                 </div>
+                <div v-else class="text-xs text-gray-400">-</div>
               </td>
 
               <!-- Actions -->
               <td class="px-4 py-3 align-top">
-                <div class="flex items-center gap-2 justify-end">
+                <div v-if="item.status!=='canceled'" class="flex items-center gap-2 justify-end">
                   <button v-if="item.status != 'completed'"
                     type="button"
                     class="flex items-center gap-1.5 rounded-lg border-1 border-green-400 px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50"
