@@ -58,7 +58,8 @@ interface WebhookItem {
   reference_id: string
   status: string
   error: string
-  attempts: number
+  attempts: number 
+  payload: any
   created_at: string
   updated_at: string
 }
@@ -860,6 +861,12 @@ onBeforeUnmount(() => {
 
               <dt class="text-gray-400">Diupdate</dt>
               <dd class="col-span-2 text-gray-800">{{ formatDateTime(selectedDetail.updated_at) }}</dd>
+
+              <!-- payload -->
+              <template v-if="selectedDetail.payload">
+                <dt class="text-gray-400">Payload</dt>
+                <dd class="col-span-2 rounded-md bg-gray-50 px-2 py-1 font-mono text-xs text-gray-800">{{ selectedDetail.payload }}</dd>
+              </template>
 
               <template v-if="selectedDetail.error">
                 <dt class="text-gray-400">Error</dt>
