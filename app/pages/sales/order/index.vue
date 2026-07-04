@@ -663,18 +663,18 @@ const availableMenuActions = computed(() => {
   
   // Start processing
   const canStartProcess = order.status === 'processing' && order.sub_status === 'open'
-  console.log('canStartProcess:', canStartProcess, '(requires processing/open)')
+  // console.log('canStartProcess:', canStartProcess, '(requires processing/open)')
   if (canStartProcess) {
     actions.push({ key: 'start_process', label: 'Mulai Proses', color: 'blue' })
   }
   
   // Start packing
-  if (order.status === 'processing' && order.sub_status === 'process') {
+  if (order.status === 'processing' && (order.sub_status === 'process' || order.sub_status === 'in_cancel')) {
     actions.push({ key: 'start_packing', label: 'Mulai Packing', color: 'indigo' })
   }
   
   // Ready to ship
-  if (order.status === 'processing' && order.sub_status === 'packing') {
+  if (order.status === 'processing' && (order.sub_status === 'packing' || order.sub_status === 'in_cancel')) {
     actions.push({ key: 'ready_ship', label: 'Siap Dikirim', color: 'green' })
   }
   
