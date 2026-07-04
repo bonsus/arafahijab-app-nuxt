@@ -175,6 +175,8 @@ const sourceOptions = [
   { value: 'tiktok', label: 'TikTok' },
   { value: 'lazada', label: 'Lazada' },
   { value: 'xendit', label: 'Xendit' },
+  { value: 'midtrans', label: 'Midtrans' },
+  { value: 'everpro', label: 'Everpro' }, 
 ]
 
 const statusOptions = [
