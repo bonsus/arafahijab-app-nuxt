@@ -114,6 +114,7 @@ const form = reactive({
   customer_note: '',
   shipment_note: '',
   discount: 0,
+  shipping_discount: 0,
   adjustment: 0,
   tax: 0,
   cod_percent: 0,
@@ -533,7 +534,15 @@ watch(selectedCheckoutCoupon, (val) => {
   if (!val) form.discount = 0
 })
 
-const total = computed(() => subtotal.value + shippingCost.value - shippingCouponDiscount.value - form.discount + form.adjustment + form.tax)
+// Shipping coupon → auto-populate form.shipping_discount
+watch(shippingCouponDiscount, (val) => {
+  if (selectedShippingCoupon.value) form.shipping_discount = Math.round(val)
+})
+watch(selectedShippingCoupon, (val) => {
+  if (!val) form.shipping_discount = 0
+})
+
+const total = computed(() => subtotal.value + shippingCost.value - form.shipping_discount - form.discount + form.adjustment + form.tax)
 
 // COD cost calculation
 const isCODPayment = computed(() => selectedPaymentMethod.value?.category === 'COD')
@@ -580,7 +589,7 @@ async function loadOrder() {
     form.discount = Number(o.discount) || 0
     form.adjustment = Number(o.adjustment) || 0
     form.tax = Number(o.tax) || 0
-
+    form.shipping_discount = Number(o.shipping_discount) || 0
     if (o.customer) {
       selectedCustomer.value = { id: o.customer.id, name: o.customer.name, phone: o.customer.phone || '', email: '', category: o.customer_category || null, addresses: [], status: '' }
     }
@@ -754,8 +763,8 @@ async function handleSubmit() {
       zipcode: address.postal_code,
     },
     shipping_cost: String(shippingCost.value.toFixed(2)),
-    shipping_discount: String(shippingCouponDiscount.value.toFixed(2)),
-    shipping_total: String((shippingCost.value - shippingCouponDiscount.value).toFixed(2)),
+    shipping_discount: String(form.shipping_discount.toFixed(2)),
+    shipping_total: String((shippingCost.value - form.shipping_discount).toFixed(2)),
     cod_cost: String(form.cod_cost.toFixed(2)),
     shipment: {
       courier_code: selectedShipping.value.courierCode,
@@ -764,8 +773,8 @@ async function handleSubmit() {
       service_name: selectedShipping.value.serviceName,
       note: form.shipment_note,
       price: String(shippingCost.value.toFixed(2)),
-      discount: String(shippingCouponDiscount.value.toFixed(2)),
-      total: String((shippingCost.value - shippingCouponDiscount.value).toFixed(2)),
+      discount: String(form.shipping_discount.toFixed(2)),
+      total: String((shippingCost.value - form.shipping_discount).toFixed(2)),
       aggregator: selectedShipping.value.provider,
     },
     items: items.value.map(i => ({
@@ -842,6 +851,7 @@ function handleCreateNew() {
   form.shipment_note = ''
   tags.value = []
   form.discount = 0
+  form.shipping_discount = 0
   form.adjustment = 0
   form.tax = 0
   form.cod_percent = 0
@@ -1496,8 +1506,22 @@ onMounted(() => {
               <!-- Kupon (shipping: ditampilkan di bawah ongkir) -->
               <div v-if="selectedShippingCoupon && shippingCouponDiscount > 0" class="flex items-center justify-between text-sm">
                 <span class="text-gray-500">Diskon Ongkir Kupon</span>
-                <span class="text-red-500">-Rp{{ formatCurrency(shippingCouponDiscount) }}</span>
-              </div> 
+                <span class="text-red-500">-Rp{{ formatCurrency(form.shipping_discount) }}</span>
+              </div>
+              <div v-else class="flex items-center gap-3">
+                <span class="w-28 shrink-0 text-sm text-gray-500">Diskon Ongkir</span>
+                <div class="relative flex-1">
+                  <span class="rp-prefix">Rp</span>
+                  <input
+                    v-model.number="form.shipping_discount"
+                    type="number"
+                    min="0"
+                    class="input-sm pl-7 text-right"
+                  />
+                  <p v-if="getError('shipping_discount')" class="mt-1 text-xs text-red-600">{{ getError('shipping_discount') }}</p>
+                </div>
+              </div>  
+              <!-- Kupon (checkout: ditampilkan di bawah diskon ongkir) -->
               <div v-if="selectedCheckoutCoupon" class="flex items-center justify-between text-sm">
                 <span class="text-gray-500">Diskon Order</span>
                 <span class="text-red-500 text-sm">-Rp{{ formatCurrency(form.discount) }}</span>

@@ -96,7 +96,13 @@ async function fetchBanks() {
 const showLightbox = ref(false)
 const lightboxUrl = ref('')
 
-const tabs = [  
+const summaryOrderId = ref<string | null>(null)
+
+function openOrderSummary(orderId: string) {
+  if (orderId) summaryOrderId.value = orderId
+}
+
+const tabs = [
   { key: 'payments', label: 'Pembayaran Diterima', to: '/sales/payment' },
   { key: 'confirmations', label: 'Konfirmasi Pembayaran', to: '/sales/payment/confirmation' },
 ]
@@ -353,9 +359,15 @@ onMounted(() => {
           <tbody class="divide-y divide-gray-100 text-sm">
             <tr v-for="item in confirmations" :key="item.id" class="hover:bg-gray-50">
               <td class="px-4 py-3">
-                <span class="text-xs font-semibold text-primary-600">
+                <button
+                  v-if="item.order?.id || item.order_id"
+                  type="button"
+                  class="text-xs font-semibold text-primary-600 hover:text-primary-700 hover:underline"
+                  @click="openOrderSummary(item.order?.id || item.order_id)"
+                >
                   {{ item.order?.no || '-' }}
-                </span>
+                </button>
+                <span v-else class="text-xs font-semibold text-gray-400">{{ item.order?.no || '-' }}</span>
               </td>
               <td class="px-4 py-3">
                 <div class="font-medium text-gray-900">{{ item.customer?.name || '-' }}</div>
@@ -575,6 +587,9 @@ onMounted(() => {
         </div>
       </div>
     </Teleport>
+
+    <!-- Order Summary Modal -->
+    <AppOrderSummaryModal :order-id="summaryOrderId" @close="summaryOrderId = null" />
 
     <!-- Lightbox -->
     <Teleport to="body">
