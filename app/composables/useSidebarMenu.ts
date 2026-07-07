@@ -119,6 +119,7 @@ export function useSidebarMenu(): MenuItem[] {
       children: [
         { label: 'Monitor Worker', to: '/monitor/worker', permission: 'monitor.read' },
         { label: 'Monitor Stok MP', to: '/monitor/stock-history', permission: 'monitor.read' },
+        { label: 'Error Logs', to: '/monitor/error-logs', permission: 'monitor.read' },
       ],
     }, 
     {
