@@ -20,6 +20,7 @@ const pickingId = ref<string>('')
 const printingLabel = ref(false)
 const printingPicking = ref(false)
 const useAggregator = ref(false)
+const shipMethod = ref<'PICKUP' | 'DROPOFF'>('PICKUP')
 
 // Reset results when modal opens with new orders/action
 watch(() => [props.orderIds.join(','), props.action], () => {
@@ -33,6 +34,7 @@ watch(() => [props.orderIds.join(','), props.action], () => {
   printingLabel.value = false
   printingPicking.value = false
   useAggregator.value = false
+  shipMethod.value = 'PICKUP'
 }, { immediate: true })
 
 // Define available actions based on order status/substatus
@@ -229,6 +231,16 @@ const canSubmit = computed(() => {
 // Show aggregator option only when packing orders that are currently processing/process
 const showAggregatorOption = computed(() => actionInfo.value?.key === 'start_process')
 
+// Show ship method (PICKUP/DROPOFF) option when processing orders and at least one is from Shopee
+const hasShopeeOrder = computed(() => {
+  if (!props.orders) return false
+  return props.orders.some(o =>
+    props.orderIds.includes(o.id)
+    && (o.source === 'shopee' || o.store?.source === 'shopee'),
+  )
+})
+const showShipMethodOption = computed(() => actionInfo.value?.key === 'start_process' && hasShopeeOrder.value)
+
 // Get list of orders to process with their current status
 const ordersToProcess = computed(() => {
   if (!props.orders) return []
@@ -298,6 +310,9 @@ async function handleSubmit() {
     }
     if (showAggregatorOption.value) {
       payload.aggregator = useAggregator.value
+    }
+    if (showShipMethodOption.value) {
+      payload.ship_method = shipMethod.value
     }
     const res = await api.post<UpdateStatusResponse>('/sales/orders/update-status', payload)
 
@@ -579,6 +594,46 @@ function getStatusLabel(status: string, substatus: string) {
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+                <!-- Ship method option (Shopee PICKUP/DROPOFF) -->
+                <div v-if="showShipMethodOption" class="rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+                  <p class="text-sm font-medium text-blue-900">Metode Pengiriman Shopee</p>
+                  <p class="mt-0.5 text-xs text-blue-700">
+                    Pilih metode penyerahan paket untuk order dari Shopee.
+                  </p>
+                  <div class="mt-3 flex gap-3">
+                    <label
+                      class="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border p-3 transition"
+                      :class="shipMethod === 'PICKUP' ? 'border-blue-500 bg-white ring-1 ring-blue-500' : 'border-gray-200 bg-white'"
+                    >
+                      <input
+                        v-model="shipMethod"
+                        type="radio"
+                        value="PICKUP"
+                        class="h-4 w-4 cursor-pointer text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <p class="text-sm font-medium text-gray-900">Pickup</p>
+                        <p class="text-xs text-gray-500">Kurir menjemput paket</p>
+                      </div>
+                    </label>
+                    <label
+                      class="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border p-3 transition"
+                      :class="shipMethod === 'DROPOFF' ? 'border-blue-500 bg-white ring-1 ring-blue-500' : 'border-gray-200 bg-white'"
+                    >
+                      <input
+                        v-model="shipMethod"
+                        type="radio"
+                        value="DROPOFF"
+                        class="h-4 w-4 cursor-pointer text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <p class="text-sm font-medium text-gray-900">Dropoff</p>
+                        <p class="text-xs text-gray-500">Antar paket ke titik drop</p>
+                      </div>
+                    </label>
                   </div>
                 </div>
 
