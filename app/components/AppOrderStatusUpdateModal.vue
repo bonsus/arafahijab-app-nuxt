@@ -228,8 +228,17 @@ const canSubmit = computed(() => {
   return props.action && !processing.value
 })
 
+// has everpro aggregator option only when packing orders that are currently processing/process & order.shippment.provider === 'everpro'
+const hasEverproAggregatorOption = computed(() => {
+  if (!props.orders) return false
+  return props.orders.some(o =>
+    props.orderIds.includes(o.id) 
+    && o.shipment?.aggregator === 'everpro'
+  )
+})
+
 // Show aggregator option only when packing orders that are currently processing/process
-const showAggregatorOption = computed(() => actionInfo.value?.key === 'start_process')
+const showAggregatorOption = computed(() => actionInfo.value?.key === 'start_process' && hasEverproAggregatorOption.value)
 
 // Show ship method (PICKUP/DROPOFF) option when processing orders and at least one is from Shopee
 const hasShopeeOrder = computed(() => {
@@ -599,10 +608,10 @@ function getStatusLabel(status: string, substatus: string) {
 
                 <!-- Ship method option (Shopee PICKUP/DROPOFF) -->
                 <div v-if="showShipMethodOption" class="rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
-                  <p class="text-sm font-medium text-blue-900">Metode Pengiriman Shopee</p>
+                  <!-- <p class="text-sm font-medium text-blue-900">Metode Pengiriman Shopee</p>
                   <p class="mt-0.5 text-xs text-blue-700">
                     Pilih metode penyerahan paket untuk order dari Shopee.
-                  </p>
+                  </p> -->
                   <div class="mt-3 flex gap-3">
                     <label
                       class="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border p-3 transition"
