@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  ArrowLeft, Search, Package, RefreshCw, X, User, Clock, Store, ShoppingBag, Scan
+  ArrowLeft, Search, Package, RefreshCw, X, User, Clock, Store, ShoppingBag, Scan, Download, Loader2
 } from 'lucide-vue-next'
 import { formatDateTime } from '~/composables/useFormatters'
 
@@ -36,6 +36,7 @@ interface PaginationData {
 }
 
 const api = useApi()
+const toast = useToast()
 const router = useRouter()
 
 // State
@@ -104,6 +105,44 @@ function onSearch() {
   fetchOrders()
 }
 
+// ─── Export excel ───────────────────────────────────────────────────────────
+const exporting = ref(false)
+
+async function exportScanPacking() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (filterDate.value.from) params.date_from = filterDate.value.from
+    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (search.value) params.search = search.value
+
+    const response = await api.get<Blob>('/sales/order-export/scan-packing', params, { responseType: 'blob' })
+    const blob = new Blob([response as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    link.download = `scan_packing_${date}_${hhmm}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+
+    toast.success('Export berhasil diunduh')
+  }
+  catch (err: any) {
+    toast.error(err?.message || 'Gagal mengekspor data')
+  }
+  finally {
+    exporting.value = false
+  }
+}
+
 function handlePageChange(page: number) {
   pagination.value.page = page
   fetchOrders()
@@ -147,6 +186,16 @@ onMounted(() => {
         </h1>
         <p class="text-sm text-gray-500">Riwayat order yang sudah dipacking dan siap dikirim</p>
       </div>
+      <button
+        type="button"
+        :disabled="exporting"
+        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+        @click="exportScanPacking"
+      >
+        <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
+        <Download v-else class="h-4 w-4" />
+        Export
+      </button>
       <NuxtLink
         to="/sales/order/scan-packing/scan"
         class="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
