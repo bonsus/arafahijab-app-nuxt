@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Search, X, Loader2, Package, Plus, Check, ChevronDown, ShoppingCart } from 'lucide-vue-next'
+import { Search, X, Loader2, Package, Check, ChevronDown, ShoppingCart } from 'lucide-vue-next'
 
 export interface FreeProduct {
   promotion_id: string
@@ -188,6 +188,12 @@ function priceRange(product: SalesProduct): string {
   if (min === max) return `Rp${formatCurrency(min)}`
   return `Rp${formatCurrency(min)}–${formatCurrency(max)}`
 }
+
+function stockBadgeClass(stock: number): string {
+  if (stock <= 0) return 'bg-red-100 text-red-600'
+  if (stock <= 5) return 'bg-amber-100 text-amber-700'
+  return 'bg-emerald-100 text-emerald-700'
+}
 </script>
 
 <template>
@@ -300,7 +306,7 @@ function priceRange(product: SalesProduct): string {
           </div>
 
           <!-- Content -->
-          <div class="min-h-0 flex-1 overflow-y-auto">
+          <div class="min-h-0 flex-1 overflow-y-auto bg-gray-50">
             <!-- Loading -->
             <div v-if="loading" class="flex items-center justify-center gap-2 py-16 text-sm text-gray-400">
               <Loader2 class="h-5 w-5 animate-spin" /> Memuat produk...
@@ -314,8 +320,12 @@ function priceRange(product: SalesProduct): string {
             </div>
 
             <!-- Product list -->
-            <div v-else class="divide-y divide-gray-100">
-              <div v-for="product in filteredResults" :key="product.id">
+            <div v-else class="space-y-3 p-4">
+              <div
+                v-for="product in filteredResults"
+                :key="product.id"
+                class="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-xs"
+              >
 
                 <!-- Product header row -->
                 <button
@@ -337,35 +347,21 @@ function priceRange(product: SalesProduct): string {
                   </div>
 
                   <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-semibold text-gray-900">{{ product.name }}</p>
+                    <p class="truncate text-base font-bold text-gray-900">{{ product.name }}</p>
                     <div class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
                       <span
                         v-if="product.category"
                         class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500"
                       >{{ product.category.name }}</span>
-                      <span class="text-gray-400">{{ product.skus.length }} SKU</span>
-                      <span
-                          class="text-[10px] font-semibold"
-                          :class="product.stock > 0 ? 'text-emerald-600' : 'text-red-500'"
-                        >Stok {{ product.stock }}</span>
-                      <span v-if="priceRange(product)" class="font-semibold text-primary-600">{{ priceRange(product) }}</span>
+                      <span class="text-gray-400">{{ product.skus.length }} Sku</span>
                     </div>
                   </div>
 
-                  <div class="flex shrink-0 items-center gap-1.5" @click.stop>
-                    <button
-                      v-if="!allAdded(product)"
-                      class="rounded-lg bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-600 transition-colors hover:bg-primary-100"
-                      @click="addAll(product)"
-                    >
-                      + Semua
-                    </button>
+                  <div class="flex shrink-0 items-center gap-2">
                     <span
-                      v-else
-                      class="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-600"
-                    >
-                      <Check class="h-3 w-3" /> Semua
-                    </span>
+                      class="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                      :class="stockBadgeClass(product.stock)"
+                    >Total {{ product.stock }}</span>
                     <ChevronDown
                       class="h-4 w-4 text-gray-400 transition-transform duration-200"
                       :class="isExpanded(product.id) ? 'rotate-180' : ''"
@@ -373,61 +369,93 @@ function priceRange(product: SalesProduct): string {
                   </div>
                 </button>
 
-                <!-- SKU grid (expanded) -->
-                <div v-if="isExpanded(product.id)" class="bg-gray-50/60 px-4 pb-3 pt-2">
-                  <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <!-- SKU table (expanded) -->
+                <div v-if="isExpanded(product.id)" class="border-t border-gray-100 pb-2">
+                  <!-- <div class="flex items-center justify-end px-4 pt-2">
                     <button
-                      v-for="sku in product.skus"
-                      :key="sku.sku_id"
-                      class="flex flex-col rounded-xl border p-2.5 text-left transition-all"
-                      :class="addedSkuIds.includes(sku.sku_id)
-                        ? 'border-primary-300 bg-primary-50 ring-1 ring-primary-200'
-                        : sku.stock <= 0
-                          ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-                          : 'border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm'"
-                      @click="addSku(product, sku)"
+                      v-if="!allAdded(product)"
+                      class="rounded-lg bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-600 transition-colors hover:bg-primary-100"
+                      @click="addAll(product)"
                     >
-                      <!-- Variants -->
-                      <div class="mb-1.5 flex min-h-[1.25rem] flex-wrap gap-1">
-                        <span
-                          v-for="v in sku.variants"
-                          :key="v.name"
-                          class="line-clamp-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
-                        >{{ v.value }}</span>
-                        <span v-if="!sku.variants?.length" class="text-[10px] text-gray-300">—</span>
-                        <!-- sku.sku -->
-                        <span class="line-clamp-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{{ sku.sku }}</span>
-                        <!-- Preorder badge -->
-                        <span v-if="sku.is_preorder" class="line-clamp-1 rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">PREORDER</span>
-                      </div>
-
-                      <!-- Price -->
-                      <div>
-                        <p v-if="Number(sku.discount) > 0" class="text-[10px] text-gray-400 line-through leading-tight">
-                          Rp{{ formatCurrency(Number(sku.price_original)) }}
-                        </p>
-                        <p class="text-sm font-bold leading-tight" :class="Number(sku.discount) > 0 ? 'text-primary-600' : 'text-gray-900'">
-                          Rp{{ formatCurrency(Number(sku.price)) }}
-                        </p>
-                        <span v-if="sku.promotion" class="mt-0.5 block truncate rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700">
-                          {{ sku.promotion.name }}
-                        </span>
-                        <div v-if="sku.promotion && (sku.promotion.min_qty > 0 || sku.promotion.max_qty > 0)" class="mt-0.5 text-[9px] leading-tight text-orange-500">
-                          <span v-if="sku.promotion.min_qty > 0">Min. {{ sku.promotion.min_qty }} pcs</span><span v-if="sku.promotion.min_qty > 0 && sku.promotion.max_qty > 0"> · </span><span v-if="sku.promotion.max_qty > 0">Maks. {{ sku.promotion.max_qty }} pcs</span>
-                        </div>
-                      </div>
-
-                      <!-- Stock + indicator -->
-                      <div class="mt-1 flex items-center justify-between">
-                        <span
-                          class="text-[10px] font-semibold"
-                          :class="sku.stock > 0 ? 'text-emerald-600' : 'text-red-500'"
-                        >Stok {{ sku.stock }}</span>
-                        <Check v-if="addedSkuIds.includes(sku.sku_id)" class="h-3.5 w-3.5 text-emerald-600" />
-                        <Plus v-else class="h-3.5 w-3.5 text-gray-300" />
-                      </div>
- 
+                      + Tambah semua varian
                     </button>
+                    <span
+                      v-else
+                      class="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-600"
+                    >
+                      <Check class="h-3 w-3" /> Semua varian ditambahkan
+                    </span>
+                  </div> -->
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                      <thead>
+                        <tr class="text-[11px] text-gray-400">
+                          <th class="px-4 py-2 text-left font-medium">Sku</th>
+                          <th class="px-4 py-2 text-left font-medium">Varian</th>
+                          <th class="px-4 py-2 text-right font-medium">Harga</th>
+                          <th class="px-4 py-2 text-center font-medium">Stok</th>
+                          <th class="px-4 py-2 text-right font-medium">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-gray-100">
+                        <tr
+                          v-for="sku in product.skus"
+                          :key="sku.sku_id"
+                          class="transition-colors hover:bg-gray-50"
+                          :class="addedSkuIds.includes(sku.sku_id) ? 'bg-primary-50/40' : ''"
+                        >
+                          <!-- Varian -->
+                          <td class="px-4 py-2.5 align-top">
+                            <span class="font-mono text-gray-600 text-xs">{{ sku.sku }}</span>
+                          </td>
+                          <td class="px-4 py-2.5 align-top">
+                            <div class="flex flex-wrap items-center gap-1">
+                              <span v-if="sku.variants?.length" class="text-xs font-semibold text-gray-800">
+                                {{ sku.variants.map(v => v.value).join(' · ') }}
+                              </span>
+                              <span v-else class="text-gray-400">Tanpa variant</span>
+                              <span v-if="sku.is_preorder" class="rounded bg-blue-100 ml-1 px-1 py-0 text-[9px] font-bold text-blue-700">PREORDER</span>
+                            </div>
+                            <!-- <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px]">
+                              <span v-if="sku.promotion" class="truncate rounded bg-orange-100 px-1.5 py-0.5 font-semibold text-orange-700">{{ sku.promotion.name }}</span>
+                              <span v-if="sku.promotion && (sku.promotion.min_qty > 0 || sku.promotion.max_qty > 0)" class="text-orange-500">
+                                <span v-if="sku.promotion.min_qty > 0">Min. {{ sku.promotion.min_qty }}</span><span v-if="sku.promotion.min_qty > 0 && sku.promotion.max_qty > 0"> · </span><span v-if="sku.promotion.max_qty > 0">Maks. {{ sku.promotion.max_qty }}</span>
+                              </span>
+                            </div> -->
+                          </td>
+                          <!-- Harga -->
+                          <td class="whitespace-nowrap px-4 py-2.5 text-right align-top">
+                            <p v-if="Number(sku.discount) > 0" class="text-[10px] leading-tight text-gray-400 line-through">
+                              Rp{{ formatCurrency(Number(sku.price_original)) }}
+                            </p>
+                            <p class="font-semibold text-xs leading-tight" :class="Number(sku.discount) > 0 ? 'text-primary-600' : 'text-gray-900'">
+                              Rp {{ formatCurrency(Number(sku.price)) }}
+                            </p>
+                          </td>
+                          <!-- Stok -->
+                          <td class="px-4 py-2.5 text-center align-top">
+                            <span class="font-bold text-xs" :class="sku.stock > 0 ? 'text-gray-800' : 'text-red-500'">{{ sku.stock }}</span>
+                          </td>
+                          <!-- Aksi -->
+                          <td class="px-4 py-1 text-right align-top">
+                            <button
+                              :disabled="sku.stock <= 0 || addedSkuIds.includes(sku.sku_id)"
+                              class="inline-flex pointer-cursor h-8 w-8 items-center justify-center rounded-lg transition-colors"
+                              :class="addedSkuIds.includes(sku.sku_id)
+                                ? 'bg-green-100 text-green-600'
+                                : sku.stock <= 0
+                                  ? 'cursor-not-allowed bg-gray-100 text-gray-300'
+                                  : 'bg-primary-600 text-white hover:bg-primary-700'"
+                              :title="addedSkuIds.includes(sku.sku_id) ? 'Sudah ditambahkan' : sku.stock <= 0 ? 'Stok habis' : 'Tambah'"
+                              @click="addSku(product, sku)"
+                            >
+                              <Check v-if="addedSkuIds.includes(sku.sku_id)" class="h-4 w-4" />
+                              <ShoppingCart v-else class="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
