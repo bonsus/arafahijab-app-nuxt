@@ -607,12 +607,12 @@ function getStatusLabel(status: string, substatus: string) {
                 </div>
 
                 <!-- Ship method option (Shopee PICKUP/DROPOFF) -->
-                <div v-if="showShipMethodOption" class="rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+                <div v-if="showShipMethodOption">
                   <!-- <p class="text-sm font-medium text-blue-900">Metode Pengiriman Shopee</p>
                   <p class="mt-0.5 text-xs text-blue-700">
                     Pilih metode penyerahan paket untuk order dari Shopee.
                   </p> -->
-                  <div class="mt-3 flex gap-3">
+                  <div class="mt-1 flex gap-3">
                     <label
                       class="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border p-3 transition"
                       :class="shipMethod === 'PICKUP' ? 'border-blue-500 bg-white ring-1 ring-blue-500' : 'border-gray-200 bg-white'"
