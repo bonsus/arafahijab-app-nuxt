@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ArrowLeft, Trash2, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Trash2, Loader2, Upload } from 'lucide-vue-next'
 import type { ProductResult, ProductSku } from '~/components/AppProductSkuPicker.vue'
+import type { ImportedItem } from '~/components/AppPurchaseImportItemsModal.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -100,6 +101,27 @@ function onAddAllSkus(product: ProductResult) {
 
 function removeItem(index: number) {
   items.value.splice(index, 1)
+}
+
+// Import items from Excel
+const showImportModal = ref(false)
+
+function onImportItems(imported: ImportedItem[]) {
+  for (const it of imported) {
+    if (items.value.some(i => i.sku_id === it.sku_id)) continue
+    items.value.push({
+      sku_id: it.sku_id,
+      product_id: it.product_id,
+      sku: it.sku,
+      name: it.name,
+      variants: it.variants,
+      image: it.image,
+      qty: it.qty,
+      price: it.price,
+      discount: it.discount,
+      total: it.total,
+    })
+  }
 }
 
 function updateItemTotal(item: ItemRow) {
@@ -414,12 +436,22 @@ onMounted(() => {
           <div class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
             <h2 class="mb-4 text-sm font-semibold text-gray-900">Item Produk <span class="text-red-500">*</span></h2>
 
-            <AppProductSkuPicker
-              :added-sku-ids="addedSkuIds"
-              class="mb-4"
-              @add-sku="onAddSku"
-              @add-all-skus="onAddAllSkus"
-            />
+            <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <AppProductSkuPicker
+                :added-sku-ids="addedSkuIds"
+                class="flex-1"
+                @add-sku="onAddSku"
+                @add-all-skus="onAddAllSkus"
+              />
+              <button
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+                @click="showImportModal = true"
+              >
+                <Upload class="h-4 w-4" />
+                Import Excel
+              </button>
+            </div>
 
             <p v-if="getFieldError('items')" class="mb-3 text-xs text-red-600">{{ getFieldError('items') }}</p>
 
@@ -590,6 +622,13 @@ onMounted(() => {
         </div>
       </div>
     </template>
+
+    <!-- Import Items Modal -->
+    <AppPurchaseImportItemsModal
+      v-model="showImportModal"
+      :added-sku-ids="addedSkuIds"
+      @import="onImportItems"
+    />
   </div>
 </template>
 
