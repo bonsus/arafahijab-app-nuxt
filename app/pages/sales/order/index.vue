@@ -136,6 +136,8 @@ const filterPreorder = ref('')
 const filterSource = ref<string[]>([])
 const filterTags = ref<string[]>([])
 const filterShippingLabel = ref('')
+const filterCustomerCat = ref<string[]>([])
+const filterTrackingNo = ref('')
 
 // Data for filter dropdowns
 const stores = ref<StoreOption[]>([])
@@ -143,6 +145,7 @@ const staffList = ref<StaffOption[]>([])
 const couriers = ref<CourierOption[]>([])
 const paymentMethods = ref<{ id: string; code: string; name: string }[]>([])
 const tags = ref<string[]>([])
+const customerCategories = ref<{ id: string; name: string }[]>([])
 
 // Status summary counts
 interface StatusSummary {
@@ -235,6 +238,11 @@ const preorderOptions = [
 const shippingLabelOptions = [
   { value: 'yes', label: 'Sudah Print Label' },
   { value: 'no', label: 'Belum Print Label' },
+]
+
+const trackingNoOptions = [
+  { value: 'yes', label: 'Ada Resi' },
+  { value: 'no', label: 'Belum Ada Resi' },
 ]
 
 const sourceOptions = [
@@ -491,6 +499,8 @@ async function exportOrders(endpoint: string = '/sales/order-export/order') {
     if (filterSource.value.length) params.source = filterSource.value.join(',')
     if (filterTags.value.length) params.tag = filterTags.value.join(',')
     if (filterShippingLabel.value) params.shipping_label = filterShippingLabel.value
+    if (filterCustomerCat.value.length) params.customer_category_id = filterCustomerCat.value.join(',')
+    if (filterTrackingNo.value) params.tracking_no = filterTrackingNo.value
 
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], {
@@ -817,6 +827,7 @@ const staffOptions = computed(() => [...staffList.value.map(s => ({ value: s.id,
 const courierOptions = computed(() => couriers.value.map(c => ({ value: c.courier_code || c.id, label: c.courier_name })))
 const paymentMethodOptions = computed(() => paymentMethods.value.map(m => ({ value: m.code, label: m.name })))
 const tagOptions = computed(() => tags.value.map(t => ({ value: t, label: t })))
+const customerCategoryOptions = computed(() => customerCategories.value.map(c => ({ value: c.id, label: c.name })))
 
 // Computed counts for tabs
 const statusTabsWithCount = computed(() => {
@@ -894,7 +905,9 @@ const hasActiveFilters = computed(() =>
     || filterPreorder.value.length
     || filterSource.value.length
     || filterTags.value.length
-    || filterShippingLabel.value.length),
+    || filterShippingLabel.value.length
+    || filterCustomerCat.value.length
+    || filterTrackingNo.value.length),
 )
 
 // ─── URL query sync ───────────────────────────────────────────────────────────
@@ -915,6 +928,8 @@ function initFromQuery() {
   filterSource.value = q.source ? (q.source as string).split(',') : []
   filterTags.value = q.tags ? (q.tags as string).split(',') : []
   filterShippingLabel.value = (q.shipping_label as string) || ''
+  filterCustomerCat.value = q.customer_category ? (q.customer_category as string).split(',') : []
+  filterTrackingNo.value = (q.tracking_no as string) || ''
   page.value = q.page ? Number.parseInt(q.page as string, 10) : 1
   perPage.value = q.per_page ? Number.parseInt(q.per_page as string, 10) : 20
 }
@@ -937,6 +952,8 @@ function buildQuery(): Record<string, string> {
   if (filterSource.value.length) q.source = filterSource.value.join(',')
   if (filterTags.value.length) q.tags = filterTags.value.join(',')
   if (filterShippingLabel.value) q.shipping_label = filterShippingLabel.value
+  if (filterCustomerCat.value.length) q.customer_category = filterCustomerCat.value.join(',')
+  if (filterTrackingNo.value) q.tracking_no = filterTrackingNo.value
   if (page.value > 1) q.page = String(page.value)
   if (perPage.value !== 20) q.per_page = String(perPage.value)
   return q
@@ -969,6 +986,8 @@ async function fetchOrders() {
     if (filterSource.value.length) params.source = filterSource.value.join(',')
     if (filterTags.value.length) params.tag = filterTags.value.join(',')
     if (filterShippingLabel.value) params.shipping_label = filterShippingLabel.value
+    if (filterCustomerCat.value.length) params.customer_category_id = filterCustomerCat.value.join(',')
+    if (filterTrackingNo.value) params.tracking_no = filterTrackingNo.value
 
     const res = await api.get<{ data: Paginated }>('/sales/orders/index', params)
     orders.value = res.data?.data || []
@@ -1022,6 +1041,14 @@ async function fetchTags() {
     tags.value = res.data || []
   }
   catch { tags.value = [] }
+}
+
+async function fetchCustomerCategories() {
+  try {
+    const res = await api.get<{ data: { id: string; name: string }[] }>('/customers/categories/index', { per_page: '100' })
+    customerCategories.value = res.data || []
+  }
+  catch { customerCategories.value = [] }
 }
 
 async function fetchStatusSummary() {
@@ -1121,6 +1148,8 @@ function resetFilters() {
   filterSource.value = []
   filterTags.value = []
   filterShippingLabel.value = ''
+  filterCustomerCat.value = []
+  filterTrackingNo.value = ''
   page.value = 1
   fetchOrders()
 }
@@ -1143,6 +1172,7 @@ onMounted(() => {
   fetchCouriers()
   fetchPaymentMethods()
   fetchTags()
+  fetchCustomerCategories()
   fetchStatusSummary()
   document.addEventListener('mousedown', onClickOutsideScanDropdown)
 })
@@ -1160,12 +1190,12 @@ onUnmounted(() => {
         <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Order Penjualan</h1>
         <p class="text-sm text-gray-500">Kelola semua order penjualan.</p>
       </div>
-      <div class="flex items-center gap-2"> 
+      <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center"> 
         <!-- Scan Dropdown -->
         <div ref="scanDropdownRef" class="relative">
           <button
             type="button"
-            class="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:w-auto"
             @click="showScanDropdown = !showScanDropdown"
           >
             <Scan class="h-4 w-4" />
@@ -1217,7 +1247,7 @@ onUnmounted(() => {
           <button
             type="button"
             :disabled="exporting"
-            class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             @click="showExportDropdown = !showExportDropdown"
           >
             <Loader2 v-if="exporting" class="h-4 w-4 animate-spin" />
@@ -1314,14 +1344,14 @@ onUnmounted(() => {
         </div>
         <NuxtLink
           to="/sales/order/import-resi"
-          class="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+          class="inline-flex items-center justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
         >
           <FileUp class="h-4 w-4" />
           Import Resi
         </NuxtLink>
         <NuxtLink
           to="/sales/order/create"
-          class="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+          class="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
         >
           <Plus class="h-4 w-4" />
           Buat Order
@@ -1362,11 +1392,11 @@ onUnmounted(() => {
       <div class="space-y-3 px-4 py-3">
 
         <!-- Store filter (pill list) -->
-        <div v-if="stores.length" class="flex items-start gap-2">
-          <span class="w-14 shrink-0 pt-1 text-xs text-gray-400">Toko</span>
-          <div class="flex flex-wrap gap-1">
+        <div v-if="stores.length" class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2">
+          <span class="shrink-0 pt-1 text-xs text-gray-400 sm:w-14">Toko</span>
+          <div class="flex gap-1 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             <button
-              class="rounded-md px-2.5 py-1 text-xs font-medium transition-all"
+              class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-all"
               :class="filterStores.length === 0 ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'"
               @click="onStoreFilter('')"
             >
@@ -1376,7 +1406,7 @@ onUnmounted(() => {
               v-for="store in storesWithCount"
               :key="store.id"
               type="button"
-              class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+              class="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
               :class="filterStores.includes(store.id)
                 ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
@@ -1406,11 +1436,11 @@ onUnmounted(() => {
         </div>
 
         <!-- sub_status filter (pill list) -->
-        <div v-if="filteredsub_statusOptions.length" class="flex items-start gap-2">
-          <span class="w-14 shrink-0 pt-1 text-xs text-gray-400">Status</span>
-          <div class="flex flex-wrap gap-1">
+        <div v-if="filteredsub_statusOptions.length" class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2">
+          <span class="shrink-0 pt-1 text-xs text-gray-400 sm:w-14">Status</span>
+          <div class="flex gap-1 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             <button
-              class="rounded-md px-2.5 py-1 text-xs font-medium transition-all"
+              class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-all"
               :class="filtersub_status.length === 0 ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'"
               @click="onsub_statusFilter('')"
             >
@@ -1419,7 +1449,7 @@ onUnmounted(() => {
             <button
               v-for="opt in filteredsub_statusOptions"
               :key="opt.value"
-              class="inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium transition-all"
+              class="inline-flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium transition-all"
               :class="filtersub_status.includes(opt.value) ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'"
               @click="onsub_statusFilter(opt.value)"
             >
@@ -1449,8 +1479,8 @@ onUnmounted(() => {
         </div> -->
 
         <!-- Search + Refresh + Reset -->
-        <div class="flex items-center gap-2 mt-4">
-          <div class="relative flex-1">
+        <div class="flex flex-col gap-2 mt-4 sm:flex-row sm:items-center">
+          <div class="relative w-full sm:flex-1">
             <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               v-model="search"
@@ -1460,37 +1490,44 @@ onUnmounted(() => {
               @keydown.enter="onSearch"
             />
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <!-- <span class="w-14 shrink-0 text-xs text-gray-400">Tanggal</span> -->
+          <div class="flex items-center gap-2">
             <select
               v-model="filterDateType"
-              class="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20"
+              class="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/20 sm:flex-none"
               @change="onDateTypeChange"
             >
               <option v-for="opt in dateTypeOptions" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
             </select>
             <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
+            <button
+              class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+              title="Refresh data"
+              :disabled="loading"
+              @click="fetchOrders()"
+            >
+              <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+            </button>
+            <button
+              v-if="hasActiveFilters"
+              class="shrink-0 flex rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"
+              title="Reset semua filter"
+              @click="resetFilters()"
+            >
+              <X class="h-4 w-4" />
+            </button>
           </div>
-          <button
-            class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
-            title="Refresh data"
-            :disabled="loading"
-            @click="fetchOrders()"
-          >
-            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
-          </button>
-          <button
-            v-if="hasActiveFilters"
-            class="shrink-0 flex rounded-lg border border-red-200 p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-700"
-            title="Reset semua filter"
-            @click="resetFilters()"
-          >
-            <X class="h-4 w-4" />
-          </button>
         </div>
 
         <!-- Multi-select filter chips -->
         <div class="flex flex-wrap items-center gap-2">
+
+          <AppFilterSelect
+            :model-value="filterCustomerCat"
+            :options="customerCategoryOptions"
+            multiple
+            placeholder="Kategori"
+            @update:model-value="v => { filterCustomerCat = v as string[]; onFilterChange() }"
+          />
           <AppFilterSelect
             :model-value="filterCouriers"
             :options="courierOptions"
@@ -1548,6 +1585,13 @@ onUnmounted(() => {
             multiple
             placeholder="Tag"
             @update:model-value="v => { filterTags = v as string[]; onFilterChange() }"
+          />
+          <AppFilterSelect
+            :model-value="filterTrackingNo"
+            :options="trackingNoOptions"
+            :searchable="false"
+            placeholder="Resi"
+            @update:model-value="v => { filterTrackingNo = v as string; onFilterChange() }"
           />
           <AppFilterSelect
             :model-value="filterShippingLabel"
