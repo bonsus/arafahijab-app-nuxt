@@ -31,9 +31,9 @@ const AVAILABLE_EVENTS: { value: string; label: string }[] = [
   { value: 'order.created', label: 'Order dibuat' },
 //   { value: 'order.updated', label: 'Order diperbarui' },
   { value: 'order.status_updated', label: 'Status order diperbarui' },
-  { value: 'payment.received', label: 'Pembayaran diterima' },
-  { value: 'payment.updated', label: 'Pembayaran diperbarui' },
-  { value: 'stock.changed', label: 'Stok berubah' },
+//   { value: 'payment.received', label: 'Pembayaran diterima' },
+//   { value: 'payment.updated', label: 'Pembayaran diperbarui' },
+//   { value: 'stock.changed', label: 'Stok berubah' },
 ]
 
 const loading = ref(true)
