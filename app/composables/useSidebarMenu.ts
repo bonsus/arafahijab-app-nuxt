@@ -54,8 +54,22 @@ export function useSidebarMenu(): MenuItem[] {
       icon: 'warehouse',
       children: [
         { label: 'Inbound', to: '/wms/inbound', permission: 'inbound.read' },
+        { label: 'Gudang', to: '/wms/warehouse', permission: 'warehouse.read' },
         { label: 'Lokasi', to: '/wms/locations', permission: 'warehouse.read' },
         { label: 'Layout', to: '/wms/layout', permission: 'warehouse.read' },
+      ],
+    },
+    {
+      label: 'Inventory',
+      icon: 'package-search',
+      children: [
+        { label: 'Stock', to: '/inventory/stock', permission: 'inventory.read' },
+        { label: 'Stock Movement', to: '/inventory/movement', permission: 'inventory.read' },
+        { label: 'Pemakaian Stock', to: '/inventory/usage', permission: 'stock_usage.read' },
+        { label: 'Stock Opname', to: '/inventory/opname', permission: 'stock_opname.read' },
+        { label: 'Penyesuaian Stock', to: '/inventory/adjustment', permission: 'stock_adjustment.read' },
+        { label: 'Konversi Stock', to: '/inventory/conversion', permission: 'stock_conversion.read' },
+        { label: 'Transfer Stock', to: '/inventory/transfer', permission: 'stock_transfer.read' },
       ],
     },
     {
@@ -73,20 +87,8 @@ export function useSidebarMenu(): MenuItem[] {
       icon: 'users',
       children: [
         { label: 'Pelanggan', to: '/contact/customer', permission: 'customer.read' },
+        { label: 'Kategori Pelanggan', to: '/contact/customer-category', permission: 'customer.read' },
         { label: 'Supplier', to: '/contact/supplier', permission: 'customer.read' },
-      ],
-    },
-    {
-      label: 'Inventory',
-      icon: 'package-search',
-      children: [
-        { label: 'Stock', to: '/inventory/stock', permission: 'inventory.read' },
-        { label: 'Stock Movement', to: '/inventory/movement', permission: 'inventory.read' },
-        { label: 'Pemakaian Stock', to: '/inventory/usage', permission: 'stock_usage.read' },
-        { label: 'Stock Opname', to: '/inventory/opname', permission: 'stock_opname.read' },
-        { label: 'Penyesuaian Stock', to: '/inventory/adjustment', permission: 'stock_adjustment.read' },
-        { label: 'Konversi Stock', to: '/inventory/conversion', permission: 'stock_conversion.read' },
-        { label: 'Transfer Stock', to: '/inventory/transfer', permission: 'stock_transfer.read' },
       ],
     },
     {
@@ -97,14 +99,6 @@ export function useSidebarMenu(): MenuItem[] {
         { label: 'Laporan Penjualan', to: '/report/sales/overview', permission: 'report_sales.read' },
         { label: 'Laporan Keuangan', to: '/report/finance/overview', permission: 'report_finances.read' },
         { label: 'Laporan Retur', to: '/report/return/overview', permission: 'report_returns.read' },
-      ],
-    },
-    {
-      label: 'Dompet',
-      icon: 'wallet',
-      children: [
-        { label: 'Saldo Dompet', to: '/wallet', permission: 'wallet.read' },
-        { label: 'History Transaksi', to: '/wallet/history', permission: 'wallet.read' },
       ],
     },
     {

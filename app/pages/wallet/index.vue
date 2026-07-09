@@ -4,7 +4,6 @@ import {
   Wallet,
   ArrowDownLeft,
   ArrowUpRight,
-  Landmark,
   ArrowLeftRight,
   X,
   Loader2,
@@ -37,6 +36,13 @@ const toast = useToast()
 const loading = ref(true)
 const wallets = ref<WalletItem[]>([])
 const summaryRef = ref<{ refresh: () => void } | null>(null)
+
+const tabs = [
+  { label: 'Overview', to: '/report/finance/overview' },
+  { label: 'Laba Rugi', to: '/report/finance/profit-loss' },
+  { label: 'Dompet', to: '/wallet' },
+  { label: 'History Transaksi', to: '/wallet/history' },
+]
 
 const walletTypes = [
   { value: 'cash', label: 'Kas' },
@@ -178,7 +184,7 @@ onMounted(() => {
   <div class="space-y-4">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Wallet / Dompet</h1>
+        <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Laporan Keuangan</h1>
         <p class="text-sm text-gray-500">Ringkasan saldo dompet bisnis Anda.</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -199,13 +205,6 @@ onMounted(() => {
           <ArrowLeftRight class="h-4 w-4" />
           Transfer
         </button>
-        <NuxtLink
-          to="/wallet/history"
-          class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-        >
-          <Landmark class="h-4 w-4" />
-          History Transaksi
-        </NuxtLink>
         <button
           class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
           :disabled="loading"
@@ -215,6 +214,23 @@ onMounted(() => {
           Refresh
         </button>
       </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200">
+      <nav class="-mb-px flex gap-1 overflow-x-auto">
+        <NuxtLink
+          v-for="tab in tabs"
+          :key="tab.to"
+          :to="tab.to"
+          class="whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
+          :class="$route.path === tab.to
+            ? 'border-primary-600 text-primary-600'
+            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+        >
+          {{ tab.label }}
+        </NuxtLink>
+      </nav>
     </div>
 
     <AppWalletSummary ref="summaryRef" />

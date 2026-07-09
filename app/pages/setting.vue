@@ -8,9 +8,7 @@ const route = useRoute()
 const settingMenus = [
   { label: 'Umum', to: '/setting/general' },
   { label: 'Staff', to: '/setting/staff' },
-  { label: 'Gudang', to: '/setting/warehouse' },
-  { label: 'Kategori Pelanggan', to: '/setting/customer-category' },
-  { label: 'Toko', to: '/setting/store' },
+  { label: 'Toko / Channel Penjualan', to: '/setting/store' },
   { label: 'Integrasi', to: '/setting/integration' },
   { label: 'Kurir', to: '/setting/courier' },
   { label: 'Dompet', to: '/setting/wallets' },

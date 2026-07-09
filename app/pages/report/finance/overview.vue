@@ -366,6 +366,8 @@ function fmtPct(v: string | number, suffix = '%') {
 const tabs = [
   { label: 'Overview', to: '/report/finance/overview' },
   { label: 'Laba Rugi', to: '/report/finance/profit-loss' },
+  { label: 'Dompet', to: '/wallet' },
+  { label: 'History Transaksi', to: '/wallet/history' },
 ]
 
 onMounted(async () => {

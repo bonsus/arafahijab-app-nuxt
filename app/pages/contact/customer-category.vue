@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {
-  Plus, Search, Pencil, Trash2, Loader2, Tag, Percent,
+  Plus, Pencil, Trash2, Loader2, Tag, Percent,
 } from 'lucide-vue-next'
+
+definePageMeta({ middleware: 'auth' })
 
 interface CustomerCategory {
   id: string
@@ -147,31 +149,28 @@ onMounted(() => fetchCategories())
       </button>
     </div>
 
-    <!-- Search -->
-    <!-- <div class="relative max-w-sm">
-      <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="Cari kategori..."
-        class="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-      />
-    </div> -->
-
     <!-- Loading -->
-    <div v-if="loading" class="space-y-3">
-      <div v-for="i in 3" :key="i" class="animate-pulse rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0 flex-1 space-y-3">
-            <div class="h-5 w-36 rounded bg-gray-200" />
-            <div class="h-4 w-48 rounded bg-gray-100" />
-          </div>
-          <div class="flex items-center gap-1">
-            <div class="h-8 w-8 rounded-lg bg-gray-100" />
-            <div class="h-8 w-8 rounded-lg bg-gray-100" />
-          </div>
-        </div>
-      </div>
+    <div v-if="loading" class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-gray-200 bg-gray-50">
+            <th class="py-2.5 pl-4 pr-3 text-left text-xs font-medium text-gray-500">Nama</th>
+            <th class="py-2.5 pr-3 text-left text-xs font-medium text-gray-500">Deskripsi</th>
+            <th class="w-[110px] py-2.5 pr-3 text-right text-xs font-medium text-gray-500">Diskon</th>
+            <th class="w-[160px] py-2.5 pr-3 text-right text-xs font-medium text-gray-500">Min. Transaksi</th>
+            <th class="w-[88px] py-2.5 pr-4" />
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="i in 4" :key="i" class="border-b border-gray-100 last:border-b-0">
+            <td class="py-3.5 pl-4 pr-3"><div class="h-4 w-32 animate-pulse rounded bg-gray-200" /></td>
+            <td class="py-3.5 pr-3"><div class="h-4 w-48 animate-pulse rounded bg-gray-100" /></td>
+            <td class="py-3.5 pr-3"><div class="ml-auto h-4 w-12 animate-pulse rounded bg-gray-100" /></td>
+            <td class="py-3.5 pr-3"><div class="ml-auto h-4 w-20 animate-pulse rounded bg-gray-100" /></td>
+            <td class="py-3.5 pr-4"><div class="ml-auto h-8 w-16 animate-pulse rounded bg-gray-100" /></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Empty -->
@@ -182,17 +181,32 @@ onMounted(() => fetchCategories())
       </p>
     </div>
 
-    <!-- List -->
-    <div v-else class="space-y-3">
-      <div
-        v-for="cat in filteredCategories"
-        :key="cat.id"
-        class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md"
-      >
-        <div class="flex items-start justify-between gap-2 sm:gap-4">
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="text-sm font-semibold text-gray-900">{{ cat.name }}</h3>
+    <!-- Table -->
+    <div v-else class="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+      <table class="w-full"> 
+        <thead class="border-b border-gray-200 bg-gray-50/80 text-xs font-medium uppercase tracking-wider text-gray-500 text-nowrap">
+          <tr class="border-b border-gray-200 bg-gray-50">
+            <th class="py-2.5 pl-4 pr-3 text-left">Nama</th>
+            <th class="py-2.5 pr-3 text-left">Deskripsi</th>
+            <th class="w-[110px] py-2.5 pr-3 text-right">Diskon</th>
+            <th class="w-[160px] py-2.5 pr-3 text-right">Min. Transaksi</th>
+            <th class="w-[88px] py-2.5 pr-4" />
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="cat in filteredCategories"
+            :key="cat.id"
+            class="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/50"
+          >
+            <td class="py-3 pl-4 pr-3 align-middle">
+              <span class="text-sm font-semibold text-gray-900">{{ cat.name }}</span>
+            </td>
+            <td class="py-3 pr-3 align-middle">
+              <span v-if="cat.description" class="text-xs text-gray-500">{{ cat.description }}</span>
+              <span v-else class="text-xs text-gray-400">-</span>
+            </td>
+            <td class="py-3 pr-3 text-right align-middle">
               <span
                 v-if="cat.discount"
                 class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200"
@@ -200,37 +214,35 @@ onMounted(() => fetchCategories())
                 <Percent class="h-3 w-3" />
                 {{ cat.discount }}%
               </span>
-              <span
-                v-if="cat.min_transaction"
-                class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200"
-              >
-                Min. Rp{{ Number(cat.min_transaction).toLocaleString('id-ID') }}
-              </span>
-            </div>
-            <p v-if="cat.description" class="mt-1 text-xs text-gray-500">{{ cat.description }}</p>
-            <!-- <p class="mt-1.5 text-xs text-gray-400">Dibuat {{ formatDate(cat.created_at) }}</p> -->
-          </div>
-
-          <div class="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-              title="Edit"
-              @click="openEdit(cat)"
-            >
-              <Pencil class="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-              title="Hapus"
-              @click="handleDelete(cat)"
-            >
-              <Trash2 class="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+              <span v-else class="text-xs text-gray-400">-</span>
+            </td>
+            <td class="py-3 pr-3 text-right align-middle">
+              <span v-if="cat.min_transaction" class="text-sm text-gray-700">Rp{{ Number(cat.min_transaction).toLocaleString('id-ID') }}</span>
+              <span v-else class="text-xs text-gray-400">-</span>
+            </td>
+            <td class="py-3 pr-4 align-middle">
+              <div class="flex items-center justify-end gap-0.5">
+                <button
+                  type="button"
+                  class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  title="Edit"
+                  @click="openEdit(cat)"
+                >
+                  <Pencil class="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  title="Hapus"
+                  @click="handleDelete(cat)"
+                >
+                  <Trash2 class="h-4 w-4" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Modal -->

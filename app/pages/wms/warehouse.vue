@@ -313,7 +313,7 @@ onMounted(() => fetchWarehouses())
     </div>
 
     <!-- Pagination -->
-    <AppPagination
+    <AppPagination v-if="totalPage > 1"
       :page="page"
       :total-page="totalPage"
       :total="total"

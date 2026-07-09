@@ -65,6 +65,13 @@ const loadingTransactionDetail = ref(false)
 
 const summaryRef = ref<{ refresh: () => Promise<void> } | null>(null)
 
+const tabs = [
+  { label: 'Overview', to: '/report/finance/overview' },
+  { label: 'Laba Rugi', to: '/report/finance/profit-loss' },
+  { label: 'Dompet', to: '/wallet' },
+  { label: 'History Transaksi', to: '/wallet/history' },
+]
+
 const walletFilterOptions = computed(() =>
   wallets.value.map(w => ({ value: w.id, label: w.name })),
 )
@@ -267,16 +274,26 @@ onMounted(async () => {
   <div class="space-y-4">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">History Transaksi Wallet</h1>
+        <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">Laporan Keuangan</h1>
         <p class="text-sm text-gray-500">Riwayat uang masuk dan keluar semua dompet.</p>
       </div>
-      <NuxtLink
-        to="/wallet"
-        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-      >
-        <Wallet class="h-4 w-4" />
-        Ringkasan Dompet
-      </NuxtLink>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200">
+      <nav class="-mb-px flex gap-1 overflow-x-auto">
+        <NuxtLink
+          v-for="tab in tabs"
+          :key="tab.to"
+          :to="tab.to"
+          class="whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
+          :class="$route.path === tab.to
+            ? 'border-primary-600 text-primary-600'
+            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+        >
+          {{ tab.label }}
+        </NuxtLink>
+      </nav>
     </div>
 
     <AppWalletSummary
