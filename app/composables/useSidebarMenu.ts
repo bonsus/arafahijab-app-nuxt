@@ -123,6 +123,12 @@ export function useSidebarMenu(): MenuItem[] {
       ],
     }, 
     {
+      label: 'Developer',
+      icon: 'code',
+      to: '/developer',
+      permission: 'integration.read',
+    },
+    {
       label: 'Pengaturan',
       icon: 'settings',
       to: '/setting/general',
