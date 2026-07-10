@@ -86,3 +86,35 @@ export function formatDateTimeForApi(dateTimeLocal: string): string {
   const minutes = date.getMinutes().toString().padStart(2, '0')
   return `${year}-${month}-${day}T${hours}:${minutes}:00${offsetSign}${offsetHH}:${offsetMM}`
 }
+
+/**
+ * Build an RFC3339 string with the local timezone offset for a plain date + time.
+ * Input:  dateStr "2026-07-01", time "00:00:00"
+ * Output: "2026-07-01T00:00:00+07:00"
+ */
+function dateWithLocalTZ(dateStr: string, time: string): string {
+  const date = new Date(`${dateStr}T${time}`)
+  const offset = -date.getTimezoneOffset()
+  const offsetSign = offset >= 0 ? '+' : '-'
+  const offsetHH = Math.floor(Math.abs(offset) / 60).toString().padStart(2, '0')
+  const offsetMM = (Math.abs(offset) % 60).toString().padStart(2, '0')
+  return `${dateStr}T${time}${offsetSign}${offsetHH}:${offsetMM}`
+}
+
+/**
+ * Convert a plain date string (YYYY-MM-DD) into the API `date_from` value:
+ * start of day with local timezone offset, e.g. "2026-07-01T00:00:00+07:00".
+ */
+export function formatDateFromForApi(dateStr: string): string {
+  if (!dateStr) return ''
+  return dateWithLocalTZ(dateStr, '00:00:00')
+}
+
+/**
+ * Convert a plain date string (YYYY-MM-DD) into the API `date_to` value:
+ * end of day with local timezone offset, e.g. "2026-07-09T23:59:59+07:00".
+ */
+export function formatDateToForApi(dateStr: string): string {
+  if (!dateStr) return ''
+  return dateWithLocalTZ(dateStr, '23:59:59')
+}

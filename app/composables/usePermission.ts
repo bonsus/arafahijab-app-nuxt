@@ -33,6 +33,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'payment-method', label: 'Metode Pembayaran', permissions: ['payment-method.read', 'payment-method.update'] },
       { key: 'user', label: 'Pengguna', permissions: ['user.read', 'user.create', 'user.update', 'user.delete'] },
       { key: 'role', label: 'Role', permissions: ['role', 'role.create', 'role.update', 'role.delete'] },
+      { key: 'website', label: 'Website', permissions: ['website.read', 'website.create', 'website.update', 'website.delete'] },
     ],
   },
   {

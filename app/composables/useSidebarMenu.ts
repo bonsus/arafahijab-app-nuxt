@@ -117,6 +117,12 @@ export function useSidebarMenu(): MenuItem[] {
       ],
     }, 
     {
+      label: 'Website',
+      icon: 'globe',
+      to: '/website/settings',
+      permission: 'website.read',
+    },
+    {
       label: 'Developer',
       icon: 'code',
       to: '/developer',

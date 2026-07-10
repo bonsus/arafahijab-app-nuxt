@@ -27,6 +27,7 @@ import {
   Activity,
   Boxes,
   Code2,
+  Globe,
   ChevronDown,
   ChevronsUpDown,
   LogOut,
@@ -102,6 +103,7 @@ const iconMap: Record<string, Component> = {
   'activity': Activity,
   'boxes': Boxes,
   'code': Code2,
+  'globe': Globe,
 }
 
 function getIcon(name: string): Component {

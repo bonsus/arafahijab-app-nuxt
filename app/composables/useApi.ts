@@ -1,5 +1,21 @@
 import type { ApiError, ApiErrorResponse } from '~/types'
 
+/**
+ * Normalize `date_from` / `date_to` query params to RFC3339 with the local
+ * timezone offset before sending to the API.
+ * - `date_from`: plain date (YYYY-MM-DD) → start of day, e.g. 2026-07-01T00:00:00+07:00
+ * - `date_to`:   plain date (YYYY-MM-DD) → end of day,   e.g. 2026-07-09T23:59:59+07:00
+ * Values already containing a time component (e.g. "T") are left untouched.
+ */
+function normalizeDateParams(params?: Record<string, string>): Record<string, string> | undefined {
+  if (!params) return params
+  const isPlainDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v)
+  const next = { ...params }
+  if (next.date_from && isPlainDate(next.date_from)) next.date_from = formatDateFromForApi(next.date_from)
+  if (next.date_to && isPlainDate(next.date_to)) next.date_to = formatDateToForApi(next.date_to)
+  return next
+}
+
 export function useApi() {
   async function request<T>(
     url: string,
@@ -15,7 +31,7 @@ export function useApi() {
         baseURL: '/api',
         method: options.method || 'GET',
         body: options.body,
-        params: options.params,
+        params: normalizeDateParams(options.params),
         responseType: options.responseType,
       })
       return response as T
