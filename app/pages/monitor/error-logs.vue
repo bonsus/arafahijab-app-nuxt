@@ -70,8 +70,8 @@ async function fetchList() {
       per_page: String(perPage.value),
     }
     if (fSearch.value) params.search = fSearch.value
-    if (fDate.value.from) params.date_from = fDate.value.from
-    if (fDate.value.to) params.date_to = fDate.value.to
+    if (fDate.value.from) params.date_from = formatDateFromForApi(fDate.value.from)
+    if (fDate.value.to) params.date_to = formatDateToForApi(fDate.value.to)
 
     const res = await api.get<{ data: ErrorLogList }>('/worker/error-logs', params)
     items.value = res.data?.data || []
@@ -96,8 +96,8 @@ async function fetchStats() {
   try {
     const params: Record<string, string> = {}
     if (fSearch.value) params.search = fSearch.value
-    if (fDate.value.from) params.date_from = fDate.value.from
-    if (fDate.value.to) params.date_to = fDate.value.to
+    if (fDate.value.from) params.date_from = formatDateFromForApi(fDate.value.from)
+    if (fDate.value.to) params.date_to = formatDateToForApi(fDate.value.to)
 
     const res = await api.get<{ data: ErrorLogStats }>('/worker/error-logs/stats', params)
     stats.value = res.data || null

@@ -75,8 +75,8 @@ function buildParams(): Record<string, string> {
     category_b: String(thresholdB.value),
     category_c: '100',
   }
-  if (filterDate.value.from) p.date_from = filterDate.value.from
-  if (filterDate.value.to) p.date_to = filterDate.value.to
+  if (filterDate.value.from) p.date_from = formatDateFromForApi(filterDate.value.from)
+  if (filterDate.value.to) p.date_to = formatDateToForApi(filterDate.value.to)
   if (filterStore.value.length) p.store_id = filterStore.value.join(',')
   if (filterProductCat.value.length) p.category_id = filterProductCat.value.join(',')
   return p

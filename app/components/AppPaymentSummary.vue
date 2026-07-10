@@ -56,8 +56,8 @@ async function fetchSummary() {
     if (props.storeIds) params.store_id = props.storeIds
     if (props.cod) params.cod = props.cod
     if (props.dateFrom) {
-      params.date_from = props.dateFrom
-      params.date_to = props.dateTo || ''
+      params.date_from = formatDateFromForApi(props.dateFrom)
+      params.date_to = formatDateToForApi(props.dateTo || '')
     }
 
     const res = await api.get<{ data: any }>('/sales/orders/payments/summary', params)

@@ -109,8 +109,8 @@ async function fetchPayments() {
     if (filterWalletIds.value.length) params.wallet_id = filterWalletIds.value.join(',')
     if (filterMethod.value.length) params.method = filterMethod.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
 
     const res = await api.get<{ data: PaginatedPayment }>('/purchase-receipts/payment/index', params)
@@ -229,8 +229,8 @@ async function exportData() {
     if (filterWalletIds.value.length) params.wallet_id = filterWalletIds.value.join(',')
     if (filterMethod.value.length) params.method = filterMethod.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const endpoint = '/sales/purchase-order-export/purchase-receipt-payment'
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })

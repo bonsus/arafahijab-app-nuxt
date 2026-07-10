@@ -143,8 +143,8 @@ const SORT_BY_OPTIONS = [
 function buildParams(page: number): Record<string, string> {
 	const p: Record<string, string> = { page: String(page), per_page: '20' }
 	if (filterSearch.value.trim()) p.search = filterSearch.value.trim()
-	if (filterDate.value.from) p.date_from = filterDate.value.from
-	if (filterDate.value.to) p.date_to = filterDate.value.to
+	if (filterDate.value.from) p.date_from = formatDateFromForApi(filterDate.value.from)
+	if (filterDate.value.to) p.date_to = formatDateToForApi(filterDate.value.to)
 	if (filterDateType.value) p.date_type = filterDateType.value
 	if (filterStore.value.length) p.store_id = filterStore.value.join(',')
 	if (filterStatus.value.length) p.status = filterStatus.value.join(',')

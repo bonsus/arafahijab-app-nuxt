@@ -66,8 +66,8 @@ async function fetchRecap() {
     if (props.paymentStatus.length) params.payment_status = props.paymentStatus.join(',')
     if (props.dateFrom) {
       params.date_type = props.dateType
-      params.date_from = props.dateFrom
-      params.date_to = props.dateTo
+      params.date_from = formatDateFromForApi(props.dateFrom)
+      params.date_to = formatDateToForApi(props.dateTo)
     }
     const res = await api.get<{ data: Recap }>('/purchase-receipts/summary', params)
     recap.value = res.data

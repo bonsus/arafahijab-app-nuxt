@@ -76,8 +76,8 @@ async function fetchList() {
     if (fSearch.value) params.search = fSearch.value
     if (fStatus.value) params.status = fStatus.value
     if (fEvent.value) params.event = fEvent.value
-    if (fDate.value.from) params.date_from = fDate.value.from
-    if (fDate.value.to) params.date_to = fDate.value.to
+    if (fDate.value.from) params.date_from = formatDateFromForApi(fDate.value.from)
+    if (fDate.value.to) params.date_to = formatDateToForApi(fDate.value.to)
 
     const res = await api.get<{ data: DeliveryList }>('/external/webhook/deliveries', params)
     items.value = res.data?.data || []

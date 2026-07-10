@@ -118,8 +118,8 @@ async function fetchTransactions() {
     if (filterWalletIds.value.length) params.wallet_id = filterWalletIds.value.join(',')
     if (filterType.value) params.type = filterType.value
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
 
     const res = await api.get<{ data: PaginatedTransaction }>('/wallets/transactions', params)
@@ -238,8 +238,8 @@ async function exportTransactions() {
     if (filterWalletIds.value.length) params.wallet_id = filterWalletIds.value.join(',')
     if (filterType.value) params.type = filterType.value
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const response = await api.get<Blob>('/wallets/transactions/export', params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

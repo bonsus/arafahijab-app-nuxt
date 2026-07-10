@@ -59,8 +59,8 @@ async function fetchRecap() {
     if (props.warehouseIds.length) params.warehouse_id = props.warehouseIds.join(',')
     if (props.purchaseReceiptId) params.purchase_receipt_id = props.purchaseReceiptId
     if (props.dateFrom) {
-      params.date_from = props.dateFrom
-      params.date_to = props.dateTo
+      params.date_from = formatDateFromForApi(props.dateFrom)
+      params.date_to = formatDateToForApi(props.dateTo)
     }
 
     const res = await api.get<{ data: Recap }>('/purchase-returns/summary', params)

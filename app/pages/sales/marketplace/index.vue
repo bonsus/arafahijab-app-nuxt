@@ -334,8 +334,8 @@ async function fetchOrders(append = false) {
     
     if (search.value) params.search = search.value
     if (status.value) params.status = status.value
-    if (dateRange.value.from) params.date_from = dateRange.value.from
-    if (dateRange.value.to) params.date_to = dateRange.value.to
+    if (dateRange.value.from) params.date_from = formatDateFromForApi(dateRange.value.from)
+    if (dateRange.value.to) params.date_to = formatDateToForApi(dateRange.value.to)
     if (append && nextCursor.value) params.cursor = nextCursor.value
 
     const res = await api.get<{ data: OrderResponse }>('/sales/order-mp/index', params)

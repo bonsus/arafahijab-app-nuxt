@@ -25,8 +25,8 @@ async function fetchData() {
       limit: '8',
     }
     if (props.storeId) params.store_id = props.storeId
-    if (props.dateFrom) params.date_from = props.dateFrom
-    if (props.dateTo) params.date_to = props.dateTo
+    if (props.dateFrom) params.date_from = formatDateFromForApi(props.dateFrom)
+    if (props.dateTo) params.date_to = formatDateToForApi(props.dateTo)
     const res = await api.get<{ data: SkuStat[] }>('/sales/dashboard/skus', params)
     items.value = res.data || []
   }

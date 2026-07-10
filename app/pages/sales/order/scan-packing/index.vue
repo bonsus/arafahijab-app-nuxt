@@ -67,8 +67,8 @@ async function fetchOrders() {
       per_page: pagination.value.per_page
     }
 
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     if (search.value) params.search = search.value
 
     const res = await api.get<{ data: PaginationData }>('/sales/orders/scan-packing/index', params)
@@ -113,8 +113,8 @@ async function exportScanPacking() {
   exporting.value = true
   try {
     const params: Record<string, string> = {}
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     if (search.value) params.search = search.value
 
     const response = await api.get<Blob>('/sales/order-export/scan-packing', params, { responseType: 'blob' })

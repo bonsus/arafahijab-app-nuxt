@@ -35,8 +35,8 @@ async function fetchSummary() {
   try {
     const params: Record<string, string> = {}
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const res = await api.get<{ data: CsSummary }>('/sales/ordercs/summary', params)
     summary.value = res.data

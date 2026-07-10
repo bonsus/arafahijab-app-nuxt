@@ -36,8 +36,8 @@ async function fetchData() {
     }
     else {
       url = '/sales/dashboard/charts/fulfillment-daily'
-      if (props.dateFrom) params.date_from = props.dateFrom
-      if (props.dateTo) params.date_to = props.dateTo
+      if (props.dateFrom) params.date_from = formatDateFromForApi(props.dateFrom)
+      if (props.dateTo) params.date_to = formatDateToForApi(props.dateTo)
     }
     const res = await api.get<{ data: FulfillmentChart }>(url, params)
     data.value = res.data

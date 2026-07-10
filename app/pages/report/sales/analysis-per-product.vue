@@ -52,8 +52,8 @@ const availableMetrics = computed(() => analysisData.value?.available_metrics ||
 // ── Params ─────────────────────────────────────────────────────────────────
 function buildParams(): Record<string, string> {
   const p: Record<string, string> = { group_by: groupBy.value, date_type: dateType.value }
-  if (filterDate.value.from) p.date_from = filterDate.value.from
-  if (filterDate.value.to) p.date_to = filterDate.value.to
+  if (filterDate.value.from) p.date_from = formatDateFromForApi(filterDate.value.from)
+  if (filterDate.value.to) p.date_to = formatDateToForApi(filterDate.value.to)
   if (filterProduct.value.length) p.product_id = filterProduct.value.join(',')
   return p
 }

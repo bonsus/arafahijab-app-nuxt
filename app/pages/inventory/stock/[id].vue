@@ -182,8 +182,8 @@ async function fetchMovements() {
     if (movFilterWarehouseId.value.length) params.warehouse_id = movFilterWarehouseId.value.join(',')
     if (movFilterType.value.length) params.type = movFilterType.value[0]!
     if (movFilterDate.value.from) {
-      params.date_from = movFilterDate.value.from
-      params.date_to = movFilterDate.value.to
+      params.date_from = formatDateFromForApi(movFilterDate.value.from)
+      params.date_to = formatDateToForApi(movFilterDate.value.to)
     }
     const res = await api.get<{ data: Paginated<StockMovement> }>(`/inventories/${productId.value}/stock-movements`, params)
     movements.value = res.data?.data || []

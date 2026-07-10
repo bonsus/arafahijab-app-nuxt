@@ -55,8 +55,8 @@ async function fetchSummary() {
     if (props.type) params.type = props.type
     if (props.search) params.search = props.search
     if (props.dateFrom) {
-      params.date_from = props.dateFrom
-      params.date_to = props.dateTo
+      params.date_from = formatDateFromForApi(props.dateFrom)
+      params.date_to = formatDateToForApi(props.dateTo)
     }
 
     const res = await api.get<{ data: SummaryWallet }>('/wallets/transactions/summary', params)

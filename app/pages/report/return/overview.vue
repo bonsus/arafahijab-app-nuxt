@@ -191,8 +191,8 @@ const trendGroupBy = ref<'daily' | 'weekly' | 'monthly'>('daily')
 
 function buildParams(): Record<string, string> {
 	const p: Record<string, string> = {}
-	if (filterDate.value.from) p.date_from = filterDate.value.from
-	if (filterDate.value.to) p.date_to = filterDate.value.to
+	if (filterDate.value.from) p.date_from = formatDateFromForApi(filterDate.value.from)
+	if (filterDate.value.to) p.date_to = formatDateToForApi(filterDate.value.to)
 	if (filterStore.value.length) p.store_id = filterStore.value.join(',')
 	if (filterWarehouse.value.length) p.warehouse_id = filterWarehouse.value.join(',')
 	if (filterCustomerCat.value.length) p.customer_category_id = filterCustomerCat.value.join(',')

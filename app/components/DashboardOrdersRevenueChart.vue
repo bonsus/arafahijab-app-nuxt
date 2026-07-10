@@ -40,8 +40,8 @@ async function fetchData() {
     }
     else {
       url = '/sales/dashboard/charts/orders-revenue-daily'
-      if (props.dateFrom) params.date_from = props.dateFrom
-      if (props.dateTo) params.date_to = props.dateTo
+      if (props.dateFrom) params.date_from = formatDateFromForApi(props.dateFrom)
+      if (props.dateTo) params.date_to = formatDateToForApi(props.dateTo)
     }
     const res = await api.get<{ data: OrdersRevenueChart }>(url, params)
     data.value = res.data

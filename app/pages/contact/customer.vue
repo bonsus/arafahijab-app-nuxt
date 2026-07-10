@@ -208,8 +208,8 @@ async function fetchCustomers() {
     if (filterStatus.value) params.status = filterStatus.value
     if (filterCategory.value.size) params.category_ids = Array.from(filterCategory.value).join(',')
     if (filterStore.value.size) params.store_ids = Array.from(filterStore.value).join(',')
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
 
     const res = await api.get<{ data: PaginatedCustomers }>('/customers/index', params)
     customers.value = res.data?.data || []

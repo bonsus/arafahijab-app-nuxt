@@ -65,8 +65,8 @@ async function fetchItems() {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     // params.per_page = '1'
 
@@ -147,8 +147,8 @@ async function exportData(endpoint: string) {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

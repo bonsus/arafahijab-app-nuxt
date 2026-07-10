@@ -124,8 +124,8 @@ async function fetchReceipts() {
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
     if (filterDate.value.from) {
       params.date_type = filterDateType.value
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
 
     const res = await api.get<{ data: PaginatedReceipt }>('/purchase-receipts/index', params)
@@ -292,8 +292,8 @@ async function exportData(endpoint: string) {
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
     if (filterDate.value.from) {
       params.date_type = filterDateType.value
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], {

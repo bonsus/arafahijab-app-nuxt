@@ -442,8 +442,8 @@ async function fetchOrders() {
     if (search.value) params.search = search.value
     if (activeTab.value) params.status = activeTab.value
     if (filterDateType.value) params.date_type = filterDateType.value
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     if (filtersub_status.value.length) params.sub_status = filtersub_status.value.join(',')
     if (filterCouriers.value.length) params.courier = filterCouriers.value.join(',')
     if (filterPaymentStatus.value.length) params.payment_status = filterPaymentStatus.value.join(',')
@@ -495,8 +495,8 @@ async function fetchStatusSummary() {
     const params: Record<string, string> = {}
     if (activeTab.value) params.status = activeTab.value
     if (filtersub_status.value.length) params.sub_status = filtersub_status.value.join(',')
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     const res = await api.get<{ data: StatusSummary }>('/sales/ordercs/status-summary', params)
     statusSummary.value = res.data || null
   }

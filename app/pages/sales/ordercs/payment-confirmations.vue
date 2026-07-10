@@ -47,8 +47,8 @@ async function fetchData() {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const res = await api.get<{ data: any }>('/sales/ordercs/payment-confirmations/index', params)
     confirmations.value = res.data?.data || []

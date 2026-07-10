@@ -87,7 +87,7 @@ function buildFilterParams(): Record<string, string> {
   const p: Record<string, string> = {}
   if (search.value) p.search = search.value
   if (filterStatus.value.length) p.status = filterStatus.value.join(',')
-  if (filterDate.value.from) { p.date_from = filterDate.value.from; p.date_to = filterDate.value.to }
+  if (filterDate.value.from) { p.date_from = formatDateFromForApi(filterDate.value.from); p.date_to = formatDateToForApi(filterDate.value.to) }
   if (filterWarehouseIds.value.length) p.warehouse_id = filterWarehouseIds.value.join(',')
   return p
 }
@@ -204,8 +204,8 @@ async function exportData(endpoint: string) {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })

@@ -59,7 +59,7 @@ function buildParams(): Record<string, string> {
   const p: Record<string, string> = {}
   if (search.value) p.search = search.value
   if (filterStatus.value.length) p.status = filterStatus.value.join(',')
-  if (filterDate.value.from) { p.date_from = filterDate.value.from; p.date_to = filterDate.value.to }
+  if (filterDate.value.from) { p.date_from = formatDateFromForApi(filterDate.value.from); p.date_to = formatDateToForApi(filterDate.value.to) }
   return p
 }
 

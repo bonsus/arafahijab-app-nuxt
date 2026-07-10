@@ -53,8 +53,8 @@ async function fetchSummary() {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
     const res = await api.get<{ data: Summary }>('/inventories/stock-opnames/summary', params)
@@ -103,8 +103,8 @@ async function fetchItems() {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
 
@@ -203,8 +203,8 @@ async function exportData(endpoint: string) {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })

@@ -110,8 +110,8 @@ async function fetchOrders() {
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
       params.date_type = filterDateType.value
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterSupplierIds.value.length) params.customer_id = filterSupplierIds.value.join(',')
 
@@ -276,8 +276,8 @@ async function exportData(endpoint: string) {
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
       params.date_type = filterDateType.value
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterSupplierIds.value.length) params.customer_id = filterSupplierIds.value.join(',')
 

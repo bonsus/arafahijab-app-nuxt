@@ -39,8 +39,8 @@ async function fetchSummary() {
     const params: Record<string, string> = {}
     if (search.value) params.search = search.value
     if (filterWarehouse.value.length) params.warehouse_id = filterWarehouse.value.join(',')
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     const res = await api.get<{ data: StSummary }>('/reports/stocks/stock-turnover/summary', params)
     summaryData.value = res.data
   }
@@ -75,8 +75,8 @@ async function fetchData() {
     const params: Record<string, string> = {}
     if (search.value) params.search = search.value
     if (filterWarehouse.value.length) params.warehouse_id = filterWarehouse.value.join(',')
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     const res = await api.get<{ data: { period_days: number; data: StProduct[] } }>(
       '/reports/stocks/stock-turnover', params,
     )
@@ -115,8 +115,8 @@ async function exportData() {
     const params: Record<string, string> = {}
     if (search.value) params.search = search.value
     if (filterWarehouse.value.length) params.warehouse_id = filterWarehouse.value.join(',')
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     const endpoint = '/reports/stocks/stock-turnover/export'
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

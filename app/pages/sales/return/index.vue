@@ -162,8 +162,8 @@ async function fetchReturns() {
     if (filterStatus.value) params.status = filterStatus.value
     if (filterPaymentStatus.value) params.payment_status = filterPaymentStatus.value
     if (filterDate.value.from && filterDate.value.to) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
 
     const res = await api.get<{ data: Paginated }>('/sales/order-returns/index', params)
@@ -259,8 +259,8 @@ async function exportData(endpoint: string) {
     if (filterStatus.value) params.status = filterStatus.value
     if (filterPaymentStatus.value) params.payment_status = filterPaymentStatus.value
     if (filterDate.value.from && filterDate.value.to) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], {

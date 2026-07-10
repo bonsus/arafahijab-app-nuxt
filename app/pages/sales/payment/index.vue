@@ -30,8 +30,8 @@ async function exportData() {
     const params: Record<string, string> = {}
     if (search.value) params.search = search.value
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterStores.value.length) params.store_id = filterStores.value.join(',')
     if (filterCod.value.length) params.cod = filterCod.value.join(',')
@@ -110,8 +110,8 @@ async function fetchData() {
     }
     if (search.value) params.search = search.value
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     if (filterStores.value.length) params.store_id = filterStores.value.join(',')
     if (filterCod.value.length) params.cod = filterCod.value.join(',')

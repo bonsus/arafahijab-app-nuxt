@@ -31,8 +31,8 @@ async function exportData() {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
 
     const endpoint = '/sales/order-payment-export/payment-confirmation'
@@ -129,8 +129,8 @@ async function fetchData() {
     if (search.value) params.search = search.value
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     
     const res = await api.get<{ data: any }>('/sales/orders/payment-confirmations/index', params)

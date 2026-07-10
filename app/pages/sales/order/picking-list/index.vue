@@ -86,8 +86,8 @@ async function fetchPickingLists() {
       per_page: String(perPage.value),
     }
     if (search.value) params.search = search.value
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     if (filterStatus.value) params.status = filterStatus.value
 
     const res = await api.get<{ data: Paginated }>('/sales/orders/picking-lists', params)

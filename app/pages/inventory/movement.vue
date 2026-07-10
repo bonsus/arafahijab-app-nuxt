@@ -160,8 +160,8 @@ function buildParams(): Record<string, string> {
   if (filterProductIds.value.length) params.product_id = filterProductIds.value.join(',')
   if (filterSkuIds.value.length) params.sku_id = filterSkuIds.value.join(',')
   if (filterType.value) params.type = filterType.value
-  if (filterDate.value.from) params.date_from = filterDate.value.from
-  if (filterDate.value.to) params.date_to = filterDate.value.to
+  if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+  if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
   return params
 }
 
@@ -328,8 +328,8 @@ async function exportData() {
     if (filterProductIds.value.length) params.product_id = filterProductIds.value.join(',')
     if (filterSkuIds.value.length) params.sku_id = filterSkuIds.value.join(',')
     if (filterType.value) params.type = filterType.value
-    if (filterDate.value.from) params.date_from = filterDate.value.from
-    if (filterDate.value.to) params.date_to = filterDate.value.to
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     const endpoint = '/inventories/export/stock-movements'
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], {

@@ -18,8 +18,8 @@ async function fetchData() {
   loading.value = true
   try {
     const params: Record<string, string> = {}
-    if (props.dateFrom) params.date_from = props.dateFrom
-    if (props.dateTo) params.date_to = props.dateTo
+    if (props.dateFrom) params.date_from = formatDateFromForApi(props.dateFrom)
+    if (props.dateTo) params.date_to = formatDateToForApi(props.dateTo)
     const res = await api.get<{ data: ChannelStat[] }>('/sales/dashboard/channels', params)
     items.value = res.data || []
   }

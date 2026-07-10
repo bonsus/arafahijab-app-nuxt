@@ -103,8 +103,8 @@ async function fetchInbounds() {
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
 
     const res = await api.get<{ data: PaginatedInbound }>('/warehouses/inbounds/index', params)
@@ -213,8 +213,8 @@ async function exportData(endpoint: string) {
     if (filterStatus.value.length) params.status = filterStatus.value.join(',')
     if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
     if (filterDate.value.from) {
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
     const response = await api.get<Blob>(endpoint, params, { responseType: 'blob' })
     const blob = new Blob([response as BlobPart], {

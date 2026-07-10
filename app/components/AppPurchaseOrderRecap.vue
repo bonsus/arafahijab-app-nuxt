@@ -58,8 +58,8 @@ async function fetchRecap() {
     if (props.supplierIds.length) params.customer_id = props.supplierIds.join(',')
     if (props.dateFrom) {
       params.date_type = props.dateType
-      params.date_from = props.dateFrom
-      params.date_to = props.dateTo
+      params.date_from = formatDateFromForApi(props.dateFrom)
+      params.date_to = formatDateToForApi(props.dateTo)
     }
     const res = await api.get<{ data: Recap }>('/purchases/recap', params)
     recap.value = res.data

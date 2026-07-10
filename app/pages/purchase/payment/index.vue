@@ -176,8 +176,8 @@ async function fetchReceipts() {
     if (filterPaymentStatus.value.length) params.payment_status = filterPaymentStatus.value.join(',')
     if (filterDate.value.from) {
       params.date_type = filterDateType.value
-      params.date_from = filterDate.value.from
-      params.date_to = filterDate.value.to
+      params.date_from = formatDateFromForApi(filterDate.value.from)
+      params.date_to = formatDateToForApi(filterDate.value.to)
     }
 
     const res = await api.get<{ data: PaginatedReceipt }>('/purchase-receipts/index', params)
