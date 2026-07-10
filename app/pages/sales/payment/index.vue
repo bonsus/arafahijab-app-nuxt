@@ -396,7 +396,7 @@ onMounted(() => {
                 <div class="text-xs text-gray-500">{{ item.customer?.phone || '-' }}</div>
               </td>
               <td class="px-4 py-3 text-gray-600">
-                {{ formatDate(item.date) }}
+                {{ formatDateTime(item.date) }}
               </td>
               <td class="px-4 py-3 text-right font-semibold text-gray-900">
                 Rp{{ formatCurrency(Number(item.amount)) }}

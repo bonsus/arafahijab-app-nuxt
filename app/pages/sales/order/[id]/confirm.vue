@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Upload, Loader2, CheckCircle2 } from 'lucide-vue-next'
-import { formatCurrency } from '~/composables/useFormatters'
+import { formatCurrency, convertIsoToDatetimeLocal, formatDateTimeForApi } from '~/composables/useFormatters'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -20,7 +20,7 @@ const banks = ref<any[]>([])
 
 const form = reactive({
   order_id: orderId, 
-  payment_date: new Date().toISOString().slice(0, 10),
+  payment_date: convertIsoToDatetimeLocal(new Date().toISOString()),
   amount: 0,
   from_name: '',
   from_bank: '',
@@ -65,7 +65,7 @@ async function handleSubmit() {
   
   const formData = new FormData()
   formData.append('order_id', form.order_id) 
-  formData.append('payment_date', String(form.payment_date))
+  formData.append('payment_date', formatDateTimeForApi(form.payment_date))
   formData.append('amount', String(form.amount))
   formData.append('from_name', form.from_name)
   formData.append('from_bank', form.from_bank) 
@@ -180,7 +180,7 @@ onMounted(async () => {
               <label class="mb-1 block text-xs font-medium text-gray-600">
                 Tanggal Transfer <span class="text-red-500">*</span>
               </label>
-              <input v-model="form.payment_date" type="date" class="input-field" />
+              <input v-model="form.payment_date" type="datetime-local" class="input-field" />
               <p v-if="formErrors.payment_date" class="mt-1 text-xs text-red-600">{{ formErrors.payment_date[0] }}</p>
             </div>
 

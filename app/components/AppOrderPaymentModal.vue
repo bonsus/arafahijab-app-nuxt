@@ -38,7 +38,7 @@ const selectedFile = ref<File | null>(null)
 const filePreview = ref<string | null>(null)
 
 const form = reactive({
-  date: new Date().toISOString().slice(0, 10),
+  date: convertIsoToDatetimeLocal(new Date().toISOString()),
   amount: '',
   actual_amount: '',
   bank_id: '',
@@ -49,7 +49,7 @@ watch(() => props.order, (newOrder) => {
   if (newOrder) {
     form.amount = newOrder.total
     form.actual_amount = newOrder.total
-    form.date = new Date().toISOString().slice(0, 10)
+    form.date = convertIsoToDatetimeLocal(new Date().toISOString())
     form.bank_id = ''
     form.note = ''
     selectedFile.value = null
@@ -133,7 +133,7 @@ async function handleSubmit() {
   try {
     const formData = new FormData()
     formData.append('order_id', props.order.id)
-    formData.append('date', form.date)
+    formData.append('date', formatDateTimeForApi(form.date))
     formData.append('amount', form.amount)
     formData.append('actual_amount', form.actual_amount)
     formData.append('bank_id', form.bank_id)
@@ -217,7 +217,7 @@ watch(() => props.order, (newOrder) => {
                   </label>
                   <input
                     v-model="form.date"
-                    type="date"
+                    type="datetime-local"
                     required
                     class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   />
@@ -259,7 +259,6 @@ watch(() => props.order, (newOrder) => {
                   </div>
                   <p v-if="errors.actual_amount" class="mt-1 text-xs text-red-600">{{ errors.actual_amount[0] }}</p>
                 </div>
-
                 <!-- Bank Tujuan -->
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">
