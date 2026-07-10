@@ -2,7 +2,7 @@
 import {
   Plus, Search, Eye, Trash2,
   Pencil, RefreshCw, ClipboardList, TrendingDown,TrendingUp, Download, Loader2, ChevronDown,
-  PackageCheck, Layers, XCircle, RotateCcw,
+  PackageCheck, Layers, XCircle, RotateCcw, Printer, Tag,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -123,6 +123,106 @@ let searchTimer: ReturnType<typeof setTimeout>
 function onSearch() {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => { page.value = 1; fetchItems(); fetchSummary() }, 300)
+}
+
+// ─── Selection & Print ─────────────────────────────────────────────────────────
+const selectedIds = ref<string[]>([])
+const printingId = ref<string | null>(null)
+const massPrinting = ref(false)
+const printingLabelId = ref<string | null>(null)
+const massPrintingLabel = ref(false)
+
+const allSelected = computed(() =>
+  items.value.length > 0 && items.value.every(i => selectedIds.value.includes(i.id)),
+)
+
+function toggleSelect(id: string) {
+  const idx = selectedIds.value.indexOf(id)
+  if (idx === -1) selectedIds.value.push(id)
+  else selectedIds.value.splice(idx, 1)
+}
+
+function toggleSelectAll() {
+  if (allSelected.value) selectedIds.value = []
+  else selectedIds.value = items.value.map(i => i.id)
+}
+
+async function printUsages(ids: string[]) {
+  const response = await api.post<Blob>('/inventories/stock-usages/print-mass', { ids }, { responseType: 'blob' })
+  const blob = new Blob([response as BlobPart], { type: 'application/pdf' })
+  const url = window.URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+}
+
+async function printSingle(item: StockUsage) {
+  if (printingId.value) return
+  printingId.value = item.id
+  try {
+    await printUsages([item.id])
+    toast.success('Dokumen pemakaian berhasil dicetak')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak dokumen')
+  }
+  finally {
+    printingId.value = null
+  }
+}
+
+async function printMass() {
+  if (massPrinting.value || !selectedIds.value.length) return
+  massPrinting.value = true
+  try {
+    await printUsages([...selectedIds.value])
+    toast.success(`${selectedIds.value.length} dokumen pemakaian berhasil dicetak`)
+    selectedIds.value = []
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak dokumen')
+  }
+  finally {
+    massPrinting.value = false
+  }
+}
+
+async function printLabels(ids: string[]) {
+  const response = await api.post<Blob>('/inventories/stock-usages/print-label-mass', { ids }, { responseType: 'blob' })
+  const blob = new Blob([response as BlobPart], { type: 'application/pdf' })
+  const url = window.URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+}
+
+async function printLabelSingle(item: StockUsage) {
+  if (printingLabelId.value) return
+  printingLabelId.value = item.id
+  try {
+    await printLabels([item.id])
+    toast.success('Label pemakaian berhasil dicetak')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak label')
+  }
+  finally {
+    printingLabelId.value = null
+  }
+}
+
+async function printLabelMass() {
+  if (massPrintingLabel.value || !selectedIds.value.length) return
+  massPrintingLabel.value = true
+  try {
+    await printLabels([...selectedIds.value])
+    toast.success(`${selectedIds.value.length} label pemakaian berhasil dicetak`)
+    selectedIds.value = []
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak label')
+  }
+  finally {
+    massPrintingLabel.value = false
+  }
 }
 
 function onStatusFilter(val: string | string[]) {
@@ -366,6 +466,26 @@ onMounted(() => {
       />
       <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
       <button
+        v-if="selectedIds.length"
+        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
+        :disabled="massPrinting"
+        @click="printMass"
+      >
+        <Loader2 v-if="massPrinting" class="h-4 w-4 animate-spin" />
+        <Printer v-else class="h-4 w-4" />
+        <span>Print ({{ selectedIds.length }})</span>
+      </button>
+      <button
+        v-if="selectedIds.length"
+        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
+        :disabled="massPrintingLabel"
+        @click="printLabelMass"
+      >
+        <Loader2 v-if="massPrintingLabel" class="h-4 w-4 animate-spin" />
+        <Tag v-else class="h-4 w-4" />
+        <span>Print Label ({{ selectedIds.length }})</span>
+      </button>
+      <button
         class="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50 transition-colors"
         :disabled="loading"
         @click="fetchItems(); fetchSummary()"
@@ -404,6 +524,14 @@ onMounted(() => {
         <table class="w-full min-w-[700px] text-sm">
           <thead>
             <tr class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th class="w-10 px-4 py-3 text-center">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  :checked="allSelected"
+                  @change="toggleSelectAll"
+                />
+              </th>
               <th class="px-4 py-3 text-left">Nomor</th>
               <th class="px-4 py-3 text-left">Tanggal</th>
               <th class="px-4 py-3 text-left">Gudang</th>
@@ -416,14 +544,14 @@ onMounted(() => {
           </thead>
           <tbody v-if="loading">
             <tr v-for="i in 8" :key="i" class="border-b border-gray-100">
-              <td v-for="j in 8" :key="j" class="px-4 py-3">
-                <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 5 ? 'w-40' : 'w-20'" />
+              <td v-for="j in 9" :key="j" class="px-4 py-3">
+                <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 6 ? 'w-40' : 'w-20'" />
               </td>
             </tr>
           </tbody>
           <tbody v-else-if="!items.length">
             <tr>
-              <td colspan="8" class="px-4 py-16 text-center">
+              <td colspan="9" class="px-4 py-16 text-center">
                 <ClipboardList class="mx-auto mb-3 h-10 w-10 text-gray-300" />
                 <p class="text-sm text-gray-500">Belum ada pemakaian stok</p>
                 <NuxtLink
@@ -442,6 +570,14 @@ onMounted(() => {
               :key="item.id"
               class="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors"
             >
+              <td class="px-4 py-3 text-center">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  :checked="selectedIds.includes(item.id)"
+                  @change="toggleSelect(item.id)"
+                />
+              </td>
               <td class="px-4 py-3">
                 <NuxtLink :to="`/inventory/usage/${item.id}`" class="font-semibold text-primary-600 hover:underline">
                   {{ item.no }}
@@ -473,6 +609,24 @@ onMounted(() => {
                   >
                     <Eye class="h-4 w-4" />
                   </NuxtLink>
+                  <button
+                    class="rounded-lg p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600 transition-colors disabled:opacity-50"
+                    title="Print"
+                    :disabled="printingId === item.id"
+                    @click="printSingle(item)"
+                  >
+                    <Loader2 v-if="printingId === item.id" class="h-4 w-4 animate-spin" />
+                    <Printer v-else class="h-4 w-4" />
+                  </button>
+                  <button
+                    class="rounded-lg p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600 transition-colors disabled:opacity-50"
+                    title="Print Label"
+                    :disabled="printingLabelId === item.id"
+                    @click="printLabelSingle(item)"
+                  >
+                    <Loader2 v-if="printingLabelId === item.id" class="h-4 w-4 animate-spin" />
+                    <Tag v-else class="h-4 w-4" />
+                  </button>     
                   <NuxtLink
                     v-if="item.status === 'draft'"
                     :to="`/inventory/usage/create?edit=${item.id}`"

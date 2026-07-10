@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Plus, Search, Eye, Trash2,
-  Pencil, RefreshCw, ArrowRight, Package, Layers, Box, Download, Loader2, ChevronDown,
+  Pencil, RefreshCw, ArrowRight, Package, Layers, Box, Download, Loader2, ChevronDown, Printer,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -119,6 +119,65 @@ let searchTimer: ReturnType<typeof setTimeout>
 function onSearch() {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => { page.value = 1; fetchItems() }, 300)
+}
+
+// ─── Selection & Print ─────────────────────────────────────────────────────────
+const selectedIds = ref<string[]>([])
+const printingId = ref<string | null>(null)
+const massPrinting = ref(false)
+
+const allSelected = computed(() =>
+  items.value.length > 0 && items.value.every(i => selectedIds.value.includes(i.id)),
+)
+
+function toggleSelect(id: string) {
+  const idx = selectedIds.value.indexOf(id)
+  if (idx === -1) selectedIds.value.push(id)
+  else selectedIds.value.splice(idx, 1)
+}
+
+function toggleSelectAll() {
+  if (allSelected.value) selectedIds.value = []
+  else selectedIds.value = items.value.map(i => i.id)
+}
+
+async function printTransfers(ids: string[]) {
+  const response = await api.post<Blob>('/inventories/transfers/print-mass', { ids }, { responseType: 'blob' })
+  const blob = new Blob([response as BlobPart], { type: 'application/pdf' })
+  const url = window.URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+}
+
+async function printSingle(item: StockTransfer) {
+  if (printingId.value) return
+  printingId.value = item.id
+  try {
+    await printTransfers([item.id])
+    toast.success('Dokumen transfer berhasil dicetak')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak dokumen')
+  }
+  finally {
+    printingId.value = null
+  }
+}
+
+async function printMass() {
+  if (massPrinting.value || !selectedIds.value.length) return
+  massPrinting.value = true
+  try {
+    await printTransfers([...selectedIds.value])
+    toast.success(`${selectedIds.value.length} dokumen transfer berhasil dicetak`)
+    selectedIds.value = []
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak dokumen')
+  }
+  finally {
+    massPrinting.value = false
+  }
 }
 
 function onStatusFilter(val: string | string[]) {
@@ -307,6 +366,16 @@ onMounted(() => {
       />
       <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
       <button
+        v-if="selectedIds.length"
+        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
+        :disabled="massPrinting"
+        @click="printMass"
+      >
+        <Loader2 v-if="massPrinting" class="h-4 w-4 animate-spin" />
+        <Printer v-else class="h-4 w-4" />
+        <span>Print ({{ selectedIds.length }})</span>
+      </button>
+      <button
         class="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50 transition-colors"
         :disabled="loading"
         @click="fetchItems()"
@@ -345,6 +414,14 @@ onMounted(() => {
         <table class="w-full min-w-[640px] text-sm">
           <thead>
             <tr class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th class="w-10 px-4 py-3 text-center">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  :checked="allSelected"
+                  @change="toggleSelectAll"
+                />
+              </th>
               <th class="px-4 py-3 text-left">Nomor</th>
               <th class="px-4 py-3 text-left">Tanggal</th>
               <th class="px-4 py-3 text-left">Catatan</th>
@@ -355,14 +432,14 @@ onMounted(() => {
           </thead>
           <tbody v-if="loading">
             <tr v-for="i in 8" :key="i" class="border-b border-gray-100">
-              <td v-for="j in 6" :key="j" class="px-4 py-3">
-                <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 3 ? 'w-40' : 'w-20'" />
+              <td v-for="j in 7" :key="j" class="px-4 py-3">
+                <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 4 ? 'w-40' : 'w-20'" />
               </td>
             </tr>
           </tbody>
           <tbody v-else-if="!items.length">
             <tr>
-              <td colspan="6" class="px-4 py-16 text-center">
+              <td colspan="7" class="px-4 py-16 text-center">
                 <ArrowRight class="mx-auto mb-3 h-10 w-10 text-gray-300" />
                 <p class="text-sm text-gray-500">Belum ada transfer stok</p>
                 <NuxtLink
@@ -381,6 +458,14 @@ onMounted(() => {
               :key="item.id"
               class="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors"
             >
+              <td class="px-4 py-3 text-center">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  :checked="selectedIds.includes(item.id)"
+                  @change="toggleSelect(item.id)"
+                />
+              </td>
               <td class="px-4 py-3">
                 <NuxtLink :to="`/inventory/transfer/${item.id}`" class="font-semibold text-primary-600 hover:underline">
                   {{ item.no }}
@@ -410,6 +495,15 @@ onMounted(() => {
                   >
                     <Eye class="h-4 w-4" />
                   </NuxtLink>
+                  <button
+                    class="rounded-lg p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600 transition-colors disabled:opacity-50"
+                    title="Print"
+                    :disabled="printingId === item.id"
+                    @click="printSingle(item)"
+                  >
+                    <Loader2 v-if="printingId === item.id" class="h-4 w-4 animate-spin" />
+                    <Printer v-else class="h-4 w-4" />
+                  </button>
                   <NuxtLink
                     v-if="item.status === 'draft'"
                     :to="`/inventory/transfer/create?edit=${item.id}`"
