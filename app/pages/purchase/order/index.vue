@@ -519,16 +519,16 @@ onMounted(() => {
                 {{ po.customer?.name || '-' }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(po.date_created) }}
+                {{ formatDateTime(po.date_created) }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(po.date_expected) }}
+                {{ formatDateTime(po.date_expected) }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(po.date_approved) }}
+                {{ formatDateTime(po.date_approved) }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(po.date_completed) }}
+                {{ formatDateTime(po.date_completed) }}
               </td>
               <td class="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">
                 Rp{{ formatCurrency(po.total) }}

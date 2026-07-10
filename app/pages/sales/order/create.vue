@@ -1116,10 +1116,10 @@ onMounted(() => {
                 <input v-model="form.external_id" type="text" class="input-field" placeholder="ID referensi eksternal" />
               </div>
               <!-- tanggal dibuat -->
-              <div>
+              <!-- <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Tanggal Order</label>
                 <input v-model="form.date_created" type="datetime-local" class="input-field" />
-              </div>
+              </div> -->
               <!-- tanggal jatuh tempo -->
               <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Jatuh Tempo / Batal Otomatis</label>

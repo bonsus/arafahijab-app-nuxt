@@ -432,7 +432,7 @@ onMounted(() => {
                 {{ p.purchase_receipt?.customer?.name || '-' }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(p.date) }}
+                {{ formatDateTime(p.date) }}
               </td>
               <td class="px-4 py-3">
                 <span

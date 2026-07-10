@@ -93,7 +93,7 @@ const selectedReceipt = ref<ReceiptRef | null>(null)
 const form = reactive({
   purchase_receipt_id: '',
   external_id: '',
-  date_created: new Date().toISOString().slice(0, 10),
+  date_created: convertIsoToDatetimeLocal(new Date().toISOString()),
   discount: 0,
   shipping_fee: 0,
   tax: 0,
@@ -192,7 +192,7 @@ async function loadEditData() {
 
     form.purchase_receipt_id = data.purchase_receipt_id
     form.external_id = data.external_id || ''
-    form.date_created = data.date_created && !data.date_created.startsWith('0001') ? data.date_created.slice(0, 10) : ''
+    form.date_created = data.date_created && !data.date_created.startsWith('0001') ? convertIsoToDatetimeLocal(data.date_created) : ''
     form.discount = Number(data.discount) || 0
     form.shipping_fee = Number(data.shipping_fee) || 0
     form.tax = Number(data.tax) || 0
@@ -265,7 +265,7 @@ async function handleSubmit(status: 'draft' | 'completed') {
   try {
     const payload: Record<string, any> = {
       external_id: form.external_id,
-      date_created: form.date_created,
+      date_created: formatDateTimeForApi(form.date_created),
       discount: form.discount,
       shipping_fee: form.shipping_fee,
       tax: form.tax,
@@ -475,7 +475,7 @@ onMounted(() => {
               <!-- Date Created -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Tanggal Retur</label>
-                <input v-model="form.date_created" type="date" class="input-field" />
+                <input v-model="form.date_created" type="datetime-local" class="input-field" />
               </div>
 
               <!-- External ID -->

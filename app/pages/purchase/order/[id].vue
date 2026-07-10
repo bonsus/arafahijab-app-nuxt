@@ -117,7 +117,7 @@ const walletOptions = ref<Wallet[]>([])
 const prepaymentForm = reactive({
   purchase_order_id: '',
   wallet_id: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: convertIsoToDatetimeLocal(new Date().toISOString()),
   amount: 0,
   method: 'transfer',
   note: '',
@@ -255,7 +255,7 @@ function openPrepaymentModal() {
   }
   prepaymentForm.purchase_order_id = poId.value
   prepaymentForm.wallet_id = ''
-  prepaymentForm.date = new Date().toISOString().slice(0, 10)
+  prepaymentForm.date = convertIsoToDatetimeLocal(new Date().toISOString())
   prepaymentForm.amount = 0
   prepaymentForm.method = 'transfer'
   prepaymentForm.note = ''
@@ -270,7 +270,7 @@ async function handleSavePrepayment() {
   try {
     const payload: Record<string, any> = {
       purchase_order_id: prepaymentForm.purchase_order_id,
-      date: prepaymentForm.date ? new Date(prepaymentForm.date).toISOString() : '',
+      date: prepaymentForm.date ? formatDateTimeForApi(prepaymentForm.date) : '',
       amount: prepaymentForm.amount,
       method: prepaymentForm.method,
       note: prepaymentForm.note,
@@ -556,11 +556,11 @@ onMounted(() => {
               </div>
               <div>
                 <p class="text-xs text-gray-400">Tanggal Dibuat</p>
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(po.date_created) }}</p>
+                <p class="text-sm font-medium text-gray-900">{{ formatDateTime(po.date_created) }}</p>
               </div>
               <div>
                 <p class="text-xs text-gray-400">Estimasi Tiba</p>
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(po.date_expected) }}</p>
+                <p class="text-sm font-medium text-gray-900">{{ formatDateTime(po.date_expected) }}</p>
               </div>
               <div v-if="po.note">
                 <p class="text-xs text-gray-400">Catatan</p>
@@ -709,7 +709,7 @@ onMounted(() => {
                       <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">{{ pp.method }}</span>
                     </div>
                     <p class="text-xs text-gray-500">
-                      {{ formatDate(pp.date) }}
+                      {{ formatDateTime(pp.date) }}
                       <span v-if="pp.wallet"> &middot; {{ pp.wallet.name }}</span>
                     </p>
                     <p v-if="pp.note" class="text-xs text-gray-400">{{ pp.note }}</p>
@@ -743,7 +743,7 @@ onMounted(() => {
                           {{ alloc.purchase_receipt.no }}
                         </NuxtLink>
                         <span v-else class="text-gray-500">-</span>
-                        <span class="text-gray-400">{{ formatDate(alloc.date) }}</span>
+                        <span class="text-gray-400">{{ formatDateTime(alloc.date) }}</span>
                       </div>
                       <span class="font-medium text-gray-700">Rp{{ formatCurrency(Number(alloc.amount)) }}</span>
                     </div>
@@ -928,7 +928,7 @@ onMounted(() => {
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">Tanggal</label>
                   <input
                     v-model="prepaymentForm.date"
-                    type="date"
+                    type="datetime-local"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   />
                 </div>

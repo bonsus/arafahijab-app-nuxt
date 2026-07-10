@@ -150,7 +150,7 @@ const paymentForm = reactive({
   purchase_receipt_id: '',
   wallet_id: '',
   purchase_prepayment_id: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: convertIsoToDatetimeLocal(new Date().toISOString()),
   amount: 0,
   method: 'transfer',
   note: '',
@@ -299,7 +299,7 @@ function openPaymentModal(receipt: PurchaseReceipt) {
   paymentForm.purchase_receipt_id = receipt.id
   paymentForm.wallet_id = ''
   paymentForm.purchase_prepayment_id = ''
-  paymentForm.date = new Date().toISOString().slice(0, 10)
+  paymentForm.date = convertIsoToDatetimeLocal(new Date().toISOString())
   paymentForm.amount = 0
   paymentForm.method = 'transfer'
   paymentForm.note = ''
@@ -319,7 +319,7 @@ async function handleSavePayment() {
     const payload: Record<string, any> = {
       payment_mode: paymentMode.value,
       purchase_receipt_id: paymentForm.purchase_receipt_id,
-      date: paymentForm.date ? new Date(paymentForm.date).toISOString() : '',
+      date: paymentForm.date ? formatDateTimeForApi(paymentForm.date) : '',
       amount: paymentForm.amount,
       note: paymentForm.note,
     }
@@ -611,10 +611,10 @@ onMounted(() => {
                 {{ r.customer?.name || '-' }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(r.date_received) }}
+                {{ formatDateTime(r.date_received) }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                <div>{{ formatDate(r.date_due) }}</div>
+                <div>{{ formatDateTime(r.date_due) }}</div>
                 <div
                   v-if="getDueDaysInfo(r.date_due) && r.payment_status !== 'paid'"
                   class="text-xs mt-0.5" :class="getDueDaysInfo(r.date_due)!.color"
@@ -827,7 +827,7 @@ onMounted(() => {
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">Tanggal</label>
                   <input
                     v-model="paymentForm.date"
-                    type="date"
+                    type="datetime-local"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   />
                 </div>
@@ -924,7 +924,7 @@ onMounted(() => {
                         >DP</span>
                       </div>
                       <div class="mt-0.5 flex items-center gap-2 text-xs text-gray-400">
-                        <span>{{ formatDate(pay.date) }}</span>
+                        <span>{{ formatDateTime(pay.date) }}</span>
                         <span>&middot;</span>
                         <span v-if="pay.payment_mode === 'prepayment' && pay.prepayment">{{ pay.prepayment.no }}</span>
                         <span v-else>{{ methodLabel[pay.method] || pay.method }}</span>

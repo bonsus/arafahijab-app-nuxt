@@ -459,7 +459,7 @@ onMounted(() => {
                 {{ p.purchase_order?.customer?.name || '-' }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(p.date) }}
+                {{ formatDateTime(p.date) }}
               </td> 
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
                   {{ p.wallet?.name || '-' }}
@@ -527,7 +527,7 @@ onMounted(() => {
                             {{ alloc.purchase_receipt.no }}
                           </NuxtLink>
                           <span v-else class="text-sm text-gray-500">-</span>
-                          <p class="text-xs text-gray-400">{{ formatDate(alloc.date) }}</p>
+                          <p class="text-xs text-gray-400">{{ formatDateTime(alloc.date) }}</p>
                         </div>
                         <p class="shrink-0 text-sm font-semibold text-emerald-600">Rp{{ formatCurrency(Number(alloc.amount)) }}</p>
                       </div>

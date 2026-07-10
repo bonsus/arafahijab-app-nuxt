@@ -450,11 +450,11 @@ onMounted(() => {
               </div>
               <div>
                 <p class="text-xs text-gray-400">Tanggal Retur</p>
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(purchaseReturn.date_created) }}</p>
+                <p class="text-sm font-medium text-gray-900">{{ formatDateTime(purchaseReturn.date_created) }}</p>
               </div>
               <div>
                 <p class="text-xs text-gray-400">Tanggal Lunas</p>
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(purchaseReturn.date_paid) }}</p>
+                <p class="text-sm font-medium text-gray-900">{{ formatDateTime(purchaseReturn.date_paid) }}</p>
               </div>
               <div v-if="purchaseReturn.external_id">
                 <p class="text-xs text-gray-400">External ID</p>
@@ -580,7 +580,7 @@ onMounted(() => {
                     <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">{{ pay.method }}</span>
                   </div>
                   <p class="text-xs text-gray-500">
-                    {{ formatDate(pay.date) }}
+                    {{ formatDateTime(pay.date) }}
                     <span v-if="pay.wallet"> &middot; {{ pay.wallet.name }}</span>
                   </p>
                   <p v-if="pay.note" class="text-xs text-gray-400">{{ pay.note }}</p>

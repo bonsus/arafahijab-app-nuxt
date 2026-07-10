@@ -39,7 +39,7 @@ const formErrors = ref<Record<string, string[]>>({})
 const form = reactive({
   customer_id: '',
   external_id: '',
-  date_created: new Date().toISOString().slice(0, 10),
+  date_created: convertIsoToDatetimeLocal(new Date().toISOString()),
   date_expected: '',
   status: 'draft',
   note: '',
@@ -147,8 +147,8 @@ async function loadPO() {
     const po = res.data
     form.customer_id = po.customer_id
     form.external_id = po.external_id || ''
-    form.date_created = po.date_created ? po.date_created.slice(0, 10) : ''
-    form.date_expected = po.date_expected && !po.date_expected.startsWith('0001') ? po.date_expected.slice(0, 10) : ''
+    form.date_created = po.date_created ? convertIsoToDatetimeLocal(po.date_created) : ''
+    form.date_expected = po.date_expected && !po.date_expected.startsWith('0001') ? convertIsoToDatetimeLocal(po.date_expected) : ''
     form.status = po.status
     form.note = po.note || ''
     extraDiscount.value = Number(po.discount) || 0
@@ -182,11 +182,6 @@ async function loadPO() {
   }
 }
 
-function formatDateRFC(dateStr: string): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toISOString()
-}
-
 async function handleSubmit() {
   if (!form.customer_id) {
     formErrors.value = { customer_id: ['Supplier wajib dipilih'] }
@@ -203,8 +198,8 @@ async function handleSubmit() {
   const payload = {
     customer_id: form.customer_id,
     external_id: form.external_id,
-    date_created: formatDateRFC(form.date_created),
-    date_expected: formatDateRFC(form.date_expected),
+    date_created: formatDateTimeForApi(form.date_created),
+    date_expected: formatDateTimeForApi(form.date_expected),
     subtotal: subtotal.value,
     discount: extraDiscount.value,
     shipping_fee: shippingFee.value,
@@ -407,13 +402,13 @@ onMounted(() => {
               <!-- Date Created -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Tanggal Dibuat</label>
-                <input v-model="form.date_created" type="date" class="input-field" />
+                <input v-model="form.date_created" type="datetime-local" class="input-field" />
               </div>
 
               <!-- Date Expected -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Estimasi Tiba</label>
-                <input v-model="form.date_expected" type="date" class="input-field" />
+                <input v-model="form.date_expected" type="datetime-local" class="input-field" />
               </div>
 
               <!-- Note -->

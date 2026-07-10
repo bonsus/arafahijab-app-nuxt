@@ -54,7 +54,7 @@ const form = reactive({
   purchase_order_id: '',
   warehouse_id: '',
   external_id: '',
-  date_received: new Date().toISOString().slice(0, 10),
+  date_received: convertIsoToDatetimeLocal(new Date().toISOString()),
   date_due: '',
   status: 'draft',
   note: '',
@@ -161,8 +161,8 @@ async function loadReceipt() {
     form.purchase_order_id = data.purchase_order_id
     form.warehouse_id = data.warehouse_id || ''
     form.external_id = data.external_id || ''
-    form.date_received = data.date_received && !data.date_received.startsWith('0001') ? data.date_received.slice(0, 10) : ''
-    form.date_due = data.date_due && !data.date_due.startsWith('0001') ? data.date_due.slice(0, 10) : ''
+    form.date_received = data.date_received && !data.date_received.startsWith('0001') ? convertIsoToDatetimeLocal(data.date_received) : ''
+    form.date_due = data.date_due && !data.date_due.startsWith('0001') ? convertIsoToDatetimeLocal(data.date_due) : ''
     form.status = data.status
     form.note = data.note || ''
     extraDiscount.value = Number(data.discount) || 0
@@ -211,9 +211,8 @@ async function loadReceipt() {
   }
 }
 
-function formatDateRFC(dateStr: string): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toISOString()
+function getFieldError(key: string): string | undefined {
+  return formErrors.value[key]?.[0]
 }
 
 async function handleSubmit() {
@@ -233,8 +232,8 @@ async function handleSubmit() {
     purchase_order_id: form.purchase_order_id,
     warehouse_id: form.warehouse_id,
     external_id: form.external_id,
-    date_received: formatDateRFC(form.date_received),
-    date_due: formatDateRFC(form.date_due),
+    date_received: formatDateTimeForApi(form.date_received),
+    date_due: formatDateTimeForApi(form.date_due),
     discount: extraDiscount.value,
     shipping_fee: shippingFee.value,
     tax: tax.value,
@@ -272,10 +271,7 @@ async function handleSubmit() {
     saving.value = false
   }
 }
-
-function getFieldError(key: string): string | undefined {
-  return formErrors.value[key]?.[0]
-}
+ 
 
 onMounted(() => {
   if (isEdit.value) {
@@ -502,13 +498,13 @@ onMounted(() => {
               <!-- Date Received -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Tanggal Diterima</label>
-                <input v-model="form.date_received" type="date" class="input-field" />
+                <input v-model="form.date_received" type="datetime-local" class="input-field" />
               </div>
 
               <!-- Date Due -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Tanggal Jatuh Tempo</label>
-                <input v-model="form.date_due" type="date" class="input-field" />
+                <input v-model="form.date_due" type="datetime-local" class="input-field" />
               </div>
 
               <!-- Note -->

@@ -535,10 +535,10 @@ onMounted(() => {
                 {{ r.warehouse?.name || '-' }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(r.date_received) }}
+                {{ formatDateTime(r.date_received) }}
               </td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {{ formatDate(r.date_completed) }}
+                {{ formatDateTime(r.date_completed) }}
               </td>
               <td class="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">
                 Rp{{ formatCurrency(Number(r.total)) }}

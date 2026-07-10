@@ -145,7 +145,7 @@ const paymentForm = reactive({
   purchase_receipt_id: '',
   wallet_id: '',
   purchase_prepayment_id: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: convertIsoToDatetimeLocal(new Date().toISOString()),
   amount: 0,
   method: 'transfer',
   note: '',
@@ -308,7 +308,7 @@ function openPaymentModal() {
   paymentForm.purchase_receipt_id = receiptId.value
   paymentForm.wallet_id = ''
   paymentForm.purchase_prepayment_id = ''
-  paymentForm.date = new Date().toISOString().slice(0, 10)
+  paymentForm.date = convertIsoToDatetimeLocal(new Date().toISOString())
   paymentForm.amount = 0
   paymentForm.method = 'transfer'
   paymentForm.note = ''
@@ -327,7 +327,7 @@ async function handleSavePayment() {
       payment_mode: paymentMode.value,
       purchase_prepayment_id: paymentForm.purchase_prepayment_id,
       purchase_receipt_id: paymentForm.purchase_receipt_id,
-      date: paymentForm.date ? new Date(paymentForm.date).toISOString() : '',
+      date: paymentForm.date ? formatDateTimeForApi(paymentForm.date) : '',
       amount: paymentForm.amount,
       note: paymentForm.note,
     }
@@ -650,15 +650,15 @@ onMounted(() => {
               </div>
               <div>
                 <p class="text-xs text-gray-400">Tanggal Diterima</p>
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(receipt.date_received) }}</p>
+                <p class="text-sm font-medium text-gray-900">{{ formatDateTime(receipt.date_received) }}</p>
               </div>
               <div>
                 <p class="text-xs text-gray-400">Jatuh Tempo</p>
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(receipt.date_due) }}</p>
+                <p class="text-sm font-medium text-gray-900">{{ formatDateTime(receipt.date_due) }}</p>
               </div>
               <div>
                 <p class="text-xs text-gray-400">Tanggal Lunas</p>
-                <p class="text-sm font-medium text-gray-900">{{ formatDate(receipt.date_paid) }}</p>
+                <p class="text-sm font-medium text-gray-900">{{ formatDateTime(receipt.date_paid) }}</p>
               </div>
               <div v-if="receipt.note">
                 <p class="text-xs text-gray-400">Catatan</p>
@@ -812,7 +812,7 @@ onMounted(() => {
                     <span v-else class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">{{ payment.method }}</span>
                   </div>
                   <p class="text-xs text-gray-500">
-                    {{ formatDate(payment.date) }}
+                    {{ formatDateTime(payment.date) }}
                     <span v-if="payment.wallet"> &middot; {{ payment.wallet.name }}</span>
                   </p>
                   <p v-if="payment.prepayment" class="text-xs text-purple-500">
@@ -1069,7 +1069,7 @@ onMounted(() => {
                   <label class="mb-1.5 block text-sm font-medium text-gray-700">Tanggal</label>
                   <input
                     v-model="paymentForm.date"
-                    type="date"
+                    type="datetime-local"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   />
                 </div>

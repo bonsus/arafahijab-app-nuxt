@@ -394,7 +394,7 @@ onMounted(() => {
               </td>
               <td class="px-4 py-3 text-gray-700">{{ r.purchase_return?.no || '-' }}</td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ r.purchase_return?.customer?.name || '-' }}</td>
-              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ formatDate(r.date) }}</td>
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ formatDateTime(r.date) }}</td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ methodLabel[r.method] || r.method }}</td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ r.wallet?.name || '-' }}</td>
               <td class="px-4 py-3 text-right font-semibold text-emerald-600 whitespace-nowrap">Rp{{ formatCurrency(Number(r.amount)) }}</td>
