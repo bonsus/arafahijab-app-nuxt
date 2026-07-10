@@ -373,8 +373,8 @@ onMounted(() => {
                 <div class="font-medium text-gray-900">{{ item.customer?.name || '-' }}</div>
                 <div class="text-xs text-gray-500">{{ item.customer?.phone || '-' }}</div>
               </td>
-              <td class="px-4 py-3 text-gray-600">
-                {{ formatDate(item.payment_date) }}
+              <td class="px-4 py-3 text-gray-600 text-xs">
+                {{ formatDateTime(item.payment_date) }}
               </td>
               <td class="px-4 py-3 text-right font-semibold text-gray-900">
                 Rp{{ formatCurrency(Number(item.amount)) }}
