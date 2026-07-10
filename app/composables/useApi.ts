@@ -6,9 +6,12 @@ import type { ApiError, ApiErrorResponse } from '~/types'
  * - `date_from`: plain date (YYYY-MM-DD) → start of day, e.g. 2026-07-01T00:00:00+07:00
  * - `date_to`:   plain date (YYYY-MM-DD) → end of day,   e.g. 2026-07-09T23:59:59+07:00
  * Values already containing a time component (e.g. "T") are left untouched.
+ *
+ * Only runs on the client so the offset always reflects the end user's browser
+ * timezone (on the server the offset would be the server's timezone instead).
  */
 function normalizeDateParams(params?: Record<string, string>): Record<string, string> | undefined {
-  if (!params) return params
+  if (!params || !import.meta.client) return params
   const isPlainDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v)
   const next = { ...params }
   if (next.date_from && isPlainDate(next.date_from)) next.date_from = formatDateFromForApi(next.date_from)
