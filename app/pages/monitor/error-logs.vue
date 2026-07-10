@@ -247,6 +247,8 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
+    <MonitorTabs />
+
     <!-- Summary -->
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <div class="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-200">

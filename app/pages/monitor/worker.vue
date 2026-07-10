@@ -458,6 +458,8 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <MonitorTabs />
+
     <!-- Summary error -->
     <div
       v-if="summaryError"

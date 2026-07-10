@@ -226,6 +226,8 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
+    <MonitorTabs />
+
     <!-- Records -->
     <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
       <!-- Toolbar -->
