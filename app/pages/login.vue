@@ -3,6 +3,8 @@ definePageMeta({
   layout: 'auth',
   middleware: 'guest',
 })
+// get current domain url
+const domain = window.location.hostname
 
 const authStore = useAuthStore()
 
@@ -48,10 +50,19 @@ async function handleLogin() {
     <div class="rounded-xl bg-white p-8 shadow-lg">
       <!-- Header -->
       <div class="mb-8 text-center">
-        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600 text-lg font-bold text-white">
-          A
-        </div>
-        <h1 class="text-2xl font-bold text-gray-900">Masuk ke Arafa ERP</h1>
+        <template v-if="domain=='app.ordeo.id'">
+
+          <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600 text-lg font-bold text-white">
+            O
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900">Masuk ke Ordeo</h1> 
+        </template>
+        <template v-else>
+          <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600 text-lg font-bold text-white">
+            A
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900">Masuk ke Arafa App</h1>
+        </template>
         <p class="mt-1 text-sm text-gray-500">Silakan masuk dengan akun Anda</p>
       </div>
 
