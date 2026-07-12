@@ -660,6 +660,10 @@ onMounted(fetchOrder)
                 <span class="text-xs text-gray-400">Aggregator</span>
                 <span class="text-xs font-medium text-gray-700">{{ order.shipment.aggregator }}</span>
               </div>
+              <div class="flex items-center justify-between border-t border-gray-100 pt-2">
+                <span class="text-xs text-gray-400">Catatan</span>
+                <span class="text-xs font-medium text-gray-700">{{ order.shipment.note || '-' }}</span>
+              </div>
             </div>
             <p v-else class="text-sm text-gray-400">Belum ada info pengiriman</p>
 
