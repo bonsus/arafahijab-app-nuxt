@@ -119,13 +119,24 @@ const paymentStatusOptions = [
 ]
 
 const openMenuId = ref<string | null>(null)
+const menuReturn = ref<OrderReturn | null>(null)
+const menuPos = ref({ top: 0, left: 0 })
 
-function toggleMenu(id: string) {
-  openMenuId.value = openMenuId.value === id ? null : id
+function toggleMenu(r: OrderReturn, event: MouseEvent) {
+  if (openMenuId.value === r.id) {
+    openMenuId.value = null
+    menuReturn.value = null
+    return
+  }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  menuPos.value = { top: rect.bottom + 4, left: rect.right - 176 }
+  openMenuId.value = r.id
+  menuReturn.value = r
 }
 
 async function handleCancel(r: OrderReturn) {
   openMenuId.value = null
+  menuReturn.value = null
   const ok = await confirm({
     title: 'Batalkan Retur',
     message: `Batalkan retur "${r.no}"? Tindakan ini tidak dapat diurungkan.`,
@@ -614,25 +625,13 @@ onMounted(() => {
                   <!-- More actions dropdown -->
                   <div v-if="r.status !== 'canceled'" class="relative">
                     <button
-                      class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                      class="z-10 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                       :class="{ 'bg-gray-100 text-gray-600': openMenuId === r.id }"
                       title="Aksi lainnya"
-                      @click.stop="toggleMenu(r.id)"
+                      @click.stop="toggleMenu(r, $event)"
                     >
                       <MoreVertical class="h-4 w-4" />
                     </button>
-                    <div
-                      v-if="openMenuId === r.id"
-                      class="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-                    >
-                      <button
-                        class="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
-                        @click="handleCancel(r)"
-                      >
-                        <Ban class="h-4 w-4" />
-                        Batalkan Retur
-                      </button>
-                    </div>
                   </div>
                 </div>
               </td>
@@ -652,6 +651,24 @@ onMounted(() => {
         @update:per-page="onPerPageChange"
       />
     </div>
+
+    <!-- Row actions dropdown (teleported to avoid clipping) -->
+    <Teleport to="body">
+      <div
+        v-if="openMenuId && menuReturn"
+        class="fixed z-50 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+        :style="{ top: menuPos.top + 'px', left: menuPos.left + 'px' }"
+        @click.stop
+      >
+        <button
+          class="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+          @click="handleCancel(menuReturn)"
+        >
+          <Ban class="h-4 w-4" />
+          Batalkan Retur
+        </button>
+      </div>
+    </Teleport>
 
     <!-- Refund Modal -->
     <Teleport to="body">
