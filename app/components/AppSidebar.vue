@@ -38,7 +38,8 @@ import {
 import type { MenuItem, Business, Notification } from '~/types'
 import type { Component } from 'vue'
 
-const domain = window.location.hostname
+const url = useRequestURL()
+const domain = url.hostname
 const authStore = useAuthStore()
 const route = useRoute()
 const menu = useSidebarMenu()

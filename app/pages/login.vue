@@ -4,7 +4,8 @@ definePageMeta({
   middleware: 'guest',
 })
 // get current domain url
-const domain = window.location.hostname
+const url = useRequestURL()
+const domain = url.hostname
 
 const authStore = useAuthStore()
 
