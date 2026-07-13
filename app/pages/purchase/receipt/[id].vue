@@ -432,7 +432,7 @@ onMounted(() => {
 
         <!-- Ke Draft: only completed -->
         <button
-          v-if="receipt.status === 'completed'"
+          v-if="receipt.status === 'received'"
           class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
           :disabled="updatingStatus"
           @click="updateStatus('draft')"
