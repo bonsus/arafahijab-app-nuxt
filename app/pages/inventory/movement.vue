@@ -38,6 +38,7 @@ interface Movement {
   total: string
   reference_type: string
   reference_id: string
+  reference_no: string
   created_at: string
   fifo: MovementFifo | null
   zone: MovementRef | null
@@ -127,11 +128,13 @@ const typeOptions = [
 
 const referenceTypeLabels: Record<string, string> = {
   stock_adjustment: 'Penyesuaian Stok',
-  order: 'Pesanan',
-  purchase: 'Pembelian',
-  transfer: 'Transfer',
-  return: 'Retur',
-  receipt: 'Penerimaan',
+  order: 'Penjualan', 
+  order_return: 'Retur Penjualan', 
+  warehouse_inbound: 'Inbound',
+  stock_usage: 'Pemakaian Stok',
+  stock_usage_return: 'Retur Pemakaian Stok',
+  stock_transfer: 'Transfer Stok',
+  stock_conversion: 'Konversi Stok',
 }
 
 const hasFilter = computed(() =>
@@ -590,11 +593,11 @@ onMounted(() => {
               <!-- Referensi -->
               <td class="px-4 py-3">
                 <span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 text-nowrap">
-                  {{ referenceLabel(m.reference_type) }}
+                  {{ m.reference_no || '-' }}
                 </span>
-                <!-- <p class="mt-1 truncate font-mono text-[10px] text-gray-400" :title="m.reference_id">
-                  {{ m.reference_id }}
-                </p> -->
+                <p class="mt-1 truncate font-mono text-[10px] text-gray-400" :title="m.reference_id">
+                  {{ referenceLabel(m.reference_type) }}
+                </p>
               </td>
 
               <!-- Lokasi -->
