@@ -86,6 +86,7 @@ const warehouseOptions = computed(() =>
 const statusOptions = [
   { value: 'draft', label: 'Draft' },
   { value: 'received', label: 'Diterima' },
+  { value: 'processing', label: 'Diproses' },
   { value: 'completed', label: 'Selesai' },
 ]
 
@@ -102,6 +103,7 @@ const dateTypeOptions = [
 const statusConfig: Record<string, { label: string; bg: string }> = {
   draft: { label: 'Draft', bg: 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200' },
   received: { label: 'Diterima', bg: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' },
+  processing: { label: 'Diproses', bg: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' },
   completed: { label: 'Selesai', bg: 'bg-green-50 text-green-700 ring-1 ring-green-200' },
 }
 
@@ -556,7 +558,7 @@ onMounted(() => {
 
                   <!-- Edit: payment_status unpaid only -->
                   <NuxtLink
-                    v-if="r.payment_status === 'unpaid'"
+                    v-if="r.payment_status === 'unpaid' && r.status === 'received'"
                     :to="`/purchase/receipt/create?edit=${r.id}`"
                     class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                     title="Edit"
@@ -575,7 +577,7 @@ onMounted(() => {
 
                   <!-- Hapus: payment_status unpaid only -->
                   <button
-                    v-if="r.payment_status === 'unpaid'"
+                    v-if="r.payment_status === 'unpaid' && r.status === 'received'"
                     class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
                     title="Hapus"
                     @click="handleDelete(r)"

@@ -153,6 +153,8 @@ const paymentForm = reactive({
 
 const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
   draft: { label: 'Draft', icon: FileText, color: 'text-yellow-600 bg-yellow-50 ring-yellow-200' },
+  received: { label: 'Diterima', icon: Package, color: 'text-blue-600 bg-blue-50 ring-blue-200' },
+  processing: { label: 'Diproses', icon: Loader2, color: 'text-orange-600 bg-orange-50 ring-orange-200' },  
   completed: { label: 'Selesai', icon: CheckCircle, color: 'text-green-600 bg-green-50 ring-green-200' },
 }
 
@@ -452,7 +454,7 @@ onMounted(() => {
 
         <!-- Edit: unpaid only -->
         <NuxtLink
-          v-if="receipt.payment_status === 'unpaid'"
+          v-if="receipt.payment_status === 'unpaid' && receipt.status === 'received'"
           :to="`/purchase/receipt/create?edit=${receipt.id}`"
           class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
         >
@@ -462,7 +464,7 @@ onMounted(() => {
 
         <!-- Hapus: unpaid only -->
         <button
-          v-if="receipt.payment_status === 'unpaid'"
+          v-if="receipt.payment_status === 'unpaid' && receipt.status === 'received'"
           class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
           @click="handleDeleteReceipt"
         >

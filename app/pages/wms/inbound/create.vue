@@ -122,7 +122,7 @@ function onReceiptSearch(val: string) {
 async function fetchReceipts() {
   receiptLoading.value = true
   try {
-    const params: Record<string, string> = { status: 'received,completed', per_page: '20', has_remaining_items: '1' }
+    const params: Record<string, string> = { status: 'received,processing', per_page: '20', has_remaining_items: '1' }
     if (receiptSearch.value) params.search = receiptSearch.value
     const res = await api.get<{ data: { data: typeof receiptResults.value } }>('/purchase-receipts/index', params)
     receiptResults.value = res.data?.data || []
