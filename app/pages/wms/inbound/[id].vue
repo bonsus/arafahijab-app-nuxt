@@ -108,6 +108,10 @@ const subtotal = computed(() =>
   (inbound.value?.items || []).reduce((s, i) => s + Number(i.total), 0),
 )
 
+const totalQty = computed(() =>
+  (inbound.value?.items || []).reduce((s, i) => s + Number(i.qty), 0),
+)
+
 const visibleLogs = computed(() => (inbound.value?.logs || []).slice(0, 3))
 
 function formatLogAction(action: string): string {
@@ -464,7 +468,11 @@ onMounted(() => fetchInbound())
             </div>
 
             <!-- Subtotal -->
-            <div v-if="inbound.items?.length" class="flex justify-end border-t border-gray-100 px-5 py-3">
+            <div v-if="inbound.items?.length" class="flex justify-end gap-6 border-t border-gray-100 px-5 py-3">
+              <div class="text-sm">
+                <span class="text-gray-500">Total Qty: </span>
+                <span class="font-semibold text-gray-900">{{ totalQty }}</span>
+              </div>
               <div class="text-sm">
                 <span class="text-gray-500">Subtotal: </span>
                 <span class="font-semibold text-gray-900">Rp{{ formatCurrency(subtotal) }}</span>
