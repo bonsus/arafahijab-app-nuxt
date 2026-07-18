@@ -190,11 +190,9 @@ const userInitials = computed(() => {
     <div class="border-b border-gray-200 px-4 py-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <template v-if="domain=='app.ordeo.id'">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white text-lg font-bold">
-              O
-            </div>
-            <span class="text-lg font-semibold text-gray-900">Ordeo</span>
+          <template v-if="domain!=='app.ordeo.id'">
+            <!-- logo image -->
+            <img src="/logo.webp" alt="Ordeo Logo" class="h-8 w-auto" /> 
           </template>
           <template v-else>
             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-sm font-bold text-white">
