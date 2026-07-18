@@ -190,7 +190,7 @@ const userInitials = computed(() => {
     <div class="border-b border-gray-200 px-4 py-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <template v-if="domain!=='app.ordeo.id'">
+          <template v-if="domain=='app.ordeo.id'">
             <!-- logo image -->
             <img src="/logo.webp" alt="Ordeo Logo" class="h-8 w-auto" /> 
           </template>
