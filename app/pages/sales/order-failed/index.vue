@@ -586,7 +586,7 @@ onMounted(() => {
                       <Copy v-else class="h-3 w-3" />
                     </button>
                   </div>
-                  <p class="text-xs capitalize text-gray-500">{{ order.source }}</p>
+                  <!-- <p class="text-xs capitalize text-gray-500">{{ order.source }}</p> -->
                   <p v-if="order.mp_status" class="text-[10px] text-gray-400">MP: {{ order.mp_status }}</p>
                 </div>
               </td>
