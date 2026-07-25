@@ -69,6 +69,11 @@ const filterDate = ref({ from: '', to: '' })
 const stores = ref<StoreOption[]>([])
 const statusSummary = ref<StatusSummary | null>(null)
 
+// Only show marketplace stores in the store filter
+const marketplaceStores = computed(() =>
+  stores.value.filter(s => ['shopee', 'tiktok', 'lazada'].includes(s.source)),
+)
+
 // ─── Static options ─────────────────────────────────────────────────────────────
 // Order-failed status filter (shown as a pill row below the tabs)
 const statusFilterOptions = [
@@ -418,7 +423,7 @@ onMounted(() => {
       <div class="space-y-3 px-4 py-3">
 
         <!-- Store filter (pill list) -->
-        <div v-if="stores.length" class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2">
+        <div v-if="marketplaceStores.length" class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2">
           <span class="shrink-0 pt-1 text-xs text-gray-400 sm:w-14">Toko</span>
           <div class="flex gap-1 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             <button
@@ -429,7 +434,7 @@ onMounted(() => {
               Semua
             </button>
             <button
-              v-for="store in stores"
+              v-for="store in marketplaceStores"
               :key="store.id"
               type="button"
               class="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
