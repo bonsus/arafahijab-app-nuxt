@@ -4,7 +4,7 @@ import {
   RefreshCw, ShoppingCart, X, Truck,
   MoreVertical, Loader2, CheckSquare, CreditCard,
   RefreshCcw, Printer, FileText, Scan, History, ChevronDown,
-  Copy, Check, Download, Box, FileUp
+  Copy, Check, Download, Box, FileUp, PackageX
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -168,6 +168,7 @@ interface StatusSummary {
   completed_count: number
   returned_count: number
   canceled_count: number
+  order_failed_count: number
   store_counts: { store_id: string; count: number }[]
 }
 const statusSummary = ref<StatusSummary | null>(null)
@@ -1385,6 +1386,20 @@ onUnmounted(() => {
 
       <!-- Status Tabs -->
       <div class="flex items-center gap-0 overflow-x-auto border-b border-gray-200">
+        <NuxtLink
+          to="/sales/order-failed"
+          class="relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-5 py-3 text-sm font-medium text-gray-500 transition-colors hover:text-rose-600"
+        >
+          <PackageX class="h-4 w-4" />
+          Gagal Masuk
+          <span
+            v-if="statusSummary && statusSummary.order_failed_count > 0"
+            class="inline-flex items-center justify-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700"
+          >
+            {{ statusSummary.order_failed_count }}
+          </span>
+        </NuxtLink>
+        <span class="h-5 w-px shrink-0 self-center bg-gray-200" />
         <button
           v-for="tab in statusTabsWithCount"
           :key="tab.key"
