@@ -1390,7 +1390,7 @@ onUnmounted(() => {
           to="/sales/order-failed"
           class="relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-5 py-3 text-sm font-medium text-gray-500 transition-colors hover:text-rose-600"
         >
-          <PackageX class="h-4 w-4" />
+          <!-- <PackageX class="h-4 w-4" /> -->
           Gagal Masuk
           <span
             v-if="statusSummary && statusSummary.order_failed_count > 0"
