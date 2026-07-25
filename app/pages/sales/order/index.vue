@@ -13,6 +13,13 @@ interface StoreOption { id: string; shop_id: string; shop_name: string; source: 
 interface StaffOption { id: string; name: string }
 interface CourierOption { id: string; courier_code: string; courier_name: string }
 
+interface TrackingEvent {
+  time: string
+  status: string
+  location?: string
+  description: string
+}
+
 interface SalesOrderItem {
   id: string
   name: string
@@ -58,6 +65,7 @@ interface SalesOrder {
     service_name?: string
     tracking_no?: string
     aggregator?: string
+    data?: { events?: TrackingEvent[] } | null
   } | null
   dropship?: {
     id?: string
@@ -314,6 +322,29 @@ const paymentStatusConfig: Record<string, { label: string; cls: string }> = {
   unpaid: { label: 'Belum Bayar', cls: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
   paid: { label: 'Lunas', cls: 'bg-green-50 text-green-700 ring-1 ring-green-200' },
   refunded: { label: 'Refund', cls: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' },
+}
+
+// ─── Tracking history modal ───────────────────────────────────────────────────
+const trackingOrder = ref<SalesOrder | null>(null)
+
+function openTracking(order: SalesOrder) {
+  trackingOrder.value = order
+  closeMenu()
+}
+
+function closeTracking() {
+  trackingOrder.value = null
+}
+
+const trackingEvents = computed<TrackingEvent[]>(() => trackingOrder.value?.shipment?.data?.events || [])
+
+const trackingStatusConfig: Record<string, { label: string; dot: string; text: string }> = {
+  ORDER_CREATED: { label: 'Dibuat', dot: 'bg-gray-400', text: 'text-gray-600' },
+  PICKED_UP: { label: 'Dalam Proses', dot: 'bg-blue-500', text: 'text-blue-600' },
+  IN_TRANSIT: { label: 'Dalam Perjalanan', dot: 'bg-blue-500', text: 'text-blue-600' },
+  OUT_FOR_DELIVERY: { label: 'Diantar', dot: 'bg-indigo-500', text: 'text-indigo-600' },
+  DELIVERED: { label: 'Diterima', dot: 'bg-green-500', text: 'text-green-600' },
+  RETURNED: { label: 'Dikembalikan', dot: 'bg-red-500', text: 'text-red-600' },
 }
 
 // ─── Bulk selection ───────────────────────────────────────────────────────────
@@ -1969,6 +2000,15 @@ onUnmounted(() => {
                     >
                       <Check v-if="copiedKey === 'resi-' + order.id" class="h-3 w-3 text-green-600" />
                       <Copy v-else class="h-3 w-3" />
+                    </button> 
+                    <button
+                      v-if="order.shipment.data?.events?.length"
+                      type="button"
+                      class="rounded p-0.5 text-gray-400 transition-colors hover:bg-primary-50 hover:text-primary-600"
+                      title="Lihat riwayat tracking"
+                      @click.stop="openTracking(order)"
+                    >
+                      <History class="h-3 w-3" />
                     </button>
                   </p>
                 </div>
@@ -2387,5 +2427,106 @@ onUnmounted(() => {
   <AppScanPickingModal
     v-model="showScanModal"
   />
+
+  <!-- Tracking History Modal -->
+  <ClientOnly>
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="trackingOrder"
+          class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+          @click.self="closeTracking"
+        >
+          <div class="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <!-- Header -->
+            <div class="flex items-start justify-between border-b border-gray-100 px-5 py-3.5">
+              <div class="flex items-center gap-2">
+                <img
+                  v-if="trackingOrder.shipment?.aggregator"
+                  :src="`/images/brands/${trackingOrder.shipment.aggregator}.webp`"
+                  alt=""
+                  class="h-4 shrink-0 object-contain"
+                />
+                <div>
+                  <h2 class="flex items-center gap-1.5 text-base font-semibold text-gray-900">
+                    <Truck class="h-4 w-4 text-gray-400" />
+                    Riwayat Tracking
+                  </h2>
+                  <p class="mt-0.5 text-xs text-gray-500">
+                    {{ [trackingOrder.shipment?.courier_name, trackingOrder.shipment?.service_name].filter(Boolean).join(' – ') }}
+                    <span v-if="trackingOrder.shipment?.tracking_no" class="font-mono"> · {{ trackingOrder.shipment.tracking_no }}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                @click="closeTracking"
+              >
+                <X class="h-5 w-5" />
+              </button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto px-5 py-4">
+              <ol v-if="trackingEvents.length" class="relative space-y-4">
+                <li
+                  v-for="(event, idx) in trackingEvents"
+                  :key="idx"
+                  class="relative flex gap-3 pl-1"
+                >
+                  <!-- Timeline dot + line -->
+                  <div class="flex flex-col items-center">
+                    <span
+                      class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
+                      :class="idx === 0 ? (trackingStatusConfig[event.status]?.dot || 'bg-primary-500') : 'bg-gray-300'"
+                    />
+                    <span
+                      v-if="idx < trackingEvents.length - 1"
+                      class="mt-1 w-px flex-1 bg-gray-200"
+                    />
+                  </div>
+                  <!-- Content -->
+                  <div class="flex-1 pb-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span
+                        class="text-xs font-semibold"
+                        :class="idx === 0 ? (trackingStatusConfig[event.status]?.text || 'text-primary-600') : 'text-gray-600'"
+                      >
+                        {{ trackingStatusConfig[event.status]?.label || event.status }}
+                      </span>
+                      <span class="text-[11px] text-gray-400">{{ formatDateTimeDay(event.time) }}</span>
+                    </div>
+                    <p class="mt-0.5 text-xs leading-relaxed text-gray-600">{{ event.description }}</p>
+                    <p v-if="event.location" class="mt-0.5 text-[11px] text-gray-400">{{ event.location }}</p>
+                  </div>
+                </li>
+              </ol>
+              <div v-else class="py-10 text-center">
+                <Truck class="mx-auto mb-2 h-10 w-10 text-gray-300" />
+                <p class="text-sm text-gray-500">Belum ada riwayat tracking.</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-end border-t border-gray-100 px-5 py-3">
+              <button
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                @click="closeTracking"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+  </ClientOnly>
   </div>
 </template>
