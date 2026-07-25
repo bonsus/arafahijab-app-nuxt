@@ -911,13 +911,28 @@ const hasActiveFilters = computed(() =>
 )
 
 // ─── URL query sync ───────────────────────────────────────────────────────────
+function defaultDateRange(): { from: string; to: string } {
+  const toLocalDate = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  const to = new Date()
+  const from = new Date()
+  from.setDate(from.getDate() - 6)
+  return { from: toLocalDate(from), to: toLocalDate(to) }
+}
+
 function initFromQuery() {
   const q = route.query
   search.value = (q.q as string) || ''
   activeTab.value = (q.tab as string) || ''
   filterStores.value = q.store ? (q.store as string).split(',') : []
   filterDateType.value = (q.date_type as string) || 'date_created'
-  filterDate.value = { from: (q.date_from as string) || '', to: (q.date_to as string) || '' }
+  filterDate.value = (q.date_from || q.date_to)
+    ? { from: (q.date_from as string) || '', to: (q.date_to as string) || '' }
+    : defaultDateRange()
   filtersub_status.value = q.sub_status ? (q.sub_status as string).split(',') : []
   filterCouriers.value = q.courier ? (q.courier as string).split(',') : []
   filterPaymentStatus.value = q.pay_status ? (q.pay_status as string).split(',') : []
@@ -1057,6 +1072,7 @@ async function fetchStatusSummary() {
     if (activeTab.value) params.status = activeTab.value
     if (filtersub_status.value.length) params.sub_status = filtersub_status.value.join(',')
     if (filterStores.value.length) params.store_id = filterStores.value.join(',')
+    if (filterDateType.value) params.date_type = filterDateType.value
     if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
     if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
     
@@ -1112,7 +1128,7 @@ function onsub_statusFilter(value: string) {
 function onDateTypeChange() {
   if (filterDate.value.from || filterDate.value.to) {
     page.value = 1
-    fetchOrders()
+    refreshOrders()
   }
   else {
     router.replace({ query: buildQuery() })
@@ -1122,17 +1138,21 @@ function onDateTypeChange() {
 function onDateFilter(val: { from: string; to: string }) {
   filterDate.value = val
   page.value = 1
-  fetchOrders()
+  refreshOrders()
 }
 
 function onFilterChange() {
   page.value = 1
-  fetchOrders()
+  refreshOrders()
 }
 
 function onPageChange(p: number) { page.value = p; fetchOrders() }
 function onPerPageChange(pp: number) { perPage.value = pp; page.value = 1; fetchOrders() }
 
+function refreshOrders() {
+  fetchOrders()
+  fetchStatusSummary()
+}
 function resetFilters() {
   search.value = ''
   filterStores.value = []
@@ -1152,6 +1172,7 @@ function resetFilters() {
   filterTrackingNo.value = ''
   page.value = 1
   fetchOrders()
+  fetchStatusSummary()
 }
 
 // ─── Click outside handler for scan dropdown ───────────────────────────────
@@ -1503,7 +1524,7 @@ onUnmounted(() => {
               class="shrink-0 flex rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
               title="Refresh data"
               :disabled="loading"
-              @click="fetchOrders()"
+              @click="refreshOrders()"
             >
               <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
             </button>

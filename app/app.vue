@@ -10,5 +10,6 @@ const { setRef } = useConfirm()
     <AppToast />
     <AppConfirm :ref="(el: any) => setRef(el)" />
     <AppAccessDenied />
+    <AdminAccessDenied />
   </ClientOnly>
 </template>

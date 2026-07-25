@@ -18,6 +18,10 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const fieldErrors = ref<Record<string, string[]>>({})
 
+const googleButtonRef = ref<HTMLElement | null>(null)
+const isGoogleLoading = ref(false)
+const { isConfigured: isGoogleConfigured, renderButton } = useGoogleSignIn()
+
 async function handleLogin() {
   isLoading.value = true
   errorMessage.value = ''
@@ -45,6 +49,35 @@ async function handleLogin() {
     isLoading.value = false
   }
 }
+
+async function handleGoogleCredential(idToken: string) {
+  isGoogleLoading.value = true
+  errorMessage.value = ''
+  fieldErrors.value = {}
+
+  try {
+    await authStore.loginWithGoogle(idToken)
+    navigateTo(authStore.user?.is_cs ? '/sales/ordercs/dashboard' : '/dashboard')
+  }
+  catch (error: any) {
+    errorMessage.value = error?.message || 'Login dengan Google gagal. Silakan coba lagi.'
+  }
+  finally {
+    isGoogleLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  if (!isGoogleConfigured.value || !googleButtonRef.value) {
+    return
+  }
+  try {
+    await renderButton(googleButtonRef.value, handleGoogleCredential)
+  }
+  catch {
+    // Gagal memuat tombol Google (mis. jaringan) — abaikan agar login manual tetap berfungsi.
+  }
+})
 </script>
 <template>
   <div class="w-full max-w-md">
@@ -141,6 +174,25 @@ async function handleLogin() {
           {{ isLoading ? 'Memproses...' : 'Masuk' }}
         </button>
       </form>
+
+      <!-- Google Sign-In -->
+      <template v-if="isGoogleConfigured && domain == 'app.ordeo.id'">
+        <div class="my-6 flex items-center gap-3">
+          <span class="h-px flex-1 bg-gray-200" />
+          <span class="text-xs font-medium uppercase tracking-wide text-gray-400">atau</span>
+          <span class="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <div class="relative">
+          <div ref="googleButtonRef" class="flex justify-center" />
+          <div
+            v-if="isGoogleLoading"
+            class="absolute inset-0 flex items-center justify-center rounded-lg bg-white/70 text-sm text-gray-600"
+          >
+            Memproses...
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 </template>

@@ -19,6 +19,13 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = response.data.user
   }
 
+  async function loginWithGoogle(idToken: string) {
+    const api = useApi()
+    const response = await api.post<ApiResponse<LoginResponse>>('/user/auth/google', { token: idToken })
+    token.value = response.data.token
+    user.value = response.data.user
+  }
+
   async function fetchMe() {
     const api = useApi()
     const response = await api.get<ApiResponse<LoginResponse>>('/user/auth/me')
@@ -36,6 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     login,
+    loginWithGoogle,
     fetchMe,
     logout,
   }

@@ -32,8 +32,12 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     apiBaseUrl: process.env.API_BASE_URL || 'https://v2.api.arafahijab.co.id',
+    // Admin backend (apps/admin). Paths are namespaced under /admin.
+    // Defaults to the main API gateway; override with ADMIN_API_BASE_URL.
+    adminApiBaseUrl: process.env.ADMIN_API_BASE_URL || process.env.API_BASE_URL || 'https://v2.api.arafahijab.co.id',
     public: {
       appName: 'Arafa Hijab ERP',
+      googleClientId: process.env.GOOGLE_CLIENT_ID || '',
     },
   },
 
