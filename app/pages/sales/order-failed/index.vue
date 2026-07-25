@@ -594,7 +594,7 @@ onMounted(() => {
               <!-- Alasan -->
               <td class="px-4 py-3 align-top">
                 <span
-                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs text-no-wrap"
                   :class="reasonConfig[order.reason]?.cls || 'bg-gray-50 text-gray-600 ring-1 ring-gray-200'"
                 >
                   {{ reasonConfig[order.reason]?.label || order.reason }}
