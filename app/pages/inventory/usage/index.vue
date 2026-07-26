@@ -2,7 +2,7 @@
 import {
   Plus, Search, Eye, Trash2,
   Pencil, RefreshCw, ClipboardList, TrendingDown,TrendingUp, Download, Loader2, ChevronDown,
-  PackageCheck, Layers, XCircle, RotateCcw, Printer, Tag,
+  PackageCheck, Layers, XCircle, RotateCcw, Printer, Tag, MoreVertical,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -223,6 +223,56 @@ async function printLabelMass() {
   finally {
     massPrintingLabel.value = false
   }
+}
+
+// ─── Print without price ────────────────────────────────────────────────────────
+const printingNoPriceId = ref<string | null>(null)
+
+async function printUsagesNoPrice(ids: string[]) {
+  const response = await api.post<Blob>('/inventories/stock-usages/print-mass-without-price', { ids }, { responseType: 'blob' })
+  const blob = new Blob([response as BlobPart], { type: 'application/pdf' })
+  const url = window.URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+}
+
+async function printSingleNoPrice(item: StockUsage) {
+  if (printingNoPriceId.value) return
+  printingNoPriceId.value = item.id
+  try {
+    await printUsagesNoPrice([item.id])
+    toast.success('Dokumen pemakaian (tanpa harga) berhasil dicetak')
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak dokumen')
+  }
+  finally {
+    printingNoPriceId.value = null
+  }
+}
+
+// ─── Action dropdown ────────────────────────────────────────────────────────────
+const openMenuId = ref<string | null>(null)
+const menuPos = ref({ top: '0px', left: '0px' })
+const openMenuItem = computed(() =>
+  openMenuId.value ? items.value.find(i => i.id === openMenuId.value) : null,
+)
+
+function toggleMenu(event: MouseEvent, id: string) {
+  if (openMenuId.value === id) {
+    openMenuId.value = null
+    return
+  }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const menuWidth = 224
+  const left = Math.max(8, rect.right - menuWidth)
+  menuPos.value = { top: `${rect.bottom + 4}px`, left: `${left}px` }
+  openMenuId.value = id
+  event.stopPropagation()
+}
+
+function closeMenu() {
+  openMenuId.value = null
 }
 
 function onStatusFilter(val: string | string[]) {
@@ -601,63 +651,14 @@ onMounted(() => {
                 Rp{{ formatCurrency(item.total) }}
               </td>
               <td class="px-4 py-3">
-                <div class="flex items-center justify-end gap-1">
-                  <NuxtLink
-                    :to="`/inventory/usage/${item.id}`"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-                    title="Detail"
-                  >
-                    <Eye class="h-4 w-4" />
-                  </NuxtLink>
+                <div class="flex justify-end">
                   <button
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600 transition-colors disabled:opacity-50"
-                    title="Print"
-                    :disabled="printingId === item.id"
-                    @click="printSingle(item)"
+                    class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    :class="{ 'bg-gray-100 text-gray-600': openMenuId === item.id }"
+                    title="Aksi"
+                    @click="toggleMenu($event, item.id)"
                   >
-                    <Loader2 v-if="printingId === item.id" class="h-4 w-4 animate-spin" />
-                    <Printer v-else class="h-4 w-4" />
-                  </button>
-                  <button
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600 transition-colors disabled:opacity-50"
-                    title="Print Label"
-                    :disabled="printingLabelId === item.id"
-                    @click="printLabelSingle(item)"
-                  >
-                    <Loader2 v-if="printingLabelId === item.id" class="h-4 w-4 animate-spin" />
-                    <Tag v-else class="h-4 w-4" />
-                  </button>     
-                  <NuxtLink
-                    v-if="item.status === 'draft'"
-                    :to="`/inventory/usage/create?edit=${item.id}`"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-                    title="Edit"
-                  >
-                    <Pencil class="h-4 w-4" />
-                  </NuxtLink>
-                  <button
-                    v-if="item.status === 'completed'"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                    title="Batalkan"
-                    @click="handleCancel(item)"
-                  >
-                    <XCircle class="h-4 w-4" />
-                  </button>
-                  <NuxtLink
-                    v-if="item.status === 'completed'"
-                    :to="`/inventory/usage/return/create?usage_id=${item.id}`"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors"
-                    title="Buat Return"
-                  >
-                    <RotateCcw class="h-4 w-4" />
-                  </NuxtLink>
-                  <button
-                    v-if="item.status === 'draft'"
-                    class="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                    title="Hapus"
-                    @click="handleDelete(item)"
-                  >
-                    <Trash2 class="h-4 w-4" />
+                    <MoreVertical class="h-4 w-4" />
                   </button>
                 </div>
               </td>
@@ -675,5 +676,106 @@ onMounted(() => {
         @update:per-page="onPerPageChange"
       />
     </div>
+
+    <!-- Action dropdown -->
+    <ClientOnly>
+      <Teleport to="body">
+        <div
+          v-if="openMenuId"
+          class="fixed inset-0 z-20"
+          @click="closeMenu"
+        />
+        <Transition
+          enter-active-class="transition duration-100 ease-out"
+          enter-from-class="opacity-0 scale-95"
+          enter-to-class="opacity-100 scale-100"
+          leave-active-class="transition duration-75 ease-in"
+          leave-from-class="opacity-100 scale-100"
+          leave-to-class="opacity-0 scale-95"
+        >
+          <div
+            v-if="openMenuId && openMenuItem"
+            class="fixed z-30 w-56 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-gray-200"
+            :style="{ top: menuPos.top, left: menuPos.left }"
+            @click.stop
+          >
+            <NuxtLink
+              :to="`/inventory/usage/${openMenuItem.id}`"
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              @click="closeMenu"
+            >
+              <Eye class="h-4 w-4 text-gray-400" />
+              Lihat Detail
+            </NuxtLink>
+
+            <div class="my-1 border-t border-gray-100" />
+
+            <button
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              @click="printSingle(openMenuItem); closeMenu()"
+            >
+              <Printer class="h-4 w-4 text-gray-400" />
+              Print
+            </button>
+            <button
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              @click="printSingleNoPrice(openMenuItem); closeMenu()"
+            >
+              <Printer class="h-4 w-4 text-gray-400" />
+              Print (Tanpa Harga)
+            </button>
+            <button
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              @click="printLabelSingle(openMenuItem); closeMenu()"
+            >
+              <Tag class="h-4 w-4 text-gray-400" />
+              Print Label
+            </button>
+
+            <template v-if="openMenuItem.status === 'draft' || openMenuItem.status === 'completed'">
+              <div class="my-1 border-t border-gray-100" />
+            </template>
+
+            <NuxtLink
+              v-if="openMenuItem.status === 'draft'"
+              :to="`/inventory/usage/create?edit=${openMenuItem.id}`"
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              @click="closeMenu"
+            >
+              <Pencil class="h-4 w-4 text-gray-400" />
+              Edit
+            </NuxtLink>
+            <button
+              v-if="openMenuItem.status === 'completed'"
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-orange-600 hover:bg-orange-50"
+              @click="handleCancel(openMenuItem); closeMenu()"
+            >
+              <XCircle class="h-4 w-4" />
+              Batalkan
+            </button>
+            <NuxtLink
+              v-if="openMenuItem.status === 'completed'"
+              :to="`/inventory/usage/return/create?usage_id=${openMenuItem.id}`"
+              class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-green-600 hover:bg-green-50"
+              @click="closeMenu"
+            >
+              <RotateCcw class="h-4 w-4" />
+              Buat Return
+            </NuxtLink>
+
+            <template v-if="openMenuItem.status === 'draft'">
+              <div class="my-1 border-t border-gray-100" />
+              <button
+                class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-red-600 hover:bg-red-50"
+                @click="handleDelete(openMenuItem); closeMenu()"
+              >
+                <Trash2 class="h-4 w-4" />
+                Hapus
+              </button>
+            </template>
+          </div>
+        </Transition>
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>
