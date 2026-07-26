@@ -33,6 +33,7 @@ import {
   LogOut,
   Bell,
   Building2,
+  UserRound,
   X,
 } from 'lucide-vue-next'
 import type { MenuItem, Business, Notification } from '~/types'
@@ -331,14 +332,22 @@ const userInitials = computed(() => {
     <!-- User Profile (bottom) -->
     <div class="border-t border-gray-200 px-4 py-3">
       <ClientOnly>
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-1">
           <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
             {{ userInitials }}
           </div>
           <div class="flex-1 overflow-hidden">
-            <p class="truncate text-xs font-medium text-gray-900">{{ authStore.user?.name || 'User' }}</p>
-            <p class="truncate text-[11px] leading-tight text-gray-500">{{ authStore.user?.email || '' }}</p>
+            <p class="truncate pl-1 text-xs font-medium text-gray-900">{{ authStore.user?.name || 'User' }}</p>
+            <p class="truncate pl-1 text-[11px] leading-tight text-gray-500">{{ authStore.user?.email || '' }}</p>
           </div>
+          <NuxtLink
+            to="/profile"
+            class="shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-primary-50 hover:text-primary-600"
+            title="Profil"
+            @click="onNavClick"
+          >
+            <UserRound class="h-4 w-4" />
+          </NuxtLink>
           <button
             class="shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
             title="Logout"

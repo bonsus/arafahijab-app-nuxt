@@ -20,7 +20,7 @@ export function useSidebarMenu(): MenuItem[] {
       csOnly: true,
     },
     {
-      label: 'Penjualan',
+      label: 'Sales',
       icon: 'shopping-cart',
       children: [
         { label: 'Order', to: '/sales/order', permission: 'sales_order.read' }, 
@@ -31,32 +31,13 @@ export function useSidebarMenu(): MenuItem[] {
       ],
     },
     {
-      label: 'Pembelian',
+      label: 'Purchase',
       icon: 'package-check',
       children: [
         { label: 'Purchase Order', to: '/purchase/order', permission: 'purchase.read' },
         { label: 'Penerimaan Barang', to: '/purchase/receipt', permission: 'purchase_receipt.read' },
         { label: 'Pembayaran', to: '/purchase/payment', permission: 'purchase.read' },
         { label: 'Retur Pembelian', to: '/purchase/return', permission: 'purchase_return.read' },
-      ],
-    },
-    {
-      label: 'Produk',
-      icon: 'box',
-      children: [
-        { label: 'Master Produk', to: '/product/masters', permission: 'product.read' },
-        { label: 'Kategori Produk', to: '/product/categories', permission: 'product.read' },
-        { label: 'Produk Marketplace', to: '/product/marketplace', permission: 'product.read' },
-      ],
-    },
-    {
-      label: 'WMS',
-      icon: 'warehouse',
-      children: [
-        { label: 'Inbound', to: '/wms/inbound', permission: 'inbound.read' },
-        { label: 'Gudang', to: '/wms/warehouse', permission: 'warehouse.read' },
-        { label: 'Lokasi', to: '/wms/locations', permission: 'warehouse.read' },
-        { label: 'Layout', to: '/wms/layout', permission: 'warehouse.read' },
       ],
     },
     {
@@ -70,6 +51,25 @@ export function useSidebarMenu(): MenuItem[] {
         { label: 'Penyesuaian Stock', to: '/inventory/adjustment', permission: 'stock_adjustment.read' },
         { label: 'Konversi Stock', to: '/inventory/conversion', permission: 'stock_conversion.read' },
         { label: 'Transfer Stock', to: '/inventory/transfer', permission: 'stock_transfer.read' },
+      ],
+    },
+    {
+      label: 'WMS',
+      icon: 'warehouse',
+      children: [
+        { label: 'Inbound', to: '/wms/inbound', permission: 'inbound.read' },
+        { label: 'Gudang', to: '/wms/warehouse', permission: 'warehouse.read' },
+        { label: 'Lokasi', to: '/wms/locations', permission: 'warehouse.read' },
+        { label: 'Layout', to: '/wms/layout', permission: 'warehouse.read' },
+      ],
+    },
+    {
+      label: 'Produk',
+      icon: 'box',
+      children: [
+        { label: 'Master Produk', to: '/product/masters', permission: 'product.read' },
+        { label: 'Kategori Produk', to: '/product/categories', permission: 'product.read' },
+        { label: 'Produk Marketplace', to: '/product/marketplace', permission: 'product.read' },
       ],
     },
     {
