@@ -226,7 +226,8 @@ async function printLabelMass() {
 }
 
 // ─── Print without price ────────────────────────────────────────────────────────
-const printingNoPriceId = ref<string | null>(null)
+const printingNoPriceId = ref<string | null>(null) 
+const massPrintingNoPrice = ref(false)
 
 async function printUsagesNoPrice(ids: string[]) {
   const response = await api.post<Blob>('/inventories/stock-usages/print-mass-without-price', { ids }, { responseType: 'blob' })
@@ -235,7 +236,21 @@ async function printUsagesNoPrice(ids: string[]) {
   window.open(url, '_blank')
   setTimeout(() => window.URL.revokeObjectURL(url), 1000)
 }
-
+async function printMassNoPrice() {
+  if (massPrintingNoPrice.value || !selectedIds.value.length) return
+  massPrintingNoPrice.value = true
+  try {
+    await printUsagesNoPrice([...selectedIds.value])
+    toast.success(`${selectedIds.value.length} dokumen pemakaian (tanpa harga) berhasil dicetak`)
+    selectedIds.value = []
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal mencetak dokumen')
+  }
+  finally {
+    massPrintingNoPrice.value = false
+  }
+}
 async function printSingleNoPrice(item: StockUsage) {
   if (printingNoPriceId.value) return
   printingNoPriceId.value = item.id
@@ -515,26 +530,7 @@ onMounted(() => {
         @search="fetchWarehouseOptions"
       />
       <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
-      <button
-        v-if="selectedIds.length"
-        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
-        :disabled="massPrinting"
-        @click="printMass"
-      >
-        <Loader2 v-if="massPrinting" class="h-4 w-4 animate-spin" />
-        <Printer v-else class="h-4 w-4" />
-        <span>Print ({{ selectedIds.length }})</span>
-      </button>
-      <button
-        v-if="selectedIds.length"
-        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
-        :disabled="massPrintingLabel"
-        @click="printLabelMass"
-      >
-        <Loader2 v-if="massPrintingLabel" class="h-4 w-4 animate-spin" />
-        <Tag v-else class="h-4 w-4" />
-        <span>Print Label ({{ selectedIds.length }})</span>
-      </button>
+       
       <button
         class="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50 transition-colors"
         :disabled="loading"
@@ -566,6 +562,39 @@ onMounted(() => {
           </button>
         </div>
       </div>
+    </div>
+    <!-- Action -->
+    <div class="flex flex-wrap items-center gap-2"> 
+      <button
+        v-if="selectedIds.length"
+        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
+        :disabled="massPrinting"
+        @click="printMass"
+      >
+        <Loader2 v-if="massPrinting" class="h-4 w-4 animate-spin" />
+        <Printer v-else class="h-4 w-4" />
+        <span>Print ({{ selectedIds.length }})</span>
+      </button>
+      <button
+        v-if="selectedIds.length"
+        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
+        :disabled="massPrintingNoPrice"
+        @click="printMassNoPrice"
+      >
+        <Loader2 v-if="massPrintingNoPrice" class="h-4 w-4 animate-spin" />
+        <Printer v-else class="h-4 w-4" />
+        <span>Print (Tanpa Harga) ({{ selectedIds.length }})</span>
+      </button>
+      <button
+        v-if="selectedIds.length"
+        class="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:opacity-50"
+        :disabled="massPrintingLabel"
+        @click="printLabelMass"
+      >
+        <Loader2 v-if="massPrintingLabel" class="h-4 w-4 animate-spin" />
+        <Tag v-else class="h-4 w-4" />
+        <span>Print Label ({{ selectedIds.length }})</span>
+      </button> 
     </div>
 
     <!-- Table -->
