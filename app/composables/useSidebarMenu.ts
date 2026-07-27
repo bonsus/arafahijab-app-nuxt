@@ -131,8 +131,8 @@ export function useSidebarMenu(): MenuItem[] {
     {
       label: 'Pengaturan',
       icon: 'settings',
-      to: '/setting/general',
-      permission: ['option.read', 'option.update', 'store.read', 'bank.read', 'warehouse.read', 'integration.read', 'payment-method.read', 'user.read', 'role'],
+      to: '/setting/business',
+      permission: ['business.read','business.update','option.read', 'option.update', 'store.read', 'bank.read', 'warehouse.read', 'integration.read', 'payment-method.read', 'user.read', 'role.read'],
     },
   ]
 }

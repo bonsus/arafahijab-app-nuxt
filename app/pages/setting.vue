@@ -6,7 +6,8 @@ definePageMeta({
 const route = useRoute()
 
 const settingMenus = [
-  { label: 'Umum', to: '/setting/general' },
+  // { label: 'Umum', to: '/setting/general' },
+  { label: 'Bisnis', to: '/setting/business' },
   { label: 'Staff', to: '/setting/staff' },
   { label: 'Toko / Channel Penjualan', to: '/setting/store' },
   { label: 'Integrasi', to: '/setting/integration' },

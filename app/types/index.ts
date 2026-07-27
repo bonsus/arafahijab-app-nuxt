@@ -61,6 +61,27 @@ export interface Business {
   logo?: string
 }
 
+export interface BusinessProfile {
+  id: string
+  logo: string
+  name: string
+  description: string
+  type: string
+  email: string
+  phone: string
+  currency: string
+  language: string
+  timezone: string
+  country: string
+  province: string
+  city: string
+  district: string
+  zipcode: string
+  address: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Notification {
   id: number
   title: string
