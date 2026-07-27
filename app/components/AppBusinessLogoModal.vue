@@ -2,11 +2,16 @@
 import { X, Upload, Image as ImageIcon, Loader2 } from 'lucide-vue-next'
 import type { BusinessProfile } from '~/types'
 
+type LogoVariant = 'logo' | 'label' | 'document'
+
 interface Props {
   business: BusinessProfile | null
+  variant?: LogoVariant
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  variant: 'logo',
+})
 const emit = defineEmits(['close', 'success'])
 
 const api = useApi()
@@ -17,10 +22,18 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const preview = ref<string | null>(null)
 
+const variantConfig: Record<LogoVariant, { title: string, endpoint: string, field: keyof BusinessProfile }> = {
+  logo: { title: 'Ubah Logo Bisnis', endpoint: '/businesses/update-logo', field: 'logo' },
+  label: { title: 'Ubah Logo Label', endpoint: '/businesses/update-logo-label', field: 'logo_label' },
+  document: { title: 'Ubah Logo Dokumen', endpoint: '/businesses/update-logo-document', field: 'logo_document' },
+}
+
+const config = computed(() => variantConfig[props.variant])
+
 watch(() => props.business, (biz) => {
   if (biz) {
     selectedFile.value = null
-    preview.value = biz.logo || null
+    preview.value = (biz[config.value.field] as string) || null
     if (fileInput.value) fileInput.value.value = ''
   }
 }, { immediate: true })
@@ -58,7 +71,7 @@ async function handleSubmit() {
     const formData = new FormData()
     formData.append('file', selectedFile.value)
 
-    await api.post('/businesses/update-logo', formData)
+    await api.post(config.value.endpoint, formData)
 
     toast.success('Logo bisnis berhasil diperbarui')
     emit('success')
@@ -102,7 +115,7 @@ async function handleSubmit() {
           >
             <!-- Header -->
             <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-              <h2 class="text-lg font-bold text-gray-900">Ubah Logo Bisnis</h2>
+              <h2 class="text-lg font-bold text-gray-900">{{ config.title }}</h2>
               <button
                 class="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                 @click="$emit('close')"

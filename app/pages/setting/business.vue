@@ -13,6 +13,12 @@ const loading = ref(true)
 
 const showProfileModal = ref(false)
 const showLogoModal = ref(false)
+const logoVariant = ref<'logo' | 'label' | 'document'>('logo')
+
+function openLogoModal(variant: 'logo' | 'label' | 'document') {
+  logoVariant.value = variant
+  showLogoModal.value = true
+}
 
 const typeLabels: Record<string, string> = {
   personal: 'Personal',
@@ -125,7 +131,7 @@ onMounted(fetchBusiness)
             <button
               type="button"
               class="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100"
-              @click="showLogoModal = true"
+              @click="openLogoModal('logo')"
             >
               Ganti Logo
             </button>
@@ -142,11 +148,72 @@ onMounted(fetchBusiness)
           <button
             type="button"
             class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-            @click="showLogoModal = true"
+            @click="openLogoModal('logo')"
           >
             <ImageIcon class="h-4 w-4" />
             Ubah Logo
           </button>
+        </div>
+      </div>
+
+      <!-- Print logos -->
+      <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+        <h3 class="mb-1 text-lg font-semibold text-gray-900">Logo Cetak</h3>
+        <p class="mb-5 text-sm text-gray-500">Logo yang digunakan saat mencetak label pengiriman dan dokumen.</p>
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <!-- Logo Label -->
+          <div class="flex items-center gap-4 rounded-lg border border-gray-200 p-4">
+            <div class="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+              <img
+                v-if="business.logo_label"
+                :src="business.logo_label"
+                alt="Logo Label"
+                class="h-full w-full object-contain"
+              />
+              <div v-else class="flex h-full w-full items-center justify-center text-gray-300">
+                <ImageIcon class="h-7 w-7" />
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-gray-900">Logo Label</p>
+              <p class="mt-0.5 text-xs text-gray-500">Dipakai pada cetak label pengiriman.</p>
+              <button
+                type="button"
+                class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                @click="openLogoModal('label')"
+              >
+                <ImageIcon class="h-3.5 w-3.5" />
+                Ubah
+              </button>
+            </div>
+          </div>
+
+          <!-- Logo Document -->
+          <div class="flex items-center gap-4 rounded-lg border border-gray-200 p-4">
+            <div class="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+              <img
+                v-if="business.logo_document"
+                :src="business.logo_document"
+                alt="Logo Dokumen"
+                class="h-full w-full object-contain"
+              />
+              <div v-else class="flex h-full w-full items-center justify-center text-gray-300">
+                <ImageIcon class="h-7 w-7" />
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-gray-900">Logo Dokumen</p>
+              <p class="mt-0.5 text-xs text-gray-500">Dipakai pada cetak dokumen seperti invoice.</p>
+              <button
+                type="button"
+                class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                @click="openLogoModal('document')"
+              >
+                <ImageIcon class="h-3.5 w-3.5" />
+                Ubah
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -190,6 +257,7 @@ onMounted(fetchBusiness)
     />
     <AppBusinessLogoModal
       :business="showLogoModal ? business : null"
+      :variant="logoVariant"
       @close="showLogoModal = false"
       @success="onLogoSaved"
     />

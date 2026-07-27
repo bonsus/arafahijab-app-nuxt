@@ -64,6 +64,8 @@ export interface Business {
 export interface BusinessProfile {
   id: string
   logo: string
+  logo_label: string
+  logo_document: string
   name: string
   description: string
   type: string
