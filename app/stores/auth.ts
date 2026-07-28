@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { User, LoginPayload, LoginResponse, ApiResponse } from '~/types'
+import type { User, LoginPayload, RegisterPayload, LoginResponse, ApiResponse } from '~/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = useCookie('auth_token', {
@@ -26,6 +26,11 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = response.data.user
   }
 
+  async function register(payload: RegisterPayload) {
+    const api = useApi()
+    await api.post<ApiResponse<User>>('/user/auth/register', payload)
+  }
+
   async function fetchMe() {
     const api = useApi()
     const response = await api.get<ApiResponse<LoginResponse>>('/user/auth/me')
@@ -39,6 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
+    register,
     token,
     user,
     isAuthenticated,

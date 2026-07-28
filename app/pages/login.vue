@@ -175,6 +175,14 @@ onMounted(async () => {
         </button>
       </form>
 
+      <!-- Link to Register -->
+      <p class="mt-6 text-center text-sm text-gray-500" v-if="domain=='app.ordeo.id'">
+        Belum punya akun?
+        <NuxtLink to="/register" class="font-semibold text-primary-600 hover:text-primary-700">
+          Daftar
+        </NuxtLink>
+      </p>
+
       <!-- Google Sign-In -->
       <template v-if="isGoogleConfigured && domain == 'app.ordeo.id'">
         <div class="my-6 flex items-center gap-3">

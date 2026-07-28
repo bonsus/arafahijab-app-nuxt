@@ -129,6 +129,15 @@ export function useSidebarMenu(): MenuItem[] {
       permission: 'integration.read',
     },
     {
+      label: 'Billing',
+      icon: 'receipt',
+      ownerOnly: true,
+      children: [
+        { label: 'Langganan', to: '/billing/subscription' },
+        { label: 'Invoice', to: '/billing/invoice' },
+      ],
+    },
+    {
       label: 'Pengaturan',
       icon: 'settings',
       to: '/setting/business',

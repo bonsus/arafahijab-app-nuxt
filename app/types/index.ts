@@ -33,6 +33,15 @@ export interface LoginPayload {
   password: string
 }
 
+export interface RegisterPayload {
+  company?: string
+  name: string
+  phone?: string
+  email: string
+  password: string
+  password_confirmation: string
+}
+
 export interface LoginResponse {
   token: string
   user: User
@@ -100,6 +109,8 @@ export interface MenuItem {
   permission?: string | string[]
   /** Only visible to users with is_cs = true. */
   csOnly?: boolean
+  /** Only visible to the business owner. */
+  ownerOnly?: boolean
   children?: MenuItem[]
 }
 
@@ -268,4 +279,186 @@ export interface SalesOrder {
   shipment: OrderShipment
   payments: OrderPayment[]
   logs: OrderLog[]
+}
+
+// ---------------------------------------------------------------------------
+// Billing / Subscription Types
+// ---------------------------------------------------------------------------
+
+export interface BillingFeature {
+  id: string
+  code: string
+  name: string
+  category: string
+  data_type: string
+  description: string
+  created_at: string
+  updated_at: string
+}
+
+export interface PlanVersionFeature {
+  id: string
+  plan_version_id: string
+  feature_id: string
+  value: string
+  created_at: string
+  feature: BillingFeature
+}
+
+export interface Plan {
+  id: string
+  code: string
+  name: string
+  description: string
+  is_public: boolean
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  versions?: PlanVersion[]
+}
+
+export interface PlanVersion {
+  id: string
+  plan_id: string
+  version: number
+  billing_cycle: string
+  currency: string
+  price: number
+  compare_price: number
+  trial_days: number
+  effective_from: string
+  effective_until: string | null
+  is_active: boolean
+  created_at: string
+  plan?: Plan
+  features?: PlanVersionFeature[]
+}
+
+export type SubscriptionStatus =
+  | 'pending_activation'
+  | 'trial'
+  | 'active'
+  | 'past_due'
+  | 'grace_period'
+  | 'cancelled'
+  | 'expired'
+
+export interface Subscription {
+  id: string
+  business_id: string
+  plan_version_id: string
+  status: SubscriptionStatus
+  billing_cycle: string
+  starts_at: string | null
+  ends_at: string | null
+  trial_ends_at: string | null
+  grace_ends_at: string | null
+  auto_renew: boolean
+  cancel_at_period_end: boolean
+  cancelled_at: string | null
+  created_at: string
+  updated_at: string
+  plan_version?: PlanVersion
+}
+
+export interface InvoiceItem {
+  id: string
+  invoice_id: string
+  type: string
+  description: string
+  quantity: number
+  unit_price: number
+  subtotal: number
+  created_at: string
+}
+
+export interface BillingTransaction {
+  id: string
+  payment_id: string
+  gateway: string
+  payment_method: string
+  transaction_id: string
+  external_id: string
+  payment_url: string
+  va_number: string
+  qr_string: string
+  expiry_at: string | null
+  status: string
+  request_payload?: Record<string, any> | null
+  response_payload?: Record<string, any> | null
+  webhook_payload?: Record<string, any> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BillingPayment {
+  id: string
+  invoice_id: string
+  status: string
+  total_paid: number
+  created_at: string
+  updated_at: string
+  transactions?: BillingTransaction[]
+}
+
+export type InvoiceStatus = 'open' | 'paid' | 'void'
+
+export interface Invoice {
+  id: string
+  business_id: string
+  subscription_id: string
+  invoice_number: string
+  status: InvoiceStatus
+  currency: string
+  subtotal: number
+  discount: number
+  tax: number
+  total: number
+  due_date: string
+  paid_at: string | null
+  company_name: string
+  billing_name: string
+  billing_email: string
+  billing_address: string
+  plan_name: string
+  billing_cycle: string
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  items?: InvoiceItem[]
+  payments?: BillingPayment[]
+}
+
+export interface PlanChange {
+  id: string
+  subscription_id: string
+  from_plan_version_id: string
+  to_plan_version_id: string
+  type: string
+  effective_at: string
+  status: string
+  created_at: string
+}
+
+export interface PaymentMethod {
+  code: string
+  name: string
+  category: string
+}
+
+export interface CheckoutResult {
+  type: string
+  subscription: Subscription | null
+  invoice: Invoice | null
+  plan_change: PlanChange | null
+}
+
+export interface Paginated<T> {
+  data: T[]
+  page: number
+  perpage: number
+  total_page: number
+  total: number
 }
