@@ -53,6 +53,7 @@ function isMenuAllowed(item: MenuItem): boolean {
   if (item.csOnly && !authStore.user?.is_cs) return false
   if ((item.ownerOnly && authStore.user?.type !== 'owner') || (item.ownerOnly && domain !== 'app.ordeo.id')) return false
   if (!item.permission) return true
+  if (item.ordeoOnly && domain !== 'app.ordeo.id') return false
   return Array.isArray(item.permission) ? canAny(item.permission) : can(item.permission)
 }
 

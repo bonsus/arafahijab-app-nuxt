@@ -111,6 +111,7 @@ export interface MenuItem {
   csOnly?: boolean
   /** Only visible to the business owner. */
   ownerOnly?: boolean
+  ordeoOnly?: boolean
   children?: MenuItem[]
 }
 
