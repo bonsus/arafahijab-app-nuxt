@@ -1338,7 +1338,7 @@ const methodClass: Record<string, string> = {
             <ListTree class="h-5 w-5 text-primary-500" /> Ringkasan
           </h2>
           <p class="text-sm leading-relaxed text-gray-600">
-            REST API publik bersifat <strong>read-only</strong> dan diautentikasi dengan API Key.
+            REST API publik diautentikasi dengan API Key.
             Semua data otomatis ter-scope ke business milik API key. Selain itu tersedia
             <strong>webhook keluar</strong> untuk menerima notifikasi realtime saat terjadi peristiwa bisnis.
           </p>
