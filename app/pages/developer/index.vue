@@ -8,7 +8,11 @@ definePageMeta({ middleware: 'auth' })
 
 interface ApiKeyInfo {
   key: string
+  prefix: string
+  scopes: string[]
   created_at: string
+  expires_at: string
+  status: string
 }
 
 interface WebhookInfo {
@@ -36,6 +40,11 @@ const AVAILABLE_EVENTS: { value: string; label: string }[] = [
 //   { value: 'stock.changed', label: 'Stok berubah' },
 ]
 
+const AVAILABLE_SCOPES: { value: string; label: string; desc: string }[] = [
+  { value: 'read', label: 'Read', desc: 'Membaca data (orders, products, customers, dll).' },
+  { value: 'write', label: 'Write', desc: 'Membuat/memperbarui data (orders, customers, addresses).' },
+]
+
 const loading = ref(true)
 const apiKey = ref<ApiKeyInfo | null>(null)
 const webhook = reactive({
@@ -49,6 +58,11 @@ const regeneratingKey = ref(false)
 const savingWebhook = ref(false)
 const regeneratingSecret = ref(false)
 const testingWebhook = ref(false)
+
+const showRegenerateModal = ref(false)
+const regenerateScopes = ref<string[]>(['read', 'write'])
+const expiresInDays = ref(0)
+const neverExpires = ref(true)
 
 const showApiKey = ref(false)
 const showSecret = ref(false)
@@ -93,19 +107,33 @@ function maskValue(val: string): string {
   return val.slice(0, 6) + '••••••••••••' + val.slice(-4)
 }
 
-async function regenerateApiKey() {
-  const ok = await confirm({
-    title: 'Buat Ulang API Key',
-    message: 'API key lama akan langsung nonaktif dan tidak dapat digunakan lagi. Lanjutkan?',
-    confirmText: 'Buat Ulang',
-    variant: 'danger',
-  })
-  if (!ok) return
+function openRegenerateModal() {
+  regenerateScopes.value = apiKey.value?.scopes?.length ? [...apiKey.value.scopes] : ['read', 'write']
+  neverExpires.value = !apiKey.value?.expires_at
+  expiresInDays.value = 0
+  showRegenerateModal.value = true
+}
+
+function toggleRegenerateScope(scope: string) {
+  const i = regenerateScopes.value.indexOf(scope)
+  if (i >= 0) regenerateScopes.value.splice(i, 1)
+  else regenerateScopes.value.push(scope)
+}
+
+async function confirmRegenerateApiKey() {
+  if (!regenerateScopes.value.length) {
+    toast.error('Pilih minimal satu scope')
+    return
+  }
   regeneratingKey.value = true
   try {
-    const res = await api.post<{ data: ApiKeyInfo }>('/external/api-key/regenerate')
+    const res = await api.post<{ data: ApiKeyInfo }>('/external/api-key/regenerate', {
+      scopes: regenerateScopes.value,
+      expires_in_days: neverExpires.value ? 0 : expiresInDays.value,
+    })
     apiKey.value = res.data
     showApiKey.value = true
+    showRegenerateModal.value = false
     toast.success('API key berhasil dibuat ulang')
   }
   catch (err: any) {
@@ -220,6 +248,12 @@ onMounted(fetchSetting)
         Webhook History
       </NuxtLink>
       <NuxtLink
+        to="/developer/api-logs"
+        class="border-b-2 border-transparent px-4 py-2.5 text-sm font-semibold text-gray-500 transition-colors hover:text-gray-700"
+      >
+        API Logs
+      </NuxtLink>
+      <NuxtLink
         to="/developer/documentation"
         class="border-b-2 border-transparent px-4 py-2.5 text-sm font-semibold text-gray-500 transition-colors hover:text-gray-700"
       >
@@ -248,9 +282,10 @@ onMounted(fetchSetting)
               <div v-if="apiKey" class="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div class="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
                   <code class="min-w-0 flex-1 truncate font-mono text-sm text-gray-700">
-                    {{ showApiKey ? apiKey.key : maskValue(apiKey.key) }}
+                    {{ apiKey.key ? (showApiKey ? apiKey.key : maskValue(apiKey.key)) : (apiKey.prefix || '-') }}
                   </code>
                   <button
+                    v-if="apiKey.key"
                     type="button"
                     class="shrink-0 text-gray-400 transition-colors hover:text-gray-600"
                     :title="showApiKey ? 'Sembunyikan' : 'Tampilkan'"
@@ -259,11 +294,11 @@ onMounted(fetchSetting)
                     <EyeOff v-if="showApiKey" class="h-4 w-4" />
                     <Eye v-else class="h-4 w-4" />
                   </button>
-                  <button
+                  <button v-if="apiKey.key"
                     type="button"
                     class="shrink-0 text-gray-400 transition-colors hover:text-primary-600"
                     title="Salin"
-                    @click="copyToClipboard(apiKey.key, 'apikey')"
+                    @click="copyToClipboard(apiKey.key || apiKey.prefix, 'apikey')"
                   >
                     <Check v-if="copiedField === 'apikey'" class="h-4 w-4 text-green-500" />
                     <Copy v-else class="h-4 w-4" />
@@ -273,7 +308,7 @@ onMounted(fetchSetting)
                   type="button"
                   :disabled="regeneratingKey"
                   class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  @click="regenerateApiKey"
+                  @click="openRegenerateModal"
                 >
                   <Loader2 v-if="regeneratingKey" class="h-4 w-4 animate-spin" />
                   <RefreshCw v-else class="h-4 w-4" />
@@ -288,12 +323,36 @@ onMounted(fetchSetting)
                   type="button"
                   :disabled="regeneratingKey"
                   class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  @click="regenerateApiKey"
+                  @click="openRegenerateModal"
                 >
                   <Loader2 v-if="regeneratingKey" class="h-4 w-4 animate-spin" />
                   <Key v-else class="h-4 w-4" />
                   Buat API Key
                 </button>
+              </div>
+
+              <p v-if="apiKey?.key" class="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                Simpan key ini sekarang — key lengkap hanya ditampilkan sekali dan tidak dapat dilihat kembali setelah Anda meninggalkan halaman ini.
+              </p>
+
+              <div v-if="apiKey" class="mt-3 flex flex-wrap items-center gap-2">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                  :class="apiKey.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full" :class="apiKey.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'" />
+                  {{ apiKey.status === 'active' ? 'Aktif' : 'Nonaktif' }}
+                </span>
+                <span
+                  v-for="s in apiKey.scopes"
+                  :key="s"
+                  class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700"
+                >
+                  {{ s }}
+                </span>
+                <span class="text-xs text-gray-400">
+                  Kadaluarsa: {{ apiKey.expires_at ? formatDateTime(apiKey.expires_at) : 'Tidak kadaluarsa' }}
+                </span>
               </div>
 
               <p v-if="apiKey" class="mt-2 text-xs text-gray-400">
@@ -456,5 +515,77 @@ onMounted(fetchSetting)
         </div>
       </div>
     </template>
+
+    <AdminModal v-model="showRegenerateModal" title="Buat Ulang API Key" max-width="max-w-md">
+      <div class="space-y-4">
+        <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          Key lama akan langsung nonaktif dan tidak dapat digunakan lagi. Key baru hanya ditampilkan sekali setelah dibuat.
+        </p>
+
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Scope</label>
+          <div class="space-y-2">
+            <label
+              v-for="s in AVAILABLE_SCOPES"
+              :key="s.value"
+              class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 transition-colors"
+              :class="regenerateScopes.includes(s.value)
+                ? 'border-primary-300 bg-primary-50'
+                : 'border-gray-200 hover:bg-gray-50'"
+            >
+              <input
+                type="checkbox"
+                :checked="regenerateScopes.includes(s.value)"
+                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-2 focus:ring-primary-500/20"
+                @change="toggleRegenerateScope(s.value)"
+              />
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-800">{{ s.label }}</p>
+                <p class="text-xs text-gray-400">{{ s.desc }}</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-1.5 flex items-center gap-2 text-xs font-medium text-gray-500">
+            <input
+              type="checkbox"
+              :checked="neverExpires"
+              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-2 focus:ring-primary-500/20"
+              @change="neverExpires = !neverExpires; expiresInDays = neverExpires ? 0 : 90"
+            />
+            Tanpa kadaluarsa
+          </label>
+          <input
+            v-if="!neverExpires"
+            v-model.number="expiresInDays"
+            type="number"
+            min="1"
+            placeholder="Jumlah hari"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+          @click="showRegenerateModal = false"
+        >
+          Batal
+        </button>
+        <button
+          type="button"
+          :disabled="regeneratingKey || !regenerateScopes.length"
+          class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="confirmRegenerateApiKey"
+        >
+          <Loader2 v-if="regeneratingKey" class="h-4 w-4 animate-spin" />
+          Buat Ulang
+        </button>
+      </template>
+    </AdminModal>
   </div>
 </template>

@@ -227,6 +227,12 @@ onBeforeUnmount(() => {
         Webhook History
       </NuxtLink>
       <NuxtLink
+        to="/developer/api-logs"
+        class="border-b-2 border-transparent px-4 py-2.5 text-sm font-semibold text-gray-500 transition-colors hover:text-gray-700"
+      >
+        API Logs
+      </NuxtLink>
+      <NuxtLink
         to="/developer/documentation"
         class="border-b-2 border-transparent px-4 py-2.5 text-sm font-semibold text-gray-500 transition-colors hover:text-gray-700"
       >
