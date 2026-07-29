@@ -41,6 +41,8 @@ const ordersListPath = computed(() => (isCs.value ? '/sales/ordercs' : '/sales/o
 
 const isEdit = computed(() => !!route.query.edit)
 const orderId = computed(() => route.query.edit as string)
+const duplicateOrderId = computed(() => route.query.duplicate_order_id as string)
+const isDuplicate = computed(() => !isEdit.value && !!duplicateOrderId.value)
 
 const saving = ref(false)
 const loadingData = ref(false)
@@ -564,25 +566,47 @@ watch(total, calculateCODCost)
 
 const grandTotal = computed(() => total.value + form.cod_cost)
 
-// ─── Load for edit ─────────────────────────────────────────────────────────────
+// ─── Load for edit / duplicate ─────────────────────────────────────────────────
 async function loadOrder() {
-  if (!isEdit.value) return
+  if (isEdit.value) {
+    await loadOrderData(orderId.value, { duplicate: false })
+  }
+  else if (isDuplicate.value) {
+    await loadOrderData(duplicateOrderId.value, { duplicate: true })
+    // Duplicated order should be assigned to the current CS user, not the original staff
+    if (isCs.value && authStore.user) {
+      selectedStaff.value = { id: authStore.user.id, name: authStore.user.name, email: authStore.user.email, phone: authStore.user.phone }
+      form.staff_id = authStore.user.id
+    }
+  }
+}
+
+async function loadOrderData(sourceOrderId: string, { duplicate }: { duplicate: boolean }) {
   loadingData.value = true
   try {
-    const res = await api.get<{ data: any }>(`/sales/orders/${orderId.value}`)
+    const res = await api.get<{ data: any }>(`/sales/orders/${sourceOrderId}`)
     const o = res.data
 
-    form.external_id = o.external_id || ''
-    form.date_created = o.date_created ? o.date_created.slice(0, 16) : new Date().toISOString().slice(0, 16)
-    form.date_due = o.date_due && !o.date_due.startsWith('0001') ? o.date_due.slice(0, 16) : ''
+    form.external_id = duplicate ? '' : (o.external_id || '')
+    form.date_created = duplicate
+      ? new Date().toISOString().slice(0, 16)
+      : (o.date_created ? o.date_created.slice(0, 16) : new Date().toISOString().slice(0, 16))
+    form.date_due = duplicate
+      ? ''
+      : (o.date_due && !o.date_due.startsWith('0001') ? o.date_due.slice(0, 16) : '')
     form.cod = o.cod || 'no'
     form.payment_provider = o.payment_provider
     form.payment_method = o.payment_method
     form.payment_method_id = o.payment_method_id || ''
-    form.staff_id = o.staff_id || ''
+    form.staff_id = o.staff?.id || o.staff_id || ''
     form.source = o.source || ''
     form.note = o.note || ''
     form.customer_note = o.customer_note || ''
+    // Reflect the source order's actual staff (including having none), overriding any default
+    // staff pre-selected for the current CS user before this data finished loading.
+    selectedStaff.value = o.staff.id
+      ? { id: o.staff.id, name: o.staff.name, email: o.staff.email || '', phone: o.staff.phone || '' }
+      : null
     tags.value = Array.isArray(o.tags)
       ? o.tags
       : (o.tags ? String(o.tags).split(',').map((s: string) => s.trim()).filter(Boolean) : [])
@@ -635,7 +659,9 @@ async function loadOrder() {
       category_id: '',
       sku: item.sku,
       name: item.name,
-      variants: item.variants ? Object.entries(item.variants).map(([name, value]) => ({ name, value })) : [],
+      variants: Array.isArray(item.variants)
+        ? item.variants
+        : (item.variants ? Object.entries(item.variants).map(([name, value]) => ({ name, value })) : []),
       weight: Number(item.weight) || 0,
       qty: Number(item.qty) || 1,
       price: Number(item.price) || 0,
@@ -907,7 +933,7 @@ onMounted(() => {
     selectedStaff.value = { id: authStore.user.id, name: authStore.user.name, email: authStore.user.email, phone: authStore.user.phone }
     form.staff_id = authStore.user.id
   }
-  if (isEdit.value) loadOrder()
+  if (isEdit.value || isDuplicate.value) loadOrder()
 })
 </script>
 
@@ -922,7 +948,7 @@ onMounted(() => {
         <ArrowLeft class="h-5 w-5" />
       </NuxtLink>
       <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">
-        {{ isEdit ? 'Edit Order Penjualan' : 'Buat Order Penjualan' }}
+        {{ isEdit ? 'Edit Order Penjualan' : (isDuplicate ? 'Duplikat Order Penjualan' : 'Buat Order Penjualan') }}
       </h1>
     </div>
 
@@ -1128,7 +1154,7 @@ onMounted(() => {
               <!-- CS -->
               <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600">Staff / CS</label>
-                <!-- Selected -->
+                <!-- Selected --> 
                 <div v-if="selectedStaff" class="flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2">
                   <div class="min-w-0 flex-1">
                     <p class="text-sm font-medium text-primary-900">{{ selectedStaff.name }}</p>

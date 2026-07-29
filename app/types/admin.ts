@@ -231,6 +231,40 @@ export interface Invoice {
   payments?: Payment[]
 }
 
+// ---- Payment Gateway Settings ----
+
+export type GatewayEnvironment = 'sandbox' | 'production'
+export type PaymentMethodCategory =
+  | 'va' | 'ewallet' | 'qris' | 'card' | 'retail'
+  | 'paylater' | 'ebanking' | 'directdebit' | 'ecommerce'
+
+export interface GatewayCredential {
+  key: string
+  label: string
+  /** Secret values are never returned by the API. */
+  secret: boolean
+  /** Whether a value is already stored. */
+  is_set: boolean
+  /** Always empty for secret fields. */
+  value: string
+}
+
+export interface GatewayMethod {
+  code: string
+  name: string
+  category: PaymentMethodCategory | string
+  is_active: boolean
+}
+
+export interface PaymentGateway {
+  code: string
+  name: string
+  is_active: boolean
+  environment: GatewayEnvironment
+  credentials: GatewayCredential[]
+  methods: GatewayMethod[]
+}
+
 export interface AdminMenuItem {
   label: string
   icon?: string

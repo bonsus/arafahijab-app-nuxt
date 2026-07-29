@@ -31,6 +31,7 @@ export function useAdminMenu(): AdminMenuItem[] {
       label: 'Pengaturan',
       icon: 'settings',
       children: [
+        { label: 'Payment Gateway', to: '/admin/payment-gateways' },
         { label: 'Options', to: '/admin/options' },
       ],
     },

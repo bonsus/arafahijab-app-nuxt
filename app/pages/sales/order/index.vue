@@ -504,6 +504,12 @@ async function onChangeResiSuccess() {
   await fetchOrders()
 }
 
+// ─── Duplicate order ──────────────────────────────────────────────────────────
+function duplicateOrder(order: SalesOrder) {
+  closeMenu()
+  router.push(`/sales/order/create?duplicate_order_id=${order.id}`)
+}
+
 // ─── Export orders ────────────────────────────────────────────────────────────
 const exporting = ref(false)
 
@@ -2290,6 +2296,13 @@ onUnmounted(() => {
           <Eye class="h-4 w-4 text-gray-400" />
           Lihat Detail
         </NuxtLink>
+        <button
+          class="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          @click="duplicateOrder(openMenuOrder)"
+        >
+          <Copy class="h-4 w-4 text-gray-400" />
+          Duplikat Order
+        </button>
         <!-- <NuxtLink
           v-if="openMenuOrder.status === 'pending'"
           :to="`/sales/order/create?edit=${openMenuOrder.id}`"
