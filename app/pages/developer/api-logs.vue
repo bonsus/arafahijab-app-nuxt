@@ -17,6 +17,7 @@ interface ApiLog {
   status_code: number
   query: string | Record<string, any> | null
   payload: string | Record<string, any> | null
+  response: string | Record<string, any> | null
   created_at: string
 }
 
@@ -144,6 +145,7 @@ function formatJsonField(value: string | Record<string, any> | null): string {
 
 const queryJson = computed(() => formatJsonField(detail.value?.query ?? null))
 const payloadJson = computed(() => formatJsonField(detail.value?.payload ?? null))
+const responseJson = computed(() => formatJsonField(detail.value?.response ?? null))
 
 async function copyToClipboard(text: string, field: string) {
   if (!text || text === '-') return
@@ -422,6 +424,21 @@ onBeforeUnmount(() => {
                 </button>
               </div>
               <pre class="max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"><code>{{ payloadJson }}</code></pre>
+            </div>
+
+            <div>
+              <div class="mb-1 flex items-center justify-between">
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">Response</p>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  @click="copyToClipboard(responseJson, 'response')"
+                >
+                  <Check v-if="copiedField === 'response'" class="h-3.5 w-3.5 text-green-500" />
+                  <Copy v-else class="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <pre class="max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"><code>{{ responseJson }}</code></pre>
             </div>
           </div>
         </div>
