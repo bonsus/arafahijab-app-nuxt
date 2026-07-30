@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  ScrollText, RefreshCw, Search, X, Inbox, ChevronDown,
+  ScrollText, RefreshCw, Search, X, Inbox, ChevronDown, Eye, Copy, Check,
 } from 'lucide-vue-next'
 import { formatDateTime, formatDateFromForApi, formatDateToForApi } from '~/composables/useFormatters'
 
@@ -15,6 +15,8 @@ interface ApiLog {
   path: string
   ip: string
   status_code: number
+  query: string | Record<string, any> | null
+  payload: string | Record<string, any> | null
   created_at: string
 }
 
@@ -104,6 +106,55 @@ function onPerPageChange(pp: number) {
   perPage.value = pp
   page.value = 1
   fetchList()
+}
+
+// ---- Detail modal ----
+const showDetail = ref(false)
+const detail = ref<ApiLog | null>(null)
+const copiedField = ref('')
+
+function openDetail(item: ApiLog) {
+  detail.value = item
+  showDetail.value = true
+}
+
+function closeDetail() {
+  showDetail.value = false
+  detail.value = null
+  copiedField.value = ''
+}
+
+function formatJsonField(value: string | Record<string, any> | null): string {
+  if (!value) return '-'
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2)
+    }
+    catch {
+      return value
+    }
+  }
+  try {
+    return JSON.stringify(value, null, 2)
+  }
+  catch {
+    return String(value)
+  }
+}
+
+const queryJson = computed(() => formatJsonField(detail.value?.query ?? null))
+const payloadJson = computed(() => formatJsonField(detail.value?.payload ?? null))
+
+async function copyToClipboard(text: string, field: string) {
+  if (!text || text === '-') return
+  try {
+    await navigator.clipboard.writeText(text)
+    copiedField.value = field
+    setTimeout(() => { copiedField.value = '' }, 2000)
+  }
+  catch {
+    toast.error('Gagal menyalin')
+  }
 }
 
 onMounted(fetchList)
@@ -209,7 +260,7 @@ onBeforeUnmount(() => {
 
       <!-- Table -->
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px] text-sm">
+        <table class="w-full min-w-[820px] text-sm">
           <thead>
             <tr class="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wider text-gray-500">
               <th class="px-4 py-3 text-left">Method</th>
@@ -217,18 +268,19 @@ onBeforeUnmount(() => {
               <th class="px-4 py-3 text-left">IP</th>
               <th class="px-4 py-3 text-center">Kode</th>
               <th class="px-4 py-3 text-left">Waktu</th>
+              <th class="px-4 py-3 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody v-if="listLoading">
             <tr v-for="i in 8" :key="i" class="border-b border-gray-100">
-              <td v-for="j in 5" :key="j" class="px-4 py-3">
+              <td v-for="j in 6" :key="j" class="px-4 py-3">
                 <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 2 ? 'w-40' : 'w-16'" />
               </td>
             </tr>
           </tbody>
           <tbody v-else-if="!items.length">
             <tr>
-              <td colspan="5" class="px-4 py-16 text-center">
+              <td colspan="6" class="px-4 py-16 text-center">
                 <Inbox class="mx-auto mb-3 h-10 w-10 text-gray-300" />
                 <p class="text-sm text-gray-500">Belum ada API log</p>
               </td>
@@ -259,6 +311,17 @@ onBeforeUnmount(() => {
                 >{{ item.status_code || '-' }}</span>
               </td>
               <td class="px-4 py-3 text-xs text-gray-500">{{ formatDateTime(item.created_at) }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    @click="openDetail(item)"
+                  >
+                    <Eye class="h-3.5 w-3.5" /> Detail
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -276,5 +339,93 @@ onBeforeUnmount(() => {
         @update:per-page="onPerPageChange"
       />
     </div>
+
+    <!-- Detail modal -->
+    <Teleport to="body">
+      <div
+        v-if="showDetail && detail"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        @click.self="closeDetail"
+      >
+        <div class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+          <!-- Header -->
+          <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-800">
+              <ScrollText class="h-4 w-4 text-primary-500" />
+              Detail API Log
+            </h3>
+            <button
+              type="button"
+              class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              @click="closeDetail"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">Method</p>
+                <span
+                  class="mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold"
+                  :class="methodClass[detail.method] || 'bg-gray-100 text-gray-600 ring-1 ring-gray-200'"
+                >{{ detail.method }}</span>
+              </div>
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">Kode Respon</p>
+                <p
+                  class="mt-0.5 font-mono text-xs font-semibold"
+                  :class="detail.status_code >= 200 && detail.status_code < 300 ? 'text-emerald-600' : detail.status_code ? 'text-red-600' : 'text-gray-400'"
+                >{{ detail.status_code || '-' }}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">IP</p>
+                <p class="mt-0.5 font-mono text-xs text-gray-700">{{ detail.ip }}</p>
+              </div>
+              <div class="col-span-2 sm:col-span-3">
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">Path</p>
+                <p class="mt-0.5 break-all font-mono text-xs text-gray-700">{{ detail.path }}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">Waktu</p>
+                <p class="mt-0.5 text-xs text-gray-700">{{ formatDateTime(detail.created_at) }}</p>
+              </div>
+            </div>
+
+            <div>
+              <div class="mb-1 flex items-center justify-between">
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">Query</p>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  @click="copyToClipboard(queryJson, 'query')"
+                >
+                  <Check v-if="copiedField === 'query'" class="h-3.5 w-3.5 text-green-500" />
+                  <Copy v-else class="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <pre class="max-h-48 overflow-auto rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"><code>{{ queryJson }}</code></pre>
+            </div>
+
+            <div>
+              <div class="mb-1 flex items-center justify-between">
+                <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400">Payload</p>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  @click="copyToClipboard(payloadJson, 'payload')"
+                >
+                  <Check v-if="copiedField === 'payload'" class="h-3.5 w-3.5 text-green-500" />
+                  <Copy v-else class="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <pre class="max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"><code>{{ payloadJson }}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
