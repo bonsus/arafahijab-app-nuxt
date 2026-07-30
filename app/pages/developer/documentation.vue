@@ -1492,10 +1492,7 @@ const methodClass: Record<string, string> = {
                 </tr>
               </tbody>
             </table>
-          </div>
-          <p class="text-xs text-gray-400">
-            Catatan: <code class="font-mono text-[11px]">POST /payment-confirmation</code> dan <code class="font-mono text-[11px]">PUT /customers/:id/category</code> memakai batas yang lebih ketat, yaitu <strong>60 request/menit</strong> per API key.
-          </p>
+          </div> 
         </section>
 
         <!-- Autentikasi -->
