@@ -33,6 +33,7 @@ const sections = [
   { id: 'shipping-rates', label: 'Perhitungan Ongkir' },
   { id: 'customer-write', label: 'Customer & Alamat (Create)' },
   { id: 'order-write', label: 'Buat Order (Create)' },
+  { id: 'payment-confirmation', label: 'Konfirmasi Pembayaran' },
   { id: 'webhook', label: 'Webhook Keluar' },
   { id: 'events', label: 'Daftar Event' },
   { id: 'signature', label: 'Verifikasi Signature' },
@@ -770,6 +771,103 @@ const addressCreateResponseSnippet = `{
   }
 }`
 
+// ---- Endpoint baru: Ubah Kategori Pelanggan ----
+const customerCategoryBodySnippet = `{ "category_id": "01JF7CATEGORY0001..." }`
+
+const customerCategoryCurlSnippet = `curl -X PUT "https://public.api.arafahijab.co.id/customers/01JF7CUSTOMER001.../category" \\
+  -H "X-Api-Key: ak_xxxxxxxx..." \\
+  -H "Content-Type: application/json" \\
+  -d '{ "category_id": "01JF7CATEGORY0001..." }'`
+
+const customerCategoryResponseSnippet = `{ "message": "kategori pelanggan berhasil diubah", "data": null }`
+
+const customerCategoryErrorFields = [
+  { code: '422', body: '{ "error": "kategori tidak valid" }', cond: '`category_id` tidak ditemukan / bukan milik business.' },
+  { code: '400', body: '{ "error": "Invalid request" }', cond: 'Body JSON tidak bisa diparse.' },
+  { code: '500', body: '{ "error": "terjadi kesalahan pada server" }', cond: 'Gagal menyimpan perubahan.' },
+]
+
+// ---- Endpoint baru: Konfirmasi Pembayaran (transfer bank) ----
+const paymentConfirmationBodyFields = [
+  { name: 'order_id', req: '✅', desc: 'ID order (internal) yang akan dikonfirmasi. Order harus milik business & belum lunas.' },
+  { name: 'amount', req: '✅', desc: 'Jumlah pembayaran. Harus sama persis dengan total order (pembayaran penuh).' },
+  { name: 'from_name', req: '✅', desc: 'Nama pengirim transfer.' },
+  { name: 'from_bank', req: '✅', desc: 'Bank asal pengirim (mis. BCA).' },
+  { name: 'bank_id', req: '✅', desc: 'ID rekening tujuan (WalletBankAccount) milik business. Menentukan to_name, to_bank, to_account, wallet_id.' },
+  { name: 'payment_date', req: '✅', desc: 'Tanggal/waktu pembayaran, format RFC3339 (mis. 2026-07-30T14:05:00+07:00).' },
+  { name: 'file', req: '✅', desc: 'Bukti transfer (JPG/PNG). Diunggah ke S3 & dikonversi ke webp.' },
+  { name: 'note', req: '➖', desc: 'Catatan tambahan.' },
+  { name: 'actual_amount', req: '➖', desc: 'Nominal aktual diterima (opsional; umumnya diisi saat verifikasi).' },
+]
+
+const paymentConfirmationCurlSnippet = `curl -X POST "https://public.api.arafahijab.co.id/payment-confirmation" \\
+  -H "X-Api-Key: ak_xxxxxxxx..." \\
+  -F "order_id=01JF7X8Z0K3P2Q9V4M6N8R1T2Y" \\
+  -F "amount=150000" \\
+  -F "from_name=Budi Santoso" \\
+  -F "from_bank=BCA" \\
+  -F "bank_id=01JF7X9ABCDE12345FGHIJKLMN" \\
+  -F "payment_date=2026-07-30T14:05:00+07:00" \\
+  -F "note=Transfer via mobile banking" \\
+  -F "file=@/path/ke/bukti-transfer.jpg"`
+
+const paymentConfirmationResponseFields = [
+  { name: 'id', desc: 'ID konfirmasi.' },
+  { name: 'business_id', desc: 'ID business.' },
+  { name: 'order_id', desc: 'ID order.' },
+  { name: 'wallet_id', desc: 'Dompet tujuan (dari bank_id).' },
+  { name: 'payment_date', desc: 'Tanggal pembayaran.' },
+  { name: 'amount', desc: 'Jumlah pembayaran (string decimal).' },
+  { name: 'from_name', desc: 'Nama pengirim.' },
+  { name: 'from_bank', desc: 'Bank pengirim.' },
+  { name: 'to_bank_id', desc: 'ID rekening tujuan.' },
+  { name: 'to_name', desc: 'Nama pemilik rekening tujuan (otomatis).' },
+  { name: 'to_bank', desc: 'Nama bank tujuan (otomatis).' },
+  { name: 'to_account', desc: 'Nomor rekening tujuan (otomatis).' },
+  { name: 'file', desc: 'URL bukti pembayaran (S3).' },
+  { name: 'note', desc: 'Catatan.' },
+  { name: 'status', desc: 'Selalu "pending" saat dibuat.' },
+  { name: 'created_at / updated_at', desc: 'Waktu buat/ubah.' },
+]
+
+const paymentConfirmationResponseSnippet = `{
+  "message": "konfirmasi pembayaran berhasil dikirim",
+  "data": {
+    "id": "01JG0ABCDXYZ...",
+    "business_id": "01H8BUSINESS...",
+    "order_id": "01JF7X8Z0K3P2Q9V4M6N8R1T2Y",
+    "wallet_id": "01JF7WALLET...",
+    "payment_date": "2026-07-30T14:05:00+07:00",
+    "amount": "150000",
+    "from_name": "Budi Santoso",
+    "from_bank": "BCA",
+    "to_bank_id": "01JF7X9ABCDE12345FGHIJKLMN",
+    "to_name": "PT Arafa Hijab",
+    "to_bank": "BCA",
+    "to_account": "1234567890",
+    "file": "https://<s3-domain>/medias/<business>/payment-confirmation/xxxx.webp",
+    "note": "Transfer via mobile banking",
+    "status": "pending",
+    "created_at": "2026-07-30T14:06:10+07:00",
+    "updated_at": "2026-07-30T14:06:10+07:00"
+  }
+}`
+
+const paymentConfirmationErrorFields = [
+  { field: 'order_id', msg: 'order tidak ditemukan' },
+  { field: 'order_id', msg: 'order sudah dibayar' },
+  { field: 'amount', msg: 'jumlah pembayaran harus lebih besar dari 0' },
+  { field: 'amount', msg: 'jumlah pembayaran harus sama dengan total order (total: <n>)' },
+  { field: 'from_name', msg: 'nama pengirim harus diisi' },
+  { field: 'from_bank', msg: 'bank pengirim harus diisi' },
+  { field: 'from_bank', msg: 'bank tujuan harus diisi (bank_id kosong)' },
+  { field: 'from_bank', msg: 'bank tujuan tidak ditemukan' },
+  { field: 'from_bank', msg: 'bank tujuan tidak valid untuk bisnis ini' },
+  { field: 'to', msg: 'dompet / bank tujuan tidak ditemukan / tidak valid untuk bisnis ini' },
+  { field: 'payment_date', msg: 'format tanggal pembayaran salah, gunakan format YYYY-MM-DD' },
+  { field: 'file', msg: 'gagal mengupload bukti pembayaran' },
+]
+
 // ---- Endpoint baru: Buat Order (write) ----
 const orderCreateBodySnippet = `{
   "payment_provider": "xendit",
@@ -840,7 +938,9 @@ const endpoints = [
   { method: 'PUT', path: '/customers/:id', desc: 'Perbarui data dasar pelanggan.' },
   { method: 'POST', path: '/addresses/create', desc: 'Tambah alamat untuk pelanggan yang sudah ada.' },
   { method: 'PUT', path: '/addresses/:id', desc: 'Perbarui alamat.' },
+  { method: 'PUT', path: '/customers/:id/category', desc: 'Ubah kategori (segmentasi) pelanggan.' },
   { method: 'POST', path: '/orders/create', desc: 'Buat order penjualan.' },
+  { method: 'POST', path: '/payment-confirmation', desc: 'Konfirmasi pembayaran manual (transfer bank) untuk order.' },
 ]
 
 const paginationParams = [
@@ -1393,6 +1493,9 @@ const methodClass: Record<string, string> = {
               </tbody>
             </table>
           </div>
+          <p class="text-xs text-gray-400">
+            Catatan: <code class="font-mono text-[11px]">POST /payment-confirmation</code> dan <code class="font-mono text-[11px]">PUT /customers/:id/category</code> memakai batas yang lebih ketat, yaitu <strong>60 request/menit</strong> per API key.
+          </p>
         </section>
 
         <!-- Autentikasi -->
@@ -2218,11 +2321,84 @@ const methodClass: Record<string, string> = {
               Response 200 mengembalikan <code class="font-mono text-xs">data</code> = CustomerAddress dengan pesan <code class="font-mono text-xs">"data successfully updated"</code>. Error 422 per field sama seperti pembuatan alamat.
             </p>
           </div>
+
+          <!-- D.5 customers/:id/category -->
+          <div class="space-y-3 border-t border-gray-100 pt-5">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-800">
+              <span class="rounded px-1.5 py-0.5 text-[11px] font-bold" :class="methodClass.PUT">PUT</span>
+              <code class="font-mono text-xs text-primary-600">/customers/:id/category</code>
+            </h3>
+            <p class="text-sm text-gray-600">
+              Mengubah kategori (segmentasi) seorang pelanggan. Path param <code class="font-mono text-xs">id</code> — ID pelanggan yang kategorinya akan diubah.
+              Selain memperbarui kategori, sistem otomatis mencatat riwayat perpindahan kategori (<code class="font-mono text-xs">CustomerCategoryMovement</code>) dengan <code class="font-mono text-xs">started_at = now</code>.
+              Perubahan kategori dapat memengaruhi harga khusus (harga per kategori) yang berlaku untuk pelanggan tersebut. Daftar kategori valid bisa diperoleh dari
+              <code class="font-mono text-xs">GET /customer-categories</code>.
+            </p>
+            <div class="overflow-hidden rounded-xl border border-gray-200">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr><th class="px-4 py-2.5 text-left font-medium">Field Body</th><th class="px-4 py-2.5 text-left font-medium">Wajib</th><th class="px-4 py-2.5 text-left font-medium">Keterangan</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr>
+                    <td class="px-4 py-2.5"><code class="font-mono text-xs text-primary-600">category_id</code></td>
+                    <td class="px-4 py-2.5">✅</td>
+                    <td class="px-4 py-2.5 text-gray-600">ID kategori pelanggan tujuan (harus kategori milik business ini).</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="group relative">
+              <pre class="overflow-x-auto rounded-xl bg-gray-900 px-4 py-3.5 text-[13px] leading-relaxed text-gray-100"><code>{{ customerCategoryBodySnippet }}</code></pre>
+              <button type="button" class="absolute right-2.5 top-2.5 rounded-md bg-white/10 p-1.5 text-gray-300 opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100" @click="copyCode(customerCategoryBodySnippet, 'customercategorybody')">
+                <Check v-if="copiedKey === 'customercategorybody'" class="h-3.5 w-3.5 text-green-400" />
+                <Copy v-else class="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Contoh Request (cURL)</h4>
+            <div class="group relative">
+              <pre class="overflow-x-auto rounded-xl bg-gray-900 px-4 py-3.5 text-[13px] leading-relaxed text-gray-100"><code>{{ customerCategoryCurlSnippet }}</code></pre>
+              <button type="button" class="absolute right-2.5 top-2.5 rounded-md bg-white/10 p-1.5 text-gray-300 opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100" @click="copyCode(customerCategoryCurlSnippet, 'customercategorycurl')">
+                <Check v-if="copiedKey === 'customercategorycurl'" class="h-3.5 w-3.5 text-green-400" />
+                <Copy v-else class="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Response 200</h4>
+            <div class="group relative">
+              <pre class="overflow-x-auto rounded-xl bg-gray-900 px-4 py-3.5 text-[13px] leading-relaxed text-gray-100"><code>{{ customerCategoryResponseSnippet }}</code></pre>
+              <button type="button" class="absolute right-2.5 top-2.5 rounded-md bg-white/10 p-1.5 text-gray-300 opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100" @click="copyCode(customerCategoryResponseSnippet, 'customercategoryres')">
+                <Check v-if="copiedKey === 'customercategoryres'" class="h-3.5 w-3.5 text-green-400" />
+                <Copy v-else class="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Error</h4>
+            <div class="overflow-hidden rounded-xl border border-gray-200">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr><th class="px-4 py-2.5 text-left font-medium">HTTP</th><th class="px-4 py-2.5 text-left font-medium">Body</th><th class="px-4 py-2.5 text-left font-medium">Kondisi</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr v-for="e in customerCategoryErrorFields" :key="e.code + e.body">
+                    <td class="px-4 py-2.5"><code class="font-mono text-xs text-primary-600">{{ e.code }}</code></td>
+                    <td class="px-4 py-2.5"><code class="font-mono text-[11px] text-gray-600">{{ e.body }}</code></td>
+                    <td class="px-4 py-2.5 text-gray-600">{{ e.cond }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="text-xs text-gray-400">
+              Endpoint tulis ini tunduk pada scope <code class="font-mono text-[11px]">write</code> dan rate limit yang lebih ketat: <strong>60 request/menit</strong> per API key.
+            </p>
+          </div>
         </section>
 
         <!-- Buat Order (Write) -->
         <section id="order-write" class="scroll-mt-6 space-y-4">
           <h2 class="text-lg font-bold text-gray-900">Buat Order (Create)</h2>
+
           <p class="text-sm leading-relaxed text-gray-600">
             <span class="rounded px-1.5 py-0.5 text-[11px] font-bold" :class="methodClass.POST">POST</span>
             <code class="font-mono text-xs text-primary-600">/orders/create</code> — membuat order penjualan. Perilaku otomatis:
@@ -2361,7 +2537,92 @@ const methodClass: Record<string, string> = {
           </div>
           <p class="text-xs text-gray-400">Error non-field: <code class="font-mono text-[11px]">{ "error": "gagal membuat order" }</code> (500), atau error pembuatan invoice Xendit bila provider <code class="font-mono text-[11px]">xendit</code>.</p>
         </section>
- 
+
+        <!-- Konfirmasi Pembayaran (transfer bank) -->
+        <section id="payment-confirmation" class="scroll-mt-6 space-y-4">
+          <h2 class="text-lg font-bold text-gray-900">Konfirmasi Pembayaran (Transfer Bank)</h2>
+          <p class="text-sm leading-relaxed text-gray-600">
+            <span class="rounded px-1.5 py-0.5 text-[11px] font-bold" :class="methodClass.POST">POST</span>
+            <code class="font-mono text-xs text-primary-600">/payment-confirmation</code> — mencatat konfirmasi pembayaran manual (transfer bank) untuk sebuah order milik business pemilik API key.
+            Setelah dibuat, konfirmasi berstatus <code class="font-mono text-xs">pending</code> dan menunggu verifikasi oleh admin/owner di dashboard. Otomatis membuat entri order log bertipe
+            <code class="font-mono text-xs">payment_confirmation_created</code> (dicatat atas nama sistem, <code class="font-mono text-xs">name = "API"</code>).
+          </p>
+
+          <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p><strong>Penting:</strong> endpoint ini memakai <code class="font-mono text-xs">multipart/form-data</code> (bukan JSON), karena mewajibkan unggahan file bukti pembayaran.</p>
+          </div>
+
+          <h3 class="pt-1 text-sm font-semibold text-gray-800">Field Body (form-data)</h3>
+          <div class="overflow-hidden rounded-xl border border-gray-200">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr><th class="px-4 py-2.5 text-left font-medium">Field</th><th class="px-4 py-2.5 text-left font-medium">Wajib</th><th class="px-4 py-2.5 text-left font-medium">Keterangan</th></tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="f in paymentConfirmationBodyFields" :key="f.name">
+                  <td class="px-4 py-2.5"><code class="font-mono text-xs text-primary-600">{{ f.name }}</code></td>
+                  <td class="px-4 py-2.5">{{ f.req }}</td>
+                  <td class="px-4 py-2.5 text-gray-600">{{ f.desc }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="pt-1 text-sm font-semibold text-gray-800">Contoh Request (cURL)</h3>
+          <div class="group relative">
+            <pre class="overflow-x-auto rounded-xl bg-gray-900 px-4 py-3.5 text-[13px] leading-relaxed text-gray-100"><code>{{ paymentConfirmationCurlSnippet }}</code></pre>
+            <button type="button" class="absolute right-2.5 top-2.5 rounded-md bg-white/10 p-1.5 text-gray-300 opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100" @click="copyCode(paymentConfirmationCurlSnippet, 'paymentconfirmationcurl')">
+              <Check v-if="copiedKey === 'paymentconfirmationcurl'" class="h-3.5 w-3.5 text-green-400" />
+              <Copy v-else class="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <h3 class="pt-1 text-sm font-semibold text-gray-800">Response 200 — data (OrderPaymentConfirmation)</h3>
+          <div class="overflow-hidden rounded-xl border border-gray-200">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr><th class="px-4 py-2.5 text-left font-medium">Field</th><th class="px-4 py-2.5 text-left font-medium">Keterangan</th></tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="f in paymentConfirmationResponseFields" :key="f.name">
+                  <td class="px-4 py-2.5"><code class="font-mono text-xs text-primary-600">{{ f.name }}</code></td>
+                  <td class="px-4 py-2.5 text-gray-600">{{ f.desc }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="group relative">
+            <pre class="overflow-x-auto rounded-xl bg-gray-900 px-4 py-3.5 text-[13px] leading-relaxed text-gray-100"><code>{{ paymentConfirmationResponseSnippet }}</code></pre>
+            <button type="button" class="absolute right-2.5 top-2.5 rounded-md bg-white/10 p-1.5 text-gray-300 opacity-0 transition-opacity hover:bg-white/20 group-hover:opacity-100" @click="copyCode(paymentConfirmationResponseSnippet, 'paymentconfirmationres')">
+              <Check v-if="copiedKey === 'paymentconfirmationres'" class="h-3.5 w-3.5 text-green-400" />
+              <Copy v-else class="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <h3 class="pt-1 text-sm font-semibold text-gray-800">Error 422 (validasi, per field)</h3>
+          <div class="overflow-hidden rounded-xl border border-gray-200">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr><th class="px-4 py-2.5 text-left font-medium">Field</th><th class="px-4 py-2.5 text-left font-medium">Pesan</th></tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="e in paymentConfirmationErrorFields" :key="e.field + e.msg">
+                  <td class="px-4 py-2.5"><code class="font-mono text-xs text-primary-600">{{ e.field }}</code></td>
+                  <td class="px-4 py-2.5 text-gray-600">{{ e.msg }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <ul class="list-disc space-y-1 pl-5 text-sm text-gray-600">
+            <li><strong>Pembayaran penuh saja:</strong> <code class="font-mono text-xs">amount</code> harus persis sama dengan total order. Pembayaran sebagian ditolak.</li>
+            <li><strong>Format <code class="font-mono text-xs">payment_date</code>:</strong> meskipun pesan error menyebut <code class="font-mono text-xs">YYYY-MM-DD</code>, parser yang dipakai adalah <strong>RFC3339</strong>. Kirim nilai lengkap dengan zona waktu, mis. <code class="font-mono text-xs">2026-07-30T14:05:00+07:00</code>. Nilai <code class="font-mono text-xs">2026-07-30</code> saja akan <strong>ditolak</strong>.</li>
+            <li><strong>File wajib:</strong> request tanpa <code class="font-mono text-xs">file</code> akan gagal (bukti pembayaran diperlukan).</li>
+          </ul>
+          <p class="text-xs text-gray-400">
+            Endpoint tulis ini tunduk pada scope <code class="font-mono text-[11px]">write</code> dan rate limit yang lebih ketat: <strong>60 request/menit</strong> per API key.
+          </p>
+        </section>
 
         <!-- Webhook -->
         <section id="webhook" class="scroll-mt-6 space-y-4">
