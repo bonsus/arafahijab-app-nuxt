@@ -1,9 +1,23 @@
 <script setup lang="ts">
 import {
-  Plus, Search, Pencil, Trash2, Star, MapPin, Loader2,
+  Plus, Search, Pencil, Trash2, Star, MapPin, Loader2, Link2, X, Check,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
+
+interface WarehouseBinding {
+  id: string
+  warehouse_id: string
+  warehouse_name: string
+  store_id: string
+  mp_warehouse_id: string
+  mp_warehouse_name: string
+  mp_warehouse_address: string
+  status: string
+  created_at: string
+  updated_at: string
+  store: { id: string; name: string; source: string }
+}
 
 interface Warehouse {
   id: string
@@ -18,6 +32,7 @@ interface Warehouse {
   primary: boolean
   created_at: string
   updated_at: string
+  bindings?: WarehouseBinding[] | null
 }
 
 interface PaginatedWarehouses {
@@ -26,6 +41,30 @@ interface PaginatedWarehouses {
   per_page: number
   total_page: number
   total: number
+}
+
+interface StoreOption {
+  id: string
+  shop_name: string
+  source: string
+}
+
+interface BoundInternalWarehouse {
+  id: string
+  name: string
+  city: string
+  address: string
+}
+
+interface MpWarehouseOption {
+  id: string
+  name: string
+  type: string
+  sub_type: string
+  is_default: boolean
+  status: string
+  address: string
+  binding?: BoundInternalWarehouse | null
 }
 
 const api = useApi()
@@ -194,6 +233,134 @@ async function handleSetPrimary(w: Warehouse) {
   }
 }
 
+// --- Binding detail modal ---
+const bindingDetailOpen = ref(false)
+const bindingDetailWarehouse = ref<Warehouse | null>(null)
+const deletingBindingId = ref<string | null>(null)
+
+function openBindingDetail(w: Warehouse) {
+  bindingDetailWarehouse.value = w
+  bindingDetailOpen.value = true
+}
+
+function closeBindingDetail() {
+  bindingDetailOpen.value = false
+  bindingDetailWarehouse.value = null
+  closeAddBinding()
+}
+
+async function refreshBindingDetailWarehouse() {
+  await fetchWarehouses()
+  const id = bindingDetailWarehouse.value?.id
+  bindingDetailWarehouse.value = warehouses.value.find(w => w.id === id) || null
+}
+
+async function deleteBindingItem(b: WarehouseBinding) {
+  if (!bindingDetailWarehouse.value) return
+  const ok = await confirm({
+    title: 'Hapus Binding',
+    message: `Hapus binding gudang "${bindingDetailWarehouse.value.name}" dengan toko "${b.store.name}" (${b.mp_warehouse_name})?`,
+    confirmText: 'Hapus',
+    variant: 'danger',
+  })
+  if (!ok) return
+  deletingBindingId.value = b.id
+  try {
+    await api.post('/warehouses/mp/bindings/delete', {
+      warehouse_id: bindingDetailWarehouse.value.id,
+      mp_warehouse_id: b.mp_warehouse_id,
+    })
+    toast.success('Binding berhasil dihapus')
+    await refreshBindingDetailWarehouse()
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal menghapus binding')
+  } finally {
+    deletingBindingId.value = null
+  }
+}
+
+// --- Add binding flow (pick marketplace store, then its marketplace warehouse) ---
+const addMode = ref(false)
+const addStores = ref<StoreOption[]>([])
+const addStoresLoading = ref(false)
+const selectedAddStoreId = ref('')
+const addMpWarehouses = ref<MpWarehouseOption[]>([])
+const addMpWarehousesLoading = ref(false)
+const selectedMpWarehouseId = ref('')
+const addSubmitting = ref(false)
+
+const alreadyBoundToSelectedStore = computed(() => {
+  if (!selectedAddStoreId.value) return false
+  return (bindingDetailWarehouse.value?.bindings || []).some(b => b.store_id === selectedAddStoreId.value)
+})
+
+async function loadAddStores() {
+  addStoresLoading.value = true
+  try {
+    const res = await api.get<{ data: StoreOption[] | null }>('/stores/public/index')
+    addStores.value = (res.data || []).filter(s => s.source == 'tiktok' || s.source == 'shopee')
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal memuat toko')
+  } finally {
+    addStoresLoading.value = false
+  }
+}
+
+async function onAddStoreSelect() {
+  selectedMpWarehouseId.value = ''
+  addMpWarehouses.value = []
+  if (!selectedAddStoreId.value || alreadyBoundToSelectedStore.value) return
+  addMpWarehousesLoading.value = true
+  try {
+    const res = await api.get<{ data: { data: MpWarehouseOption[] } }>('/warehouses/mp/index', { store_id: selectedAddStoreId.value })
+    addMpWarehouses.value = res.data?.data || []
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal memuat gudang marketplace')
+    addMpWarehouses.value = []
+  } finally {
+    addMpWarehousesLoading.value = false
+  }
+}
+
+function openAddBinding() {
+  addMode.value = true
+  selectedAddStoreId.value = ''
+  addMpWarehouses.value = []
+  selectedMpWarehouseId.value = ''
+  if (!addStores.value.length) loadAddStores()
+}
+
+function closeAddBinding() {
+  addMode.value = false
+  selectedAddStoreId.value = ''
+  addMpWarehouses.value = []
+  selectedMpWarehouseId.value = ''
+}
+
+async function saveNewBinding() {
+  const target = bindingDetailWarehouse.value
+  const store = addStores.value.find(s => s.id === selectedAddStoreId.value)
+  const mpWarehouse = addMpWarehouses.value.find(w => w.id === selectedMpWarehouseId.value)
+  if (!target || !store || !mpWarehouse || mpWarehouse.binding || addSubmitting.value) return
+  addSubmitting.value = true
+  try {
+    await api.post('/warehouses/mp/bindings/create', {
+      warehouse_id: target.id,
+      store_id: store.id,
+      mp_warehouse_id: mpWarehouse.id,
+      mp_warehouse_name: mpWarehouse.name,
+      mp_warehouse_address: mpWarehouse.address,
+    })
+    toast.success('Binding berhasil ditambahkan')
+    closeAddBinding()
+    await refreshBindingDetailWarehouse()
+  } catch (err: any) {
+    toast.error(err.message || 'Gagal menambahkan binding')
+  } finally {
+    addSubmitting.value = false
+  }
+}
+
 onMounted(() => fetchWarehouses())
 </script>
 
@@ -278,6 +445,15 @@ onMounted(() => fetchWarehouses())
               <MapPin class="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
               <span>{{ [w.address, w.district, w.city, w.province, w.country, w.zipcode].filter(Boolean).join(', ') }}</span>
             </div>
+            <button
+              type="button"
+              class="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition-colors"
+              :class="w.bindings?.length ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100'"
+              @click="openBindingDetail(w)"
+            >
+              <Link2 class="h-3 w-3" />
+              {{ w.bindings?.length ? `${w.bindings.length} Binding Marketplace` : 'Belum Ada Binding' }}
+            </button>
           </div>
 
           <div class="flex shrink-0 items-center gap-1">
@@ -438,6 +614,189 @@ onMounted(() => fetchWarehouses())
               @click="handleSave"
             >
               {{ saving ? 'Menyimpan...' : 'Simpan' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Binding detail modal -->
+    <Teleport to="body">
+      <div
+        v-if="bindingDetailOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        @mousedown.self="closeBindingDetail"
+      >
+        <div class="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+          <!-- Header -->
+          <div class="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
+            <div class="flex items-center gap-2">
+              <Link2 class="h-5 w-5 text-blue-500" />
+              <div>
+                <h2 class="text-base font-semibold text-gray-900">Binding Marketplace</h2>
+                <p class="mt-0.5 text-xs text-gray-500">{{ bindingDetailWarehouse?.name }}</p>
+              </div>
+            </div>
+            <button class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" @click="closeBindingDetail">
+              <X class="h-5 w-5" />
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="flex-1 overflow-y-auto px-6 py-4">
+            <!-- View mode: existing bindings -->
+            <template v-if="!addMode">
+              <div class="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-100"
+                  @click="openAddBinding"
+                >
+                  <Plus class="h-3.5 w-3.5" />
+                  Tambah Binding
+                </button>
+              </div>
+
+              <ul v-if="bindingDetailWarehouse?.bindings?.length" class="space-y-3">
+                <li
+                  v-for="b in bindingDetailWarehouse.bindings"
+                  :key="b.id"
+                  class="flex items-start gap-3 rounded-xl border border-gray-200 p-4"
+                >
+                  <img
+                    :src="'/images/platform/' + b.store.source + '.svg'"
+                    alt=""
+                    class="mt-0.5 h-8 w-8 shrink-0 rounded-lg object-contain ring-1 ring-gray-100"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="text-sm font-semibold text-gray-900">{{ b.store.name }}</span>
+                      <span
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1"
+                        :class="b.status === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                          : 'bg-gray-100 text-gray-600 ring-gray-200'"
+                      >
+                        {{ b.status === 'active' ? 'Aktif' : b.status }}
+                      </span>
+                    </div>
+                    <p class="mt-1 text-xs font-medium text-gray-700">{{ b.mp_warehouse_name }}</p>
+                    <p v-if="b.mp_warehouse_address" class="mt-0.5 text-xs text-gray-400">{{ b.mp_warehouse_address }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Hapus Binding"
+                    :disabled="deletingBindingId === b.id"
+                    @click="deleteBindingItem(b)"
+                  >
+                    <Loader2 v-if="deletingBindingId === b.id" class="h-4 w-4 animate-spin" />
+                    <Trash2 v-else class="h-4 w-4" />
+                  </button>
+                </li>
+              </ul>
+              <div v-else class="py-10 text-center text-sm text-gray-400">
+                Belum ada binding marketplace untuk gudang ini.
+              </div>
+            </template>
+
+            <!-- Add mode: pick store then marketplace warehouse -->
+            <div v-else class="space-y-4">
+              <div>
+                <p class="mb-2 text-xs font-medium text-gray-600">Pilih Toko Marketplace</p>
+                <div v-if="addStoresLoading" class="flex items-center gap-2 text-xs text-gray-400">
+                  <Loader2 class="h-4 w-4 animate-spin" />
+                  Memuat toko...
+                </div>
+                <div v-else-if="!addStores.length" class="text-xs text-gray-400">
+                  Tidak ada toko marketplace yang tersedia.
+                </div>
+                <div v-else class="flex flex-wrap gap-2">
+                  <button
+                    v-for="store in addStores"
+                    :key="store.id"
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                    :class="selectedAddStoreId === store.id ? 'bg-primary-600 text-white hover:bg-primary-700' : ''"
+                    @click="selectedAddStoreId = store.id; onAddStoreSelect()"
+                  >
+                    <img :src="'/images/platform/' + store.source + '.svg'" alt="" class="h-3.5 w-3.5 object-contain" />
+                    {{ store.shop_name }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="selectedAddStoreId">
+                <p v-if="alreadyBoundToSelectedStore" class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-amber-200">
+                  Gudang ini sudah memiliki binding ke toko ini.
+                </p>
+                <template v-else>
+                  <p class="mb-2 text-xs font-medium text-gray-600">Pilih Gudang Marketplace</p>
+                  <div v-if="addMpWarehousesLoading" class="flex items-center gap-2 text-xs text-gray-400">
+                    <Loader2 class="h-4 w-4 animate-spin" />
+                    Memuat gudang...
+                  </div>
+                  <div v-else-if="!addMpWarehouses.length" class="text-xs text-gray-400">
+                    Tidak ada gudang marketplace untuk toko ini.
+                  </div>
+                  <ul v-else class="max-h-56 space-y-2 overflow-y-auto pr-1">
+                    <li v-for="mw in addMpWarehouses" :key="mw.id">
+                      <button
+                        type="button"
+                        class="flex w-full items-start gap-2 rounded-lg border p-3 text-left transition-colors"
+                        :class="[
+                          mw.binding ? 'cursor-not-allowed border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50/40',
+                          selectedMpWarehouseId === mw.id ? 'border-primary-500 bg-primary-50' : '',
+                        ]"
+                        :disabled="!!mw.binding"
+                        @click="selectedMpWarehouseId = mw.id"
+                      >
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5">
+                            <span class="text-sm font-medium text-gray-800">{{ mw.name }}</span>
+                            <span v-if="mw.is_default" class="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200">Default</span>
+                          </div>
+                          <p class="mt-0.5 line-clamp-1 text-xs text-gray-400">{{ mw.address }}</p>
+                          <p v-if="mw.binding" class="mt-1 text-[11px] font-medium text-amber-600">
+                            Sudah dibinding ke "{{ mw.binding.name }}"
+                          </p>
+                        </div>
+                        <Check v-if="selectedMpWarehouseId === mw.id" class="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+                      </button>
+                    </li>
+                  </ul>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex shrink-0 items-center justify-between border-t border-gray-100 px-6 py-4">
+            <template v-if="addMode">
+              <button
+                type="button"
+                class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                @click="closeAddBinding"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="!selectedMpWarehouseId || addSubmitting"
+                @click="saveNewBinding"
+              >
+                <Loader2 v-if="addSubmitting" class="h-4 w-4 animate-spin" />
+                {{ addSubmitting ? 'Menyimpan...' : 'Simpan Binding' }}
+              </button>
+            </template>
+            <button
+              v-else
+              type="button"
+              class="ml-auto rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              @click="closeBindingDetail"
+            >
+              Tutup
             </button>
           </div>
         </div>

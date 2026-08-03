@@ -157,7 +157,7 @@ async function loadStores() {
   storesLoading.value = true
   try {
     const res = await api.get<{ data: StoreOption[] | null }>('/stores/public/index')
-    stores.value = (res.data || []).filter(s => s.source !== 'internal')
+    stores.value = (res.data || []).filter(s => s.source !== 'internal' && s.source !== 'web')
   }
   catch {}
   finally {

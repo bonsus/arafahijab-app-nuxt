@@ -54,7 +54,7 @@ const selectedMethod = ref('')
 async function fetchMethods() {
   methodsLoading.value = true
   try {
-    const res = await api.get<{ data: PaymentMethod[] }>('/billing/payment-methods', { gateway: 'midtrans' })
+    const res = await api.get<{ data: PaymentMethod[] }>('/billing/payment-methods', { gateway: '' })
     methods.value = res.data || []
   }
   catch (e: any) {
@@ -87,7 +87,7 @@ const activeTransaction = computed<BillingTransaction | null>(() => {
   ) || null
 })
 
-async function selectMethod(code: string) {
+async function selectMethod(gateway: string, code: string) {
   if (creatingMethod.value) return
   selectedMethod.value = code
   // Reuse an existing pending transaction for this method if one already exists.
@@ -95,15 +95,15 @@ async function selectMethod(code: string) {
     t => t.payment_method === code && t.status === 'pending',
   )
   if (existing) return
-  await createPayment(code)
+  await createPayment(gateway, code)
 }
 
-async function createPayment(code: string) {
+async function createPayment(gateway: string, code: string) {
   creatingMethod.value = code
   try {
     await api.post<{ message: string; data: BillingTransaction }>(
       `/billing/invoices/${invoiceId.value}/pay`,
-      { gateway: 'midtrans', payment_method: code },
+      { gateway, payment_method: code },
     )
     await fetchInvoice()
   }
@@ -255,7 +255,7 @@ onBeforeUnmount(() => stopPolling())
                 :class="selectedMethod === m.code
                   ? 'border-primary-500 bg-primary-50/50 ring-1 ring-primary-500/20'
                   : 'border-gray-200 hover:bg-gray-50'"
-                @click="selectMethod(m.code)"
+                @click="selectMethod(m.gateway,m.code)"
               >
                 <component :is="methodIcon(m.category)" class="h-4 w-4 shrink-0 text-gray-400" />
                 <span class="flex-1 text-left font-medium text-gray-800">{{ m.name }}</span>

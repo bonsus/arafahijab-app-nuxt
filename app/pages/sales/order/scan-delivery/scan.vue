@@ -40,6 +40,7 @@ interface ScannedOrder {
   order_id: string
   scan_time: string
   order: OrderData
+  is_invalid?: boolean
 }
 
 const api = useApi()
@@ -59,6 +60,8 @@ const errorMessage = ref('')
 
 // Info modal state
 const showInfoModal = ref(false)
+
+const invalidOrderIds = ref<string[]>([])
 
 // Settings
 const autoMode = ref(false)
@@ -182,6 +185,7 @@ async function saveScannedOrders() {
 
     await api.post('/sales/orders/scan-delivery/save', payload)
 
+    invalidOrderIds.value = []
     toast.success(`${scannedOrders.value.length} order berhasil disimpan!`)
     
     // Reset for new batch
@@ -194,7 +198,26 @@ async function saveScannedOrders() {
     })
   }
   catch (err: any) {
-    toast.error('Gagal menyimpan batch order')
+    const errorIds = err?.errors?.invalid_order_ids
+
+    if (Array.isArray(errorIds) && errorIds.length > 0) {
+      invalidOrderIds.value = errorIds
+      scannedOrders.value = [...scannedOrders.value].sort((left, right) => {
+        const leftInvalid = errorIds.includes(left.order_id)
+        const rightInvalid = errorIds.includes(right.order_id)
+
+        if (leftInvalid === rightInvalid) return 0
+        return leftInvalid ? -1 : 1
+      }).map(item => ({
+        ...item,
+        is_invalid: errorIds.includes(item.order_id),
+      }))
+
+      toast.error(err?.message || 'Terdapat order yang tidak dalam status siap kirim')
+      return
+    }
+
+    toast.error(err?.message || 'Gagal menyimpan batch order')
   }
   finally {
     saving.value = false
@@ -203,7 +226,11 @@ async function saveScannedOrders() {
 
 // ─── Remove order from list ─────────────────────────────────────────────────
 function removeOrder(index: number) {
+  const removedOrderId = scannedOrders.value[index]?.order_id
   scannedOrders.value.splice(index, 1)
+  if (removedOrderId) {
+    invalidOrderIds.value = invalidOrderIds.value.filter(orderId => orderId !== removedOrderId)
+  }
   toast.success('Order dihapus dari list')
 }
 
@@ -212,9 +239,11 @@ function startNewBatch() {
   if (autoMode.value) {
     currentScanId.value = ''
     scannedOrders.value = []
+    invalidOrderIds.value = []
     toast.success('Batch baru dimulai')
   } else {
     scannedOrders.value = []
+    invalidOrderIds.value = []
     toast.success('List direset untuk batch baru')
   }
   
@@ -263,6 +292,10 @@ function closeInfoModal() {
 const canChangeMode = computed(() => {
   return scannedOrders.value.length === 0 && !currentScanId.value
 })
+
+function isInvalidOrder(item: ScannedOrder) {
+  return item.is_invalid || invalidOrderIds.value.includes(item.order_id)
+}
 </script>
 
 <template>
@@ -388,13 +421,24 @@ const canChangeMode = computed(() => {
               <tr
                 v-for="(item, index) in scannedOrders"
                 :key="item.order_id"
-                class="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/50"
+                :class="[
+                  'border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/50',
+                  isInvalidOrder(item) ? 'bg-red-50 hover:bg-red-100/70' : ''
+                ]"
               >
                 <td class="px-4 py-3">
                   <span class="text-gray-500">{{ index + 1 }}</span>
                 </td>
                 <td class="px-4 py-3">
-                  <span class="font-medium text-gray-900">{{ item.order.no }}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900">{{ item.order.no }}</span>
+                    <span
+                      v-if="isInvalidOrder(item)"
+                      class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 ring-1 ring-red-200"
+                    >
+                      Tidak valid
+                    </span>
+                  </div>
                 </td>
                 <td class="px-4 py-3">
                   <div>

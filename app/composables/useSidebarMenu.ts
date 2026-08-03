@@ -73,6 +73,13 @@ export function useSidebarMenu(): MenuItem[] {
       ],
     },
     {
+      label: 'Integrasi Marketplace',
+      icon: 'plug',
+      children: [
+        { label: 'Integrasi Gudang', to: '/marketplace/warehouse', permission: 'warehouse.read' },
+      ],
+    },
+    {
         label: 'Promosi',
         icon: 'tag',
         children: [
