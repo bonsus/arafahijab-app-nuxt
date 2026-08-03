@@ -72,13 +72,13 @@ export function useSidebarMenu(): MenuItem[] {
         { label: 'Produk Marketplace', to: '/product/marketplace', permission: 'product.read' },
       ],
     },
-    {
-      label: 'Integrasi Marketplace',
-      icon: 'plug',
-      children: [
-        { label: 'Integrasi Gudang', to: '/marketplace/warehouse', permission: 'warehouse.read' },
-      ],
-    },
+    // {
+    //   label: 'Integrasi Marketplace',
+    //   icon: 'plug',
+    //   children: [
+    //     { label: 'Integrasi Gudang', to: '/marketplace/warehouse', permission: 'warehouse.read' },
+    //   ],
+    // },
     {
         label: 'Promosi',
         icon: 'tag',
