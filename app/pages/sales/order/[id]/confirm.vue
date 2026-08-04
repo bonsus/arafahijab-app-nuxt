@@ -33,13 +33,12 @@ const form = reactive({
 const formErrors = ref<Record<string, string[]>>({})
 const selectedFiles = ref<File[]>([])
 const selectedPreviews = ref<string[]>([])
+const sourceFiles = ref<File[]>([])
 const combineModalOpen = ref(false)
 const combineOrientation = ref<'vertical' | 'horizontal'>('vertical')
 const combinedPreview = ref<string>('')
 const combinedFile = ref<File | null>(null)
 const isCombining = ref(false)
-
-const canCombine = computed(() => selectedFiles.value.length === 2)
 
 function revokePreview(url: string) {
   if (url.startsWith('blob:')) {
@@ -51,6 +50,7 @@ function clearSelectedFiles() {
   selectedPreviews.value.forEach(revokePreview)
   selectedFiles.value = []
   selectedPreviews.value = []
+  sourceFiles.value = []
   combinedPreview.value = ''
   combinedFile.value = null
   combineModalOpen.value = false
@@ -62,14 +62,28 @@ function setSingleFile(file: File) {
   clearSelectedFiles()
   selectedFiles.value = [file]
   selectedPreviews.value = [URL.createObjectURL(file)]
+  sourceFiles.value = [file]
   form.file = file
 }
 
-function setTwoFiles(files: File[]) {
+function setSecondFile(file: File) {
+  if (!selectedFiles.value.length) {
+    setSingleFile(file)
+    return
+  }
+
+  if (selectedFiles.value.length === 1) {
+    selectedFiles.value.push(file)
+    selectedPreviews.value.push(URL.createObjectURL(file))
+    sourceFiles.value = [...selectedFiles.value]
+    void openCombineModal()
+    return
+  }
+
   clearSelectedFiles()
-  selectedFiles.value = files.slice(0, 2)
-  selectedPreviews.value = selectedFiles.value.map(file => URL.createObjectURL(file))
-  combineModalOpen.value = true
+  selectedFiles.value = [file]
+  selectedPreviews.value = [URL.createObjectURL(file)]
+  form.file = file
 }
 
 function onFileChange(e: Event) {
@@ -86,11 +100,25 @@ function onFileChange(e: Event) {
   if (files.length === 1) {
     const file = files[0]
     if (file) {
-      setSingleFile(file)
+      if (selectedFiles.value.length === 1) {
+        setSecondFile(file)
+      }
+      else {
+        setSingleFile(file)
+      }
     }
   }
   else {
-    setTwoFiles(files.slice(0, 2))
+    const [firstFile, secondFile] = files
+    if (firstFile) {
+      setSingleFile(firstFile)
+    }
+    if (secondFile) {
+      selectedFiles.value.push(secondFile)
+      selectedPreviews.value.push(URL.createObjectURL(secondFile))
+      sourceFiles.value = [...selectedFiles.value]
+      void openCombineModal()
+    }
   }
 
   target.value = ''
@@ -230,10 +258,10 @@ async function createCombinedImage(files: File[], orientation: 'vertical' | 'hor
 }
 
 async function openCombineModal() {
-  if (selectedFiles.value.length !== 2) return
+  if (sourceFiles.value.length !== 2) return
   isCombining.value = true
   try {
-    const result = await createCombinedImage(selectedFiles.value, combineOrientation.value)
+    const result = await createCombinedImage(sourceFiles.value, combineOrientation.value)
     if (combinedPreview.value.startsWith('blob:')) {
       revokePreview(combinedPreview.value)
     }
@@ -251,7 +279,7 @@ async function openCombineModal() {
 }
 
 async function applyCombineOrientation(orientation: 'vertical' | 'horizontal') {
-  if (selectedFiles.value.length !== 2) return
+  if (sourceFiles.value.length !== 2) return
   combineOrientation.value = orientation
   await openCombineModal()
 }
@@ -263,6 +291,9 @@ function closeCombineModal() {
 function confirmCombinedImage() {
   if (combinedFile.value) {
     form.file = combinedFile.value
+    selectedFiles.value = [combinedFile.value]
+    selectedPreviews.value = [combinedPreview.value]
+    sourceFiles.value = []
     combineModalOpen.value = false
   }
 }
@@ -272,6 +303,7 @@ function removeSelectedFile(index: number) {
   if (preview) revokePreview(preview)
   selectedFiles.value.splice(index, 1)
   selectedPreviews.value.splice(index, 1)
+  sourceFiles.value = [...selectedFiles.value]
   combinedPreview.value = ''
   combinedFile.value = null
 
@@ -291,8 +323,11 @@ function resetUpload() {
 }
 
 function getPreviewLabel(): string {
-  if (selectedFiles.value.length === 2) {
-    return '2 gambar dipilih, silakan combine dulu'
+  if (selectedFiles.value.length === 1 && form.file && form.file === selectedFiles.value[0]) {
+    return 'Hasil combine siap dikirim'
+  }
+  if (sourceFiles.value.length === 2) {
+    return '2 gambar dipilih, sedang combine'
   }
   if (selectedFiles.value.length === 1) {
     return selectedFiles.value[0]?.name || '1 gambar dipilih'
@@ -500,7 +535,7 @@ onMounted(async () => {
               />
             </div>
             <div v-if="selectedFiles.length" class="space-y-3">
-              <div class="grid gap-3 sm:grid-cols-2">
+              <div class="grid gap-3 sm:grid-cols-2" v-if="selectedFiles.length === 2">
                 <div
                   v-for="(preview, index) in selectedPreviews"
                   :key="preview"
@@ -517,7 +552,18 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <div v-if="selectedFiles.length === 2" class="rounded-lg border border-dashed border-primary-200 bg-primary-50 p-4">
+              <div v-else class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2 text-xs text-gray-600">
+                  <span>Hasil combine</span>
+                  <button type="button" class="text-gray-400 hover:text-red-500" @click="resetUpload">
+                    <X class="h-4 w-4" />
+                  </button>
+                </div>
+                <img :src="selectedPreviews[0]" alt="Preview" class="h-56 w-full object-contain bg-white" />
+                <div class="px-3 py-2 text-xs text-gray-500">{{ selectedFiles[0]?.name }}</div>
+              </div>
+
+              <div v-if="sourceFiles.length === 2" class="rounded-lg border border-dashed border-primary-200 bg-primary-50 p-4">
                 <div class="mb-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -619,7 +665,7 @@ onMounted(async () => {
                         type="button"
                         class="inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
                         :class="combineOrientation === 'vertical' ? 'bg-primary-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'"
-                        @click="void applyCombineOrientation('vertical')"
+                        @click="applyCombineOrientation('vertical')"
                       >
                         <Rows3 class="h-4 w-4" />
                         Vertical
@@ -628,7 +674,7 @@ onMounted(async () => {
                         type="button"
                         class="inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
                         :class="combineOrientation === 'horizontal' ? 'bg-primary-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'"
-                        @click="void applyCombineOrientation('horizontal')"
+                        @click="applyCombineOrientation('horizontal')"
                       >
                         <Columns3 class="h-4 w-4" />
                         Horizontal
