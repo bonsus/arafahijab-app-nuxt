@@ -19,7 +19,7 @@ const invoice = ref<Invoice | null>(null)
 const loading = ref(true)
 
 async function fetchInvoice() {
-  loading.value = true
+//   loading.value = true
   try {
     const res = await api.get<{ data: Invoice }>(`/billing/invoices/${invoiceId.value}`)
     invoice.value = res.data || null
