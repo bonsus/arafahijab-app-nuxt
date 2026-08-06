@@ -9,6 +9,7 @@ interface StockLocation {
   id: string
   warehouse_bin_id: string
   stock: number
+  stock_locked: number
   bin: { id: string; code: string } | null
   rack: { id: string; code: string } | null
   zone: { id: string; code: string } | null
@@ -38,6 +39,7 @@ interface FromRow {
   warehouse_bin_id: string
   binLabel: string
   totalStock: number
+  stock_locked: number
   qty: number | ''
 }
 
@@ -194,6 +196,7 @@ function selectFromSkuLocation(itemIdx: number, product: ProductResult, sku: Sku
     warehouse_bin_id: binId,
     binLabel,
     totalStock: stock?.stock ?? 0,
+    stock_locked: stock?.stock_locked ?? 0,
     qty: '',
   })
   item.fromSearch = ''
@@ -311,6 +314,7 @@ async function loadData() {
         warehouse_bin_id: f.warehouse_bin_id || '',
         binLabel: f.warehouse_bin_id || '',
         totalStock: 0,
+        stock_locked: f.stock_locked ?? 0,
         qty: f.qty,
       }))
 
@@ -387,6 +391,16 @@ async function handleSubmit(status: 'draft' | 'completed') {
         if (f.qty === '' || Number(f.qty) <= 0) {
           errors[`items[${i}].froms[${j}].qty`] = ['Qty harus lebih dari 0']
         }
+        // else {
+        //   const maxReducible = Math.max(0, f.totalStock - f.stock_locked)
+        //   if (Number(f.qty) > maxReducible) {
+        //     errors[`items[${i}].froms[${j}].qty`] = [
+        //       f.stock_locked > 0
+        //         ? `Maksimal konversi adalah ${maxReducible} (stok terkunci ${f.stock_locked})`
+        //         : `Maksimal konversi adalah ${maxReducible}`,
+        //     ]
+        //   }
+        // }
       }
     }
     if (!item.to) {
@@ -687,6 +701,7 @@ onMounted(() => {
                     <tr class="bg-gray-50 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                       <th class="px-3 py-2 text-left">SKU / Produk</th>
                       <th class="px-3 py-2 text-right w-20">Stok</th>
+                      <th class="px-3 py-2 text-right w-20">Terkunci</th>
                       <th class="px-3 py-2 text-right w-24">Qty</th>
                       <th class="px-3 py-2 w-8" />
                     </tr>
@@ -713,6 +728,7 @@ onMounted(() => {
                         </p>
                       </td>
                       <td class="px-3 py-2 text-right text-gray-500">{{ from.totalStock.toLocaleString('id-ID') }}</td>
+                      <td class="px-3 py-2 text-right text-orange-600">{{ from.stock_locked.toLocaleString('id-ID') }}</td>
                       <td class="px-3 py-2">
                         <input
                           v-model.number="from.qty"

@@ -9,6 +9,7 @@ export interface TransferStockLocation {
   warehouse_id: string
   warehouse_bin_id: string
   stock: number
+  stock_locked: number
   bin: { id: string; code: string } | null
   rack: { id: string; code: string } | null
   zone: { id: string; code: string } | null

@@ -9,6 +9,7 @@ interface BinOption {
   rack: { id: string; name: string; code: string } | null
   zone: { id: string; name: string; code: string } | null
   stock: number
+  stock_locked: number
   price: string
 }
 
@@ -20,6 +21,7 @@ interface SkuLookupResult {
   sku: string
   variants: { name: string; value: string }[]
   stock: number
+  stock_locked: number
   price: string
   bins: BinOption[]
 }
@@ -33,6 +35,7 @@ interface ItemRow {
   warehouse_bin_id: string
   bin_label: string
   stock_system: number
+  stock_locked: number
   stock_counted: number | ''
   price: number | ''
 }
@@ -152,6 +155,7 @@ async function searchAndAddSku() {
         warehouse_bin_id: binId,
         bin_label: binLabel,
         stock_system: bin?.stock ?? d.stock,
+        stock_locked: bin?.stock_locked ?? d.stock_locked ?? 0,
         stock_counted: '',
         price: bin ? (Number(bin.price) || '') : (Number(d.price) || ''),
       })
@@ -193,6 +197,7 @@ function confirmBinSelection() {
     warehouse_bin_id: pendingBinId.value,
     bin_label: pendingBinLabel.value || pendingBinId.value,
     stock_system: 0,
+    stock_locked: 0,
     stock_counted: '',
     price: Number(d.price) || '',
   })
@@ -237,6 +242,7 @@ async function loadData() {
         warehouse_bin_id: item.warehouse_bin_id,
         bin_label: binLabel,
         stock_system: item.stock_system,
+        stock_locked: item.stock_locked ?? 0,
         stock_counted: item.stock_counted,
         price: Number(item.price) || '',
       }
@@ -266,9 +272,14 @@ async function handleSubmit() {
 
   const errors: Record<string, string[]> = {}
   for (const [i, item] of items.value.entries()) {
-    if (item.stock_counted === '' || item.stock_counted < 0) {
-      errors[`items[${i}].stock_counted`] = ['Stok fisik tidak boleh kosong atau negatif']
-    }
+    // if (item.stock_counted === '' || item.stock_counted < 0) {
+    //   errors[`items[${i}].stock_counted`] = ['Stok fisik tidak boleh kosong atau negatif']
+    // }
+    // else if (item.stock_locked > 0 && Number(item.stock_counted) < item.stock_locked) {
+    //   errors[`items[${i}].stock_counted`] = [
+    //     `Stok akhir tidak boleh lebih kecil dari stok terkunci (${item.stock_locked})`,
+    //   ]
+    // }
     const change = getStockChange(item)
     if (change > 0 && (!item.price || Number(item.price) <= 0)) {
       errors[`items[${i}].price`] = ['Harga wajib diisi untuk penambahan stok']
@@ -461,13 +472,14 @@ onMounted(() => {
 
           <!-- Table -->
           <div v-else class="overflow-x-auto">
-            <table class="min-w-[820px] w-full text-sm">
+            <table class="min-w-[900px] w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-100 bg-gray-50 text-left text-nowrap">
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-8">#</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">SKU / Produk</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-28">Lokasi</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-24 text-right">Stok Sistem</th>
+                  <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-24 text-right">Terkunci</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-28 text-center">Stok Fisik</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-24 text-right">Selisih</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-32 text-right">Harga</th>
@@ -500,6 +512,13 @@ onMounted(() => {
                     <!-- Stok Sistem (read-only) -->
                     <td class="px-4 py-3 text-right text-sm text-gray-600">
                       {{ item.stock_system.toLocaleString('id-ID') }}
+                    </td>
+
+                    <!-- Stok Terkunci (locked - cannot adjust below) -->
+                    <td class="px-4 py-3 text-right">
+                      <span class="text-sm text-orange-600">
+                        {{ item.stock_locked.toLocaleString('id-ID') }}
+                      </span>
                     </td>
 
                     <!-- Stok Fisik (input) -->
@@ -584,7 +603,7 @@ onMounted(() => {
                   <!-- Row-level server errors -->
                   <tr v-if="getRowErrors(idx).length" class="bg-red-50">
                     <td />
-                    <td colspan="8" class="px-4 py-1.5">
+                    <td colspan="9" class="px-4 py-1.5">
                       <p v-for="msg in getRowErrors(idx)" :key="msg" class="text-xs text-red-600">
                         {{ msg }}
                       </p>

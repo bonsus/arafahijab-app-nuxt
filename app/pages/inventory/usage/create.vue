@@ -10,6 +10,7 @@ interface BinOption {
   rack: { id: string; name: string; code: string } | null
   zone: { id: string; name: string; code: string } | null
   stock: number
+  stock_locked: number
   price: string
 }
 
@@ -21,6 +22,7 @@ interface SkuLookupResult {
   sku: string
   variants: { name: string; value: string }[]
   stock: number
+  stock_locked: number
   price: string
   bins: BinOption[]
 }
@@ -34,6 +36,7 @@ interface ItemRow {
   warehouse_bin_id: string
   bin_label: string
   stock_available: number
+  stock_locked: number
   qty: number | ''
   price: number | ''
 }
@@ -234,6 +237,7 @@ function addItemFromBin(sku: SkuLookupResult, bin: BinOption) {
     warehouse_bin_id: bin.id,
     bin_label: binLabel,
     stock_available: bin.stock,
+    stock_locked: bin.stock_locked ?? 0,
     qty: '',
     price: Number(bin.price || sku.price) || '',
   })
@@ -362,6 +366,7 @@ async function loadData() {
       warehouse_bin_id: item.warehouse_bin_id,
       bin_label: item.bin?.code ? [item.zone?.code, item.rack?.code, item.bin.code].filter(Boolean).join(' / ') : '-',
       stock_available: item.bin?.stock ?? 0,
+      stock_locked: item.bin?.stock_locked ?? 0,
       qty: Math.abs(item.qty),
       price: Number(item.price) || '',
     }))
@@ -395,8 +400,15 @@ async function handleSubmit(submitStatus: 'draft' | 'completed' = 'draft') {
     if (item.qty === '' || q <= 0) {
       errors[`items[${i}].qty`] = ['Qty harus lebih dari 0']
     }
-    else if (q > item.stock_available && item.stock_available > 0) {
-      errors[`items[${i}].qty`] = [`Qty tidak boleh melebihi stok tersedia (${item.stock_available})`]
+    else {
+      const maxReducible = Math.max(0, item.stock_available - item.stock_locked)
+      if (q > maxReducible) {
+        errors[`items[${i}].qty`] = [
+          item.stock_locked > 0
+            ? `Maksimal pemakaian adalah ${maxReducible} (stok terkunci ${item.stock_locked})`
+            : `Maksimal pemakaian adalah ${maxReducible}`,
+        ]
+      }
     }
   }
   if (Object.keys(errors).length) {
@@ -753,12 +765,19 @@ onMounted(() => {
                       <span class="rounded bg-gray-100 px-2 py-0.5 font-mono text-[10px] text-gray-600">
                         {{ item.bin_label }}
                       </span>
+                      <p class="mt-1 text-[10px] text-gray-400">
+                        Stok: {{ item.stock_available.toLocaleString('id-ID') }}
+                      </p>
+                      <p v-if="item.stock_locked > 0" class="text-[10px] text-orange-600">
+                        Terkunci: {{ item.stock_locked.toLocaleString('id-ID') }}
+                      </p>
                     </td> 
                     <td class="px-4 py-3 text-center">
                       <input
                         v-model.number="item.qty"
                         type="number"
                         min="1"
+                        :max="Math.max(0, item.stock_available - item.stock_locked)"
                         placeholder="0"
                         class="w-full rounded-lg border px-2.5 py-1.5 text-center text-sm font-semibold focus:outline-none focus:ring-2"
                         :class="

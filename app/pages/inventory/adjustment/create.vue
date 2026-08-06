@@ -9,6 +9,7 @@ interface BinOption {
   rack: { id: string; name: string; code: string } | null
   zone: { id: string; name: string; code: string } | null
   stock: number
+  stock_locked: number
   price: string
 }
 
@@ -20,6 +21,7 @@ interface SkuLookupResult {
   sku: string
   variants: { name: string; value: string }[]
   stock: number
+  stock_locked: number
   price: string
   bins: BinOption[]
 }
@@ -33,6 +35,7 @@ interface ItemRow {
   warehouse_bin_id: string
   bin_label: string
   stock_before: number
+  stock_locked: number
   stock_change: number | ''
   price: number | ''
 }
@@ -75,6 +78,10 @@ const items = ref<ItemRow[]>([])
 // ── Computed ────────────────────────────────────────────────────────────────────
 const getStockChange = (item: ItemRow) =>
   item.stock_change !== '' ? Number(item.stock_change) : 0
+
+// Max reducible amount = stock - locked (locked stock cannot be reduced)
+const getMaxReducible = (item: ItemRow) =>
+  Math.max(0, item.stock_before - item.stock_locked)
 
 const getItemTotal = (item: ItemRow) => {
   const change = getStockChange(item)
@@ -150,6 +157,7 @@ async function searchAndAddSku() {
         warehouse_bin_id: binId,
         bin_label: binLabel,
         stock_before: bin?.stock ?? d.stock,
+        stock_locked: bin?.stock_locked ?? d.stock_locked ?? 0,
         stock_change: '',
         price: bin ? (Number(bin.price) || '') : (Number(d.price) || ''),
       })
@@ -199,6 +207,7 @@ function confirmBinSelection() {
     warehouse_bin_id: pendingBinId.value,
     bin_label: pendingBinLabel.value || pendingBinId.value,
     stock_before: 0,
+    stock_locked: 0,
     stock_change: '',
     price: Number(d.price) || '',
   })
@@ -231,6 +240,7 @@ function openAddLocationModal(item: ItemRow) {
     sku: item.sku,
     variants: item.variants,
     stock: item.stock_before,
+    stock_locked: item.stock_locked,
     price: item.price !== '' ? String(item.price) : '0',
     bins: [],
   }
@@ -262,6 +272,7 @@ async function loadData() {
       warehouse_bin_id: item.warehouse_bin_id,
       bin_label: '-',
       stock_before: item.stock_before,
+      stock_locked: item.stock_locked ?? 0,
       stock_change: item.stock_change,
       price: Number(item.price) || '',
     }))
@@ -296,6 +307,13 @@ async function handleSubmit() {
     }
     else if (item.stock_before === 0 && change < 0) {
       errors[`items[${i}].stock_change`] = ['Stok awal 0, perubahan harus positif']
+    }
+    else if (change < 0 && Math.abs(change) > getMaxReducible(item)) {
+      errors[`items[${i}].stock_change`] = [
+        item.stock_locked > 0
+          ? `Maksimal pengurangan adalah ${getMaxReducible(item)} (stok terkunci ${item.stock_locked})`
+          : `Maksimal pengurangan adalah ${getMaxReducible(item)}`,
+      ]
     }
     if (change > 0 && (!item.price || Number(item.price) <= 0)) {
       errors[`items[${i}].price`] = ['Harga wajib diisi untuk penambahan stok']
@@ -493,13 +511,14 @@ onMounted(() => {
 
           <!-- Table -->
           <div v-else class="overflow-x-auto">
-            <table class="min-w-[780px] w-full text-sm">
+            <table class="min-w-[860px] w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-100 bg-gray-50 text-left text-nowrap">
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-8">#</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">SKU / Produk</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-28">Lokasi</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-24 text-right">Stok Awal</th>
+                  <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-24 text-right">Terkunci</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-28 text-center">Perubahan</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-24 text-right">Stok Akhir</th>
                   <th class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 w-32 text-right">Harga</th>
@@ -532,6 +551,13 @@ onMounted(() => {
                   <!-- Stok Awal -->
                   <td class="px-4 py-3 text-right text-sm text-gray-600">
                     {{ item.stock_before.toLocaleString('id-ID') }}
+                  </td>
+
+                  <!-- Stok Terkunci (locked - cannot be reduced) -->
+                  <td class="px-4 py-3 text-right">
+                    <span class="text-sm text-orange-600">
+                      {{ item.stock_locked.toLocaleString('id-ID') }}
+                    </span>
                   </td>
 
                   <!-- Perubahan (input) -->
@@ -626,7 +652,7 @@ onMounted(() => {
                 <!-- Row-level server errors (e.g. items[N].sku, items[N].warehouse_bin_id) -->
                 <tr v-if="getRowErrors(idx).length" class="bg-red-50">
                   <td />
-                  <td colspan="8" class="px-4 py-1.5">
+                  <td colspan="9" class="px-4 py-1.5">
                     <p v-for="msg in getRowErrors(idx)" :key="msg" class="text-xs text-red-600">
                       {{ msg }}
                     </p>

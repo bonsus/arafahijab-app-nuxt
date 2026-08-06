@@ -18,6 +18,7 @@ interface TransferItemRow {
   warehouse_bin_from_id: string
   bin_from_label: string
   total_stock: number
+  stock_locked: number
   warehouse_to_id: string
   warehouse_to_name: string
   warehouse_bin_to_id: string
@@ -118,6 +119,15 @@ function addFromModal() {
   if (!modalForm.warehouse_to_id) modalErrors.value.warehouse_to_id = 'Gudang tujuan wajib dipilih'
   if (!modalForm.warehouse_bin_to_id) modalErrors.value.warehouse_bin_to_id = 'Lokasi tujuan wajib dipilih'
   if (!modalForm.qty || Number(modalForm.qty) <= 0) modalErrors.value.qty = 'Qty harus lebih dari 0'
+  else {
+    const { stock } = modalPending.value
+    const maxReducible = Math.max(0, (stock?.stock ?? 0) - (stock?.stock_locked ?? 0))
+    if (Number(modalForm.qty) > maxReducible) {
+      modalErrors.value.qty = (stock?.stock_locked ?? 0) > 0
+        ? `Maksimal transfer adalah ${maxReducible} (stok terkunci ${stock?.stock_locked})`
+        : `Maksimal transfer adalah ${maxReducible}`
+    }
+  }
 
   if (Object.keys(modalErrors.value).length) return
 
@@ -137,6 +147,7 @@ function addFromModal() {
     warehouse_bin_from_id: stock.warehouse_bin_id,
     bin_from_label: binLabelFrom,
     total_stock: stock.stock,
+    stock_locked: stock.stock_locked ?? 0,
     warehouse_to_id: modalForm.warehouse_to_id,
     warehouse_to_name: modalForm.warehouse_to_name,
     warehouse_bin_to_id: modalForm.warehouse_bin_to_id,
@@ -226,6 +237,7 @@ async function loadData() {
         warehouse_bin_from_id: it.warehouse_bin_from_id,
         bin_from_label: binFromLabel,
         total_stock: it.stock,
+        stock_locked: it.stock_locked ?? 0,
         warehouse_to_id: it.warehouse_to_id,
         warehouse_to_name: it.warehouse_to?.name || '',
         warehouse_bin_to_id: it.warehouse_bin_to_id,
@@ -277,6 +289,16 @@ async function handleSubmit(status: 'draft' | 'completed') {
     }
     if (it.qty === '' || Number(it.qty) <= 0) {
       errors[`items[${i}].qty`] = ['Qty harus lebih dari 0']
+    }
+    else {
+      const maxReducible = Math.max(0, it.total_stock - it.stock_locked)
+      if (Number(it.qty) > maxReducible) {
+        errors[`items[${i}].qty`] = [
+          it.stock_locked > 0
+            ? `Maksimal transfer adalah ${maxReducible} (stok terkunci ${it.stock_locked})`
+            : `Maksimal transfer adalah ${maxReducible}`,
+        ]
+      }
     }
   }
 
@@ -447,6 +469,9 @@ onMounted(() => {
                       <p class="font-medium text-gray-700">{{ item.warehouse_from_name }}</p>
                       <p class="text-xs text-gray-500">{{ item.bin_from_label }}</p>
                       <p class="text-[10px] text-gray-400">Stok: {{ item.total_stock }}</p>
+                      <p v-if="item.stock_locked > 0" class="text-[10px] text-orange-600">
+                        Terkunci: {{ item.stock_locked }}
+                      </p>
                     </div>
                   </div>
                 </td>
@@ -490,7 +515,7 @@ onMounted(() => {
                     v-model.number="item.qty"
                     type="number"
                     min="1"
-                    :max="item.total_stock"
+                    :max="Math.max(0, item.total_stock - item.stock_locked)"
                     class="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-right text-sm font-semibold text-gray-800 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                     :class="{ 'border-red-300': getFieldError(`items[${idx}].qty`) }"
                   />
@@ -596,6 +621,9 @@ onMounted(() => {
                 </span>
               </div>
               <p class="mt-0.5 text-xs text-gray-500">Stok tersedia: <strong>{{ modalPending.stock?.stock }}</strong></p>
+              <p v-if="(modalPending.stock?.stock_locked ?? 0) > 0" class="mt-0.5 text-xs text-orange-600">
+                Stok terkunci: <strong>{{ modalPending.stock?.stock_locked }}</strong>
+              </p>
             </div>
 
             <!-- Warehouse To -->
@@ -632,7 +660,7 @@ onMounted(() => {
                 v-model.number="modalForm.qty"
                 type="number"
                 min="1"
-                :max="modalPending.stock?.stock"
+                :max="Math.max(0, (modalPending.stock?.stock ?? 0) - (modalPending.stock?.stock_locked ?? 0))"
                 placeholder="0"
                 class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                 :class="{ 'border-red-300': modalErrors.qty }"
