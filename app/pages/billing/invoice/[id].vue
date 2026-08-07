@@ -255,7 +255,7 @@ onBeforeUnmount(() => stopPolling())
                 :class="selectedMethod === m.code
                   ? 'border-primary-500 bg-primary-50/50 ring-1 ring-primary-500/20'
                   : 'border-gray-200 hover:bg-gray-50'"
-                @click="selectMethod(m.gateway,m.code)"
+                @click="selectMethod(m.gateway || '', m.code)"
               >
                 <component :is="methodIcon(m.category)" class="h-4 w-4 shrink-0 text-gray-400" />
                 <span class="flex-1 text-left font-medium text-gray-800">{{ m.name }}</span>
@@ -309,7 +309,7 @@ onBeforeUnmount(() => stopPolling())
 
             <!-- QRIS -->
             <div v-if="activeTransaction.qr_string" class="mt-4 flex flex-col items-center rounded-lg bg-gray-50 px-4 py-5 ring-1 ring-gray-100">
-              <img :src="activeTransaction.payment_url || activeTransaction.qr_string" alt="QRIS" class="h-56 w-56 object-contain" />
+              <AppQrisCode :value="activeTransaction.qr_string" />
               <p class="mt-3 text-lg font-bold text-gray-900">{{ formatCurrency(invoice.total) }}</p>
             </div>
 

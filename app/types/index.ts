@@ -447,6 +447,7 @@ export interface PaymentMethod {
   code: string
   name: string
   category: string
+  gateway?: string
 }
 
 export interface CheckoutResult {
