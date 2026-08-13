@@ -175,7 +175,7 @@ function formatPrice(price: string): string {
                     <p class="mt-1 text-xs text-gray-500">Stock: {{ product.stock }}</p>
                     
                     <!-- Price Range -->
-                    <div v-if="product.prices.length" class="mt-2">
+                    <div v-if="product.prices?.length" class="mt-2">
                       <p class="text-xs text-gray-500"> 
                         <span class="font-medium text-gray-700">
                           Rp {{ formatPrice(Math.min(...product.prices.map(p => Number(p.price_min))).toString()) }} - 
