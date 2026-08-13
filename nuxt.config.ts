@@ -44,4 +44,9 @@ export default defineNuxtConfig({
   pinia: {
     storesDirs: ['./app/stores/**'],
   },
+
+  sourcemap: {
+    server: true,
+    client: true
+  }
 })
