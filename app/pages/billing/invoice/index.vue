@@ -25,6 +25,7 @@ const statusOptions = [
   { value: '', label: 'Semua Status' },
   { value: 'open', label: 'Belum Dibayar' },
   { value: 'paid', label: 'Lunas' },
+  { value: 'expired', label: 'Kedaluwarsa' },
   { value: 'void', label: 'Dibatalkan' },
 ]
 

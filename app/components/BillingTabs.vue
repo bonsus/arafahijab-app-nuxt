@@ -3,7 +3,9 @@ const route = useRoute()
 
 const tabs = [
   { label: 'Langganan', to: '/billing/subscription' },
+  { label: 'Harga', to: '/billing/pricing' },
   { label: 'Invoice', to: '/billing/invoice' },
+  { label: 'Notifikasi', to: '/billing/notifications' },
 ]
 
 function isActive(to: string): boolean {

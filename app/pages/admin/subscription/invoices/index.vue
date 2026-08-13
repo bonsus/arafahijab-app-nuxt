@@ -19,7 +19,7 @@ const totalPage = ref(0)
 const statusFilter = ref('')
 const search = ref('')
 
-const statuses: InvoiceStatus[] = ['draft', 'open', 'paid', 'void', 'uncollectible']
+const statuses: InvoiceStatus[] = ['draft', 'open', 'paid', 'void', 'uncollectible', 'expired']
 const itemTypes: InvoiceItemType[] = ['plan', 'addon', 'setup_fee', 'manual_charge', 'discount', 'credit']
 
 const statusBadge: Record<string, string> = {
@@ -28,6 +28,7 @@ const statusBadge: Record<string, string> = {
   paid: 'bg-emerald-50 text-emerald-700',
   void: 'bg-gray-100 text-gray-500',
   uncollectible: 'bg-red-50 text-red-700',
+  expired: 'bg-orange-50 text-orange-700',
 }
 
 async function fetchInvoices() {

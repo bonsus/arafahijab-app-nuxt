@@ -101,6 +101,19 @@ export interface Notification {
   createdAt: string
 }
 
+/** Notifikasi in-app dari backend billing (PLATFORM_BILLING_API.md B.9). */
+export interface BillingNotification {
+  id: string
+  business_id?: string
+  type: string
+  title: string
+  body: string
+  payload?: Record<string, any> | null
+  is_read: boolean
+  read_at: string | null
+  created_at: string
+}
+
 export interface MenuItem {
   label: string
   icon?: string
@@ -345,6 +358,8 @@ export type SubscriptionStatus =
   | 'grace_period'
   | 'cancelled'
   | 'expired'
+  | 'suspended'
+  | 'paused'
 
 export interface Subscription {
   id: string
@@ -404,7 +419,7 @@ export interface BillingPayment {
   transactions?: BillingTransaction[]
 }
 
-export type InvoiceStatus = 'open' | 'paid' | 'void'
+export type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible' | 'expired'
 
 export interface Invoice {
   id: string
@@ -448,6 +463,42 @@ export interface PaymentMethod {
   name: string
   category: string
   gateway?: string
+}
+
+export interface BillingAddon {
+  id: string
+  code: string
+  name: string
+  description: string
+  feature_code: string
+  limit_value: number
+  price: number
+  currency: string
+  is_active: boolean
+}
+
+export interface SubscriptionAddon {
+  id: string
+  subscription_id: string
+  addon_id: string
+  feature_code: string
+  limit_value: number
+  price: number
+  purchased_at: string
+  expires_at: string
+  created_at: string
+  addon?: BillingAddon
+}
+
+export interface FeatureUsage {
+  feature_code: string
+  feature_name: string
+  category: string
+  data_type: string
+  limit_value: string
+  usage: number
+  remaining: number
+  unlimited: boolean
 }
 
 export interface CheckoutResult {

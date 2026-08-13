@@ -58,9 +58,11 @@ const formErrors = ref<Record<string, string[]>>({})
 const editingVersionId = ref<string | null>(null)
 const form = reactive({
   billing_cycle: 'monthly' as BillingCycle,
+  duration_month: 0,
   currency: 'IDR',
   price: 0,
   compare_price: 0,
+  discount: 0,
   trial_days: 0,
   is_active: false,
   features: [] as { feature_id: string, value: string }[],
@@ -68,7 +70,7 @@ const form = reactive({
 
 function openCreate() {
   editingVersionId.value = null
-  Object.assign(form, { billing_cycle: 'monthly', currency: 'IDR', price: 0, compare_price: 0, trial_days: 0, is_active: false })
+  Object.assign(form, { billing_cycle: 'monthly', duration_month: 0, currency: 'IDR', price: 0, compare_price: 0, discount: 0, trial_days: 0, is_active: false })
   form.features = []
   formErrors.value = {}
   modalOpen.value = true
@@ -78,9 +80,11 @@ function openEdit(v: PlanVersion) {
   editingVersionId.value = v.id
   Object.assign(form, {
     billing_cycle: v.billing_cycle,
+    duration_month: v.duration_month || 0,
     currency: v.currency,
     price: v.price,
     compare_price: v.compare_price || 0,
+    discount: v.discount || 0,
     trial_days: v.trial_days,
     is_active: v.is_active,
   })
@@ -122,7 +126,9 @@ async function save() {
     trial_days: form.trial_days,
     features: form.features.filter(f => f.feature_id),
   }
+  if (form.duration_month) payload.duration_month = form.duration_month
   if (form.compare_price) payload.compare_price = form.compare_price
+  if (form.discount) payload.discount = form.discount
   try {
     if (editingVersionId.value) {
       payload.is_active = form.is_active
@@ -184,7 +190,9 @@ async function save() {
               <span class="rounded-lg bg-indigo-50 px-2.5 py-1 text-sm font-semibold text-indigo-700">v{{ v.version }}</span>
               <span class="text-lg font-bold text-gray-900">{{ v.currency }} {{ formatCurrency(v.price) }}</span>
               <span v-if="v.compare_price" class="text-sm text-gray-400 line-through">{{ formatCurrency(v.compare_price) }}</span>
+              <span v-if="v.discount" class="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-600">-{{ formatCurrency(v.discount) }}</span>
               <span class="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{{ v.billing_cycle }}</span>
+              <span v-if="v.duration_month" class="text-xs text-gray-400">{{ v.duration_month }} bln</span>
             </div>
             <div class="flex items-center gap-2 text-xs">
               <span v-if="v.is_active" class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
@@ -225,6 +233,10 @@ async function save() {
           <p v-if="formErrors.billing_cycle" class="mt-1 text-xs text-red-600">{{ formErrors.billing_cycle.join(', ') }}</p>
         </div>
         <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-700">Durasi (bulan)</label>
+          <input v-model.number="form.duration_month" type="number" min="0" placeholder="0 = default cycle" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+        </div>
+        <div>
           <label class="mb-1.5 block text-sm font-medium text-gray-700">Mata Uang</label>
           <input v-model="form.currency" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
         </div>
@@ -236,6 +248,10 @@ async function save() {
         <div>
           <label class="mb-1.5 block text-sm font-medium text-gray-700">Harga Coret</label>
           <input v-model.number="form.compare_price" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-gray-700">Diskon</label>
+          <input v-model.number="form.discount" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
         </div>
         <div>
           <label class="mb-1.5 block text-sm font-medium text-gray-700">Trial (hari)</label>

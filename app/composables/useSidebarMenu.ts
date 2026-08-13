@@ -142,7 +142,9 @@ export function useSidebarMenu(): MenuItem[] {
     //   ordeoOnly: true,
     //   children: [
     //     { label: 'Langganan', to: '/billing/subscription' },
+    //     { label: 'Harga', to: '/billing/pricing' },
     //     { label: 'Invoice', to: '/billing/invoice' },
+    //     { label: 'Notifikasi', to: '/billing/notifications' },
     //   ],
     // },
     {

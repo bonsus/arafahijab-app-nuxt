@@ -27,6 +27,9 @@ async function render() {
 }
 
 watch(() => props.value, render, { immediate: true })
+
+/** Untuk kebutuhan download di halaman pemakaian komponen. */
+defineExpose({ dataUrl })
 </script>
 
 <template>

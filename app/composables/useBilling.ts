@@ -11,14 +11,19 @@ export const SUBSCRIPTION_STATUS: Record<string, BadgeConfig> = {
   active: { label: 'Aktif', cls: 'bg-green-50 text-green-700 ring-1 ring-green-200' },
   past_due: { label: 'Jatuh Tempo', cls: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' },
   grace_period: { label: 'Masa Tenggang', cls: 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200' },
+  suspended: { label: 'Ditangguhkan', cls: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
+  paused: { label: 'Dijeda', cls: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200' },
   cancelled: { label: 'Dibatalkan', cls: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200' },
   expired: { label: 'Kedaluwarsa', cls: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
 }
 
 export const INVOICE_STATUS: Record<string, BadgeConfig> = {
+  draft: { label: 'Draft', cls: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200' },
   open: { label: 'Belum Dibayar', cls: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
   paid: { label: 'Lunas', cls: 'bg-green-50 text-green-700 ring-1 ring-green-200' },
   void: { label: 'Dibatalkan', cls: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200' },
+  uncollectible: { label: 'Tak Tertagih', cls: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
+  expired: { label: 'Kedaluwarsa', cls: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
 }
 
 export const TRANSACTION_STATUS: Record<string, BadgeConfig> = {
@@ -33,6 +38,7 @@ export const BILLING_CYCLE_LABEL: Record<string, string> = {
   quarterly: '3 Bulanan',
   semi_annual: '6 Bulanan',
   yearly: 'Tahunan',
+  custom: 'Kustom',
 }
 
 export function subscriptionBadge(status: SubscriptionStatus | string): BadgeConfig {

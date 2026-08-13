@@ -22,9 +22,14 @@ export function useAdminMenu(): AdminMenuItem[] {
       children: [
         { label: 'Plan', to: '/admin/subscription/plans' },
         { label: 'Feature', to: '/admin/subscription/features' },
+        { label: 'Add-on', to: '/admin/subscription/addons' },
+        { label: 'Coupon', to: '/admin/subscription/coupons' },
         { label: 'Subscription', to: '/admin/subscription/subscriptions' },
         { label: 'Invoice', to: '/admin/subscription/invoices' },
         { label: 'Payment', to: '/admin/subscription/payments' },
+        { label: 'Rekening Bank', to: '/admin/subscription/bank-accounts' },
+        { label: 'Pembayaran Manual', to: '/admin/subscription/manual-payments' },
+        { label: 'Email Settings', to: '/admin/subscription/email-settings' },
       ],
     },
     {

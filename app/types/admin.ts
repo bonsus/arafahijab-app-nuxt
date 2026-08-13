@@ -62,10 +62,13 @@ export type FeatureDataType = 'boolean' | 'number' | 'string' | 'unlimited'
 export type SubscriptionStatus =
   | 'trial' | 'active' | 'grace_period' | 'past_due' | 'expired'
   | 'cancelled' | 'suspended' | 'paused' | 'pending_activation'
-export type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible'
+export type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible' | 'expired'
 export type InvoiceItemType = 'plan' | 'addon' | 'setup_fee' | 'manual_charge' | 'discount' | 'credit'
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'expired' | 'refunded'
-export type Gateway = 'midtrans' | 'doku'
+export type Gateway = 'midtrans' | 'doku' | 'faspay' | 'singapay' | 'gapura'
+export type DiscountType = 'nominal' | 'percentage'
+export type PlanChangeType = 'upgrade' | 'downgrade' | 'cycle'
+export type PlanChangeStatus = 'pending' | 'applied' | 'cancelled'
 
 export interface Feature {
   id: string
@@ -92,9 +95,11 @@ export interface PlanVersion {
   plan_id: string
   version: number
   billing_cycle: BillingCycle
+  duration_month?: number
   currency: string
   price: number
   compare_price?: number
+  discount?: number
   trial_days: number
   effective_from?: string
   effective_until?: string | null
@@ -162,9 +167,9 @@ export interface PlanChange {
   subscription_id: string
   from_plan_version_id: string
   to_plan_version_id: string
-  type: 'upgrade' | 'downgrade' | 'cycle'
+  type: PlanChangeType
   effective_at?: string
-  status: 'pending' | 'applied' | 'cancelled'
+  status: PlanChangeStatus
   created_at?: string
 }
 
@@ -231,6 +236,44 @@ export interface Invoice {
   payments?: Payment[]
 }
 
+// ---- Coupon (Discount) ----
+
+export interface Coupon {
+  id: string
+  code: string
+  name: string
+  discount_type: DiscountType
+  value: number
+  max_discount: number
+  plan_id?: string
+  billing_cycle?: BillingCycle | ''
+  valid_from?: string | null
+  valid_until?: string | null
+  max_uses: number
+  used_count: number
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+  deleted_at?: string | null
+}
+
+// ---- Add-on ----
+
+export interface Addon {
+  id: string
+  code: string
+  name: string
+  description?: string
+  feature_code: string
+  limit_value: number
+  price: number
+  currency: string
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+  deleted_at?: string | null
+}
+
 // ---- Payment Gateway Settings ----
 
 export type GatewayEnvironment = 'sandbox' | 'production'
@@ -263,6 +306,78 @@ export interface PaymentGateway {
   environment: GatewayEnvironment
   credentials: GatewayCredential[]
   methods: GatewayMethod[]
+}
+
+// ---- Email Settings (A.12) ----
+
+export interface EmailSettings {
+  enabled: boolean
+  host: string
+  port: number
+  username: string
+  password?: string
+  from: string
+  from_name: string
+}
+
+// ---- Manual Bank Transfer (A.10 / A.11 / B.8) ----
+export type ManualPaymentStatus =
+  | 'pending' | 'waiting_verification' | 'approved' | 'rejected' | 'expired' | 'cancelled'
+
+export interface BankAccount {
+  id: string
+  bank_code: string
+  bank_name: string
+  account_name: string
+  account_number: string
+  branch?: string
+  logo_url?: string
+  description?: string
+  is_active: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ManualPaymentConfirmation {
+  id: string
+  payment_id: string
+  sender_bank_name: string
+  sender_account_name: string
+  transfer_amount: number
+  transfer_date?: string
+  transfer_time?: string
+  proof_file_url: string
+  note?: string
+  status: ManualPaymentStatus
+  rejection_reason?: string
+  rejection_note?: string
+  bank_account?: {
+    bank_name: string
+    account_name: string
+    account_number: string
+  }
+  created_at?: string
+}
+
+export interface ManualPayment {
+  id: string
+  invoice_id: string
+  payment_method: string
+  status: ManualPaymentStatus
+  total_paid: number
+  expired_at?: string
+  rejection_reason?: string
+  rejection_note?: string
+  created_at?: string
+  updated_at?: string
+  invoice?: {
+    id: string
+    invoice_number: string
+    total: number
+    business_id?: string
+  }
+  confirmations?: ManualPaymentConfirmation[]
 }
 
 export interface AdminMenuItem {
