@@ -9,6 +9,23 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  hooks: {
+    'vite:extendConfig'(config) {
+      const rollupOptions = config.build?.rollupOptions
+      if (!rollupOptions) return
+      const originalOnwarn = rollupOptions.onwarn
+      rollupOptions.onwarn = (warning, warn) => {
+        // Suppress the known Tailwind v4 sourcemap warning (harmless).
+        if (warning.code === 'SOURCEMAP_BROKEN') return
+        if (typeof originalOnwarn === 'function') {
+          originalOnwarn(warning, warn)
+        } else {
+          warn(warning)
+        }
+      }
+    },
+  },
+
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
