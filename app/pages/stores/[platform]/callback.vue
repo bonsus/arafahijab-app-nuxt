@@ -8,6 +8,7 @@ const api = useApi()
 
 const platform = computed(() => route.params.platform as string)
 const code = computed(() => route.query.code as string | undefined)
+const shopId = computed(() => route.query.shop_id as string | undefined)
 
 type Status = 'loading' | 'success' | 'error'
 const status = ref<Status>('loading')
@@ -25,8 +26,13 @@ async function authorize() {
     errorMessage.value = 'Kode otorisasi tidak ditemukan. Silakan ulangi proses dari awal.'
     return
   }
+  if (!shopId.value && platform.value === 'shopee') {
+    status.value = 'error'
+    errorMessage.value = 'ID toko tidak ditemukan. Silakan ulangi proses dari awal.'
+    return
+  }
   try {
-    await api.post(`/stores/${platform.value}/authorize`, { code: code.value })
+    await api.post(`/stores/${platform.value}/authorize`, { code: code.value, shop_id: shopId.value })
     status.value = 'success'
     setTimeout(() => navigateTo('/setting/store'), 2500)
   }
