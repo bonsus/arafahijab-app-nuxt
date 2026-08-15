@@ -86,6 +86,21 @@ const deletingBindingId = ref<string | null>(null)
 const selectedProductIds = ref<Set<string>>(new Set())
 const bulkBindingModalOpen = ref(false)
 
+// Bulk import
+const bulkImporting = ref(false)
+const importResultModalOpen = ref(false)
+const importResults = ref<ImportResult[]>([])
+
+interface ImportResult {
+  mp_product_id: string
+  product_id: string
+  product_name: string
+  category_id: string
+  status: 'success' | 'failed'
+  skus: string[] | null
+  failed_reason?: string
+}
+
 const sentinelEl = ref<HTMLElement | null>(null)
 let sentinelObserver: IntersectionObserver | null = null
 
@@ -498,6 +513,47 @@ function openBulkBindingModal() {
   bulkBindingModalOpen.value = true
 }
 
+async function bulkImport() {
+  const store = selectedStore.value
+  if (!store || bulkImporting.value) return
+  if (selectedProducts.value.length === 0) {
+    toast.error('Pilih minimal 1 produk')
+    return
+  }
+
+  const ok = await confirm({
+    title: 'Import Massal',
+    message: `Import ${selectedProducts.value.length} produk terpilih ke produk internal?`,
+    confirmText: 'Import',
+  })
+  if (!ok) return
+
+  bulkImporting.value = true
+  try {
+    const res = await api.post<{ data: ImportResult[] }>('/products/tiktok/import-mass', {
+      store_id: store.id,
+      product_ids: selectedProducts.value.map(p => p.id),
+    })
+    importResults.value = res.data || []
+    importResultModalOpen.value = true
+
+    // Mark successfully imported products
+    const successIds = new Set(importResults.value.filter(r => r.status === 'success').map(r => r.mp_product_id))
+    successIds.forEach(id => importedIds.value.add(id))
+    importedIds.value = new Set(importedIds.value)
+
+    const successCount = importResults.value.filter(r => r.status === 'success').length
+    const failedCount = importResults.value.filter(r => r.status === 'failed').length
+    toast.success(`Import selesai: ${successCount} berhasil, ${failedCount} gagal`)
+  }
+  catch (err: any) {
+    toast.error(err.message || 'Gagal import produk')
+  }
+  finally {
+    bulkImporting.value = false
+  }
+}
+
 function onBulkBindingsCreated(bindings: BindingInfo[]) {
   // Update local state for all created bindings
   for (const binding of bindings) {
@@ -607,6 +663,15 @@ onUnmounted(() => {
             <!-- Bulk selection actions -->
             <div v-if="selectedProductIds.size > 0" class="flex items-center gap-2">
               <span class="text-xs font-medium text-blue-600">{{ selectedProductIds.size }} dipilih</span>
+              <button
+                type="button"
+                class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="bulkImporting"
+                @click="bulkImport"
+              >
+                <Loader2 v-if="bulkImporting" class="mr-1.5 inline h-3 w-3 animate-spin" />
+                {{ bulkImporting ? 'Mengimport...' : 'Import Massal' }}
+              </button>
               <button
                 type="button"
                 class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
@@ -940,6 +1005,13 @@ onUnmounted(() => {
       :store-name="selectedStore?.shop_name || ''"
       :store-source="selectedStore?.source || ''"
       @bindings-created="onBulkBindingsCreated"
+    />
+
+    <!-- Import result modal -->
+    <AppImportResultModal
+      v-model="importResultModalOpen"
+      :results="importResults"
+      :store-name="selectedStore?.shop_name || ''"
     />
   </div>
 </template>
