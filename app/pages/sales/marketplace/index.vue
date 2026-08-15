@@ -495,7 +495,7 @@ onUnmounted(() => {
             </button>
           </div>
           <div class="w-auto">
-            <AppDateRangePicker v-model="dateRange" />
+            <AppDateRangePicker v-model="dateRange" :max-days="90" :show-year-presets="false" />
           </div>
           <div class="w-auto">
             <AppFilterSelect

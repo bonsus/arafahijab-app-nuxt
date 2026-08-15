@@ -3,6 +3,16 @@ import { ChevronLeft, ChevronRight, Calendar, X as XIcon } from 'lucide-vue-next
 
 const props = defineProps<{
   modelValue: { from: string; to: string }
+  /**
+   * Optional maximum allowed range (in days, inclusive). e.g. 90 = only the last 90 days selectable.
+   * When null/undefined, no limit is enforced.
+   */
+  maxDays?: number | null
+  /**
+   * When false, hides the "Tahun ini" and "Tahun lalu" quick presets.
+   * Defaults to true (show them).
+   */
+  showYearPresets?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -119,6 +129,39 @@ function todayStr() {
   return toDateStr(t.getFullYear(), t.getMonth(), t.getDate())
 }
 
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  return toDateStr(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+// When maxDays is set, only the range [today-maxDays+1 .. today] is selectable.
+function rangeStart(): string | null {
+  if (!props.maxDays) return null
+  return addDays(todayStr(), -(props.maxDays - 1))
+}
+function rangeEnd(): string | null {
+  return props.maxDays ? todayStr() : null
+}
+function isWithinMax(date: string): boolean {
+  const start = rangeStart()
+  const end = rangeEnd()
+  if (!start || !end) return true
+  return date >= start && date <= end
+}
+
+// Difference in days (inclusive) between two dates
+function dayDiff(a: string, b: string): number {
+  const da = new Date(a + 'T00:00:00').getTime()
+  const db = new Date(b + 'T00:00:00').getTime()
+  return Math.abs(Math.round((db - da) / 86400000)) + 1
+}
+
+// Disable a date when it's outside the allowed max range
+function isDateDisabled(date: string): boolean {
+  return !isWithinMax(date)
+}
+
 function isInRange(date: string) {
   const from = selecting.value.from
   const to = selecting.value.to || hoverDate.value
@@ -145,6 +188,7 @@ function isRangeEnd(date: string) {
 
 function onDayClick(date: string) {
   if (pickStep.value === 'from') {
+    if (!isWithinMax(date)) return
     selecting.value = { from: date, to: '' }
     pickStep.value = 'to'
   } else {
@@ -163,6 +207,16 @@ function onDayHover(date: string) {
 }
 
 function applySelection() {
+  // Enforce max range: if the selected span exceeds maxDays, keep only the last maxDays ending at `to`
+  if (props.maxDays) {
+    const from = selecting.value.from
+    const to = selecting.value.to
+    if (from && to && dayDiff(from, to) > props.maxDays!) {
+      // Keep latest maxDays: from = to - (maxDays-1)
+      selecting.value.from = addDays(to, -(props.maxDays! - 1))
+      selecting.value.to = to
+    }
+  }
   emit('update:modelValue', { from: selecting.value.from, to: selecting.value.to })
   pickStep.value = 'from'
   hoverDate.value = ''
@@ -222,8 +276,29 @@ const presets = [
   },
 ]
 
+const visiblePresets = computed(() =>
+  props.showYearPresets === false
+    ? presets.filter(p => p.label !== 'Tahun ini' && p.label !== 'Tahun lalu')
+    : presets,
+)
+
 function applyPreset(preset: (typeof presets)[number]) {
-  const val = preset.fn()
+  let val = preset.fn()
+  // Clamp preset to the allowed max range
+  if (props.maxDays) {
+    const end = rangeEnd()!
+    const start = rangeStart()!
+    // Clamp `from`
+    const from = val.from < start ? start : val.from
+    // Clamp `to` to today
+    const to = val.to > end ? end : val.to
+    // If resulting range exceeds maxDays, resize from the end
+    let finalFrom = from
+    if (from && to && dayDiff(from, to) > props.maxDays!) {
+      finalFrom = addDays(to, -(props.maxDays! - 1))
+    }
+    val = { from: finalFrom, to }
+  }
   selecting.value = { from: val.from, to: val.to }
   emit('update:modelValue', val)
   pickStep.value = 'from'
@@ -255,7 +330,14 @@ const displayLabel = computed(() => {
 
 // Open handler
 function openPicker() {
-  selecting.value = { from: props.modelValue.from, to: props.modelValue.to }
+  let { from, to } = props.modelValue
+  // Clamp existing value to the allowed max range when opening
+  if (props.maxDays && from && to && dayDiff(from, to) > props.maxDays!) {
+    const end = rangeEnd()!
+    to = to > end ? end : to
+    from = addDays(to, -(props.maxDays! - 1))
+  }
+  selecting.value = { from, to }
   pickStep.value = 'from'
   hoverDate.value = ''
   monthPickerSide.value = null
@@ -329,7 +411,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
             <!-- Presets -->
             <div class="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-3">
               <button
-                v-for="preset in presets"
+                v-for="preset in visiblePresets"
                 :key="preset.label"
                 type="button"
                 class="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50"
@@ -402,14 +484,15 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
                   class="relative h-10 text-sm transition-colors"
                   :class="[
                     !d.current && 'text-gray-300',
-                    d.current && !isInRange(d.date) && 'text-gray-700 hover:bg-gray-100',
+                    isDateDisabled(d.date) && 'cursor-not-allowed text-gray-200',
+                    d.current && !isInRange(d.date) && !isDateDisabled(d.date) && 'text-gray-700 hover:bg-gray-100',
                     isInRange(d.date) && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'bg-blue-50 text-blue-700',
                     isRangeStart(d.date) && 'bg-blue-600 text-white rounded-l-md',
                     isRangeEnd(d.date) && 'bg-blue-600 text-white rounded-r-md',
                     d.date === todayStr() && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'font-bold',
                   ]"
-                  @click="d.current && onDayClick(d.date)"
-                  @mouseenter="d.current && onDayHover(d.date)"
+                  @click="d.current && !isDateDisabled(d.date) && onDayClick(d.date)"
+                  @mouseenter="d.current && !isDateDisabled(d.date) && onDayHover(d.date)"
                 >
                   {{ d.day }}
                 </button>
@@ -439,7 +522,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
         <!-- Presets -->
         <div class="w-36 shrink-0 border-r border-gray-100 py-2">
           <button
-            v-for="preset in presets"
+            v-for="preset in visiblePresets"
             :key="preset.label"
             type="button"
             class="block w-full px-4 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -514,14 +597,15 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
                   class="relative h-8 w-9 text-xs transition-colors"
                   :class="[
                     !d.current && 'text-gray-300',
-                    d.current && !isInRange(d.date) && 'text-gray-700 hover:bg-gray-100',
+                    isDateDisabled(d.date) && 'cursor-not-allowed text-gray-200',
+                    d.current && !isInRange(d.date) && !isDateDisabled(d.date) && 'text-gray-700 hover:bg-gray-100',
                     isInRange(d.date) && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'bg-blue-50 text-blue-700',
                     isRangeStart(d.date) && 'bg-blue-600 text-white rounded-l-md',
                     isRangeEnd(d.date) && 'bg-blue-600 text-white rounded-r-md',
                     d.date === todayStr() && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'font-bold',
                   ]"
-                  @click="d.current && onDayClick(d.date)"
-                  @mouseenter="d.current && onDayHover(d.date)"
+                  @click="d.current && !isDateDisabled(d.date) && onDayClick(d.date)"
+                  @mouseenter="d.current && !isDateDisabled(d.date) && onDayHover(d.date)"
                 >
                   {{ d.day }}
                 </button>
@@ -582,14 +666,15 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
                   class="relative h-8 w-9 text-xs transition-colors"
                   :class="[
                     !d.current && 'text-gray-300',
-                    d.current && !isInRange(d.date) && 'text-gray-700 hover:bg-gray-100',
+                    isDateDisabled(d.date) && 'cursor-not-allowed text-gray-200',
+                    d.current && !isInRange(d.date) && !isDateDisabled(d.date) && 'text-gray-700 hover:bg-gray-100',
                     isInRange(d.date) && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'bg-blue-50 text-blue-700',
                     isRangeStart(d.date) && 'bg-blue-600 text-white rounded-l-md',
                     isRangeEnd(d.date) && 'bg-blue-600 text-white rounded-r-md',
                     d.date === todayStr() && !isRangeStart(d.date) && !isRangeEnd(d.date) && 'font-bold',
                   ]"
-                  @click="d.current && onDayClick(d.date)"
-                  @mouseenter="d.current && onDayHover(d.date)"
+                  @click="d.current && !isDateDisabled(d.date) && onDayClick(d.date)"
+                  @mouseenter="d.current && !isDateDisabled(d.date) && onDayHover(d.date)"
                 >
                   {{ d.day }}
                 </button>
