@@ -530,7 +530,7 @@ async function bulkImport() {
 
   bulkImporting.value = true
   try {
-    const res = await api.post<{ data: ImportResult[] }>('/products/tiktok/import-mass', {
+    const res = await api.post<{ data: ImportResult[] }>(`/products/${store.source}/import-mass`, {
       store_id: store.id,
       product_ids: selectedProducts.value.map(p => p.id),
     })
