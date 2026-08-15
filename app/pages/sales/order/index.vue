@@ -114,6 +114,60 @@ const { confirm } = useConfirm()
 const route = useRoute()
 const router = useRouter()
 
+const privacy = useOrderPrivacy()
+
+function orderSource(order: SalesOrder): string | null {
+  return order.store?.source || null
+}
+
+// Column-level reveal for customer
+const revealCustomerOrderId = ref<string | null>(null)
+// Column-level reveal for address popover
+const revealAddressOrderId = ref<string | null>(null)
+
+function maskedCustomerName(order: SalesOrder) {
+  return revealCustomerOrderId.value === order.id
+    ? order.customer?.name || '-'
+    : privacy.customerName(order.customer?.name, orderSource(order)) || '-'
+}
+function maskedCustomerPhone(order: SalesOrder) {
+  return revealCustomerOrderId.value === order.id
+    ? order.customer?.phone || ''
+    : privacy.customerPhone(order.customer?.phone, orderSource(order))
+}
+function maskedAddressName(order: SalesOrder) {
+  return revealAddressOrderId.value === order.id
+    ? order.address?.name || ''
+    : privacy.addressField(order.address?.name, orderSource(order))
+}
+function maskedAddressPhone(order: SalesOrder) {
+  return revealAddressOrderId.value === order.id
+    ? order.address?.phone || ''
+    : privacy.customerPhone(order.address?.phone, orderSource(order))
+}
+function maskedAddressText(value: string | undefined, order: SalesOrder) {
+  return revealAddressOrderId.value === order.id
+    ? value || ''
+    : privacy.text(value, orderSource(order))
+}
+function maskedAddressField(value: string | undefined, order: SalesOrder) {
+  return revealAddressOrderId.value === order.id
+    ? value || ''
+    : privacy.addressField(value, orderSource(order))
+}
+// Dropdown (dropship) reveal state
+const revealDropshipOrderId = ref<string | null>(null)
+function maskedDropshipName(order: SalesOrder) {
+  return revealDropshipOrderId.value === order.id
+    ? order.dropship?.name || ''
+    : privacy.customerName(order.dropship?.name, orderSource(order))
+}
+function maskedDropshipPhone(order: SalesOrder) {
+  return revealDropshipOrderId.value === order.id
+    ? order.dropship?.phone || ''
+    : privacy.customerPhone(order.dropship?.phone, orderSource(order))
+}
+
 const loading = ref(true)
 const orders = ref<SalesOrder[]>([])
 const page = ref(1)
@@ -1930,15 +1984,23 @@ onUnmounted(() => {
 
               <!-- Customer -->
               <td class="px-4 py-3 align-top">
-                <div
-                  class="cursor-pointer select-none"
-                  @click="toggleCustomer($event, order.id)"
-                >
-                  <p class="font-medium text-gray-800 text-xs whitespace-nowrap hover:text-primary-600 transition-colors">{{ order.customer?.name || '-' }}</p>
-                  <p v-if="order.customer?.phone" class="mt-0.5 text-xs text-gray-500">{{ order.customer.phone }}</p> 
-                  <span v-if="order.customer_category" class="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0 text-[10px] text-gray-600">
-                    {{ order.customer_category.name }}
-                  </span>
+                <div class="flex items-center gap-1">
+                  <div class="cursor-pointer select-none" @click="toggleCustomer($event, order.id)">
+                    <p class="font-medium text-gray-800 text-xs whitespace-nowrap hover:text-primary-600 transition-colors">{{ maskedCustomerName(order) }}</p>
+                    <p v-if="order.customer?.phone" class="mt-0.5 text-xs text-gray-500">{{ maskedCustomerPhone(order) }}</p>
+                    <span v-if="order.customer_category" class="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0 text-[10px] text-gray-600">
+                      {{ order.customer_category.name }}
+                    </span>
+                  </div>
+                  <button
+                    v-if="privacy.isProtected(orderSource(order))"
+                    type="button"
+                    class="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600"
+                    :title="revealCustomerOrderId === order.id ? 'Sembunyikan data' : 'Lihat data asli'"
+                    @click.stop="revealCustomerOrderId = revealCustomerOrderId === order.id ? null : order.id"
+                  >
+                    <Eye class="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </td>
 
@@ -2028,8 +2090,21 @@ onUnmounted(() => {
                     <img :src="`/images/platform/${order.dropship.source}.svg`" alt="" class="h-3.5 w-3.5 object-contain" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
                     <span class="capitalize">{{ order.dropship.source }}</span>
                   </div>
-                  <p v-if="order.dropship.name" class="text-xs text-gray-600 whitespace-nowrap max-w-[120px] truncate">{{ order.dropship.name }}</p>
-                  <p v-if="order.dropship.phone" class="text-xs text-gray-500 whitespace-nowrap">{{ order.dropship.phone }}</p>
+                  <div class="flex items-center gap-1">
+                    <div class="min-w-0">
+                      <p v-if="order.dropship.name" class="text-xs text-gray-600 whitespace-nowrap max-w-[120px] truncate">{{ maskedDropshipName(order) }}</p>
+                      <p v-if="order.dropship.phone" class="text-xs text-gray-500 whitespace-nowrap">{{ maskedDropshipPhone(order) }}</p>
+                    </div>
+                    <button
+                      v-if="privacy.isProtected(orderSource(order)) && (order.dropship.name || order.dropship.phone)"
+                      type="button"
+                      class="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600"
+                      :title="revealDropshipOrderId === order.id ? 'Sembunyikan data' : 'Lihat data asli'"
+                      @click.stop="revealDropshipOrderId = revealDropshipOrderId === order.id ? null : order.id"
+                    >
+                      <Eye class="h-3 w-3" />
+                    </button>
+                  </div>
                   <a
                     v-if="order.dropship.file"
                     :href="order.dropship.file"
@@ -2238,13 +2313,30 @@ onUnmounted(() => {
         @click.stop
       >
         <div class="border-b border-gray-100 px-4 py-2.5">
-          <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Info Pelanggan</p>
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Info Pelanggan</p>
+            <button
+              v-if="privacy.isProtected(orderSource(openCustomerOrder))"
+              type="button"
+              class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600"
+              @click.stop="privacy.toggleReveal()"
+            >
+              <Eye class="h-3 w-3" />
+              {{ privacy.isRevealed() ? 'Sembunyikan' : 'Lihat Asli' }}
+            </button>
+          </div>
         </div>
         <div class="px-4 py-3 space-y-2.5">
           <!-- Customer info -->
           <div>
-            <p class="text-xs font-semibold text-gray-900">{{ openCustomerOrder.customer?.name || '-' }}</p>
-            <p v-if="openCustomerOrder.customer?.phone" class="text-xs text-gray-500 mt-0.5">{{ openCustomerOrder.customer.phone }}</p>
+            <p class="text-xs font-semibold text-gray-900">
+              {{ privacy.isProtected(orderSource(openCustomerOrder))
+                ? privacy.customerName(openCustomerOrder.customer?.name, orderSource(openCustomerOrder)) || '-'
+                : openCustomerOrder.customer?.name || '-' }}
+            </p>
+            <p v-if="openCustomerOrder.customer?.phone" class="text-xs text-gray-500 mt-0.5">
+              {{ privacy.customerPhone(openCustomerOrder.customer.phone, orderSource(openCustomerOrder)) }}
+            </p>
             <p v-if="openCustomerOrder.customer_category" class="text-xs text-gray-400 mt-0.5">{{ openCustomerOrder.customer_category.name }}</p>
           </div>
           <!-- Shipping address -->
@@ -2252,17 +2344,17 @@ onUnmounted(() => {
             <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Alamat Pengiriman</p>
             <div class="space-y-0.5">
               <p v-if="openCustomerOrder.address.name" class="text-xs font-medium text-gray-800">
-                {{ openCustomerOrder.address.name }}
-                <template v-if="openCustomerOrder.address.phone"> · {{ openCustomerOrder.address.phone }}</template>
+                {{ privacy.addressField(openCustomerOrder.address.name, orderSource(openCustomerOrder)) }}
+                <template v-if="openCustomerOrder.address.phone"> · {{ privacy.customerPhone(openCustomerOrder.address.phone, orderSource(openCustomerOrder)) }}</template>
               </p>
               <p v-if="openCustomerOrder.address.address" class="text-xs text-gray-600 leading-relaxed">
-                {{ openCustomerOrder.address.address }}
+                {{ privacy.text(openCustomerOrder.address.address, orderSource(openCustomerOrder)) }}
               </p>
               <p class="text-xs text-gray-500">
-                <template v-if="openCustomerOrder.address.district">{{ openCustomerOrder.address.district }}, </template>
-                <template v-if="openCustomerOrder.address.city">{{ openCustomerOrder.address.city }}</template>
-                <template v-if="openCustomerOrder.address.province">, {{ openCustomerOrder.address.province }}</template>
-                <template v-if="openCustomerOrder.address.zipcode"> &nbsp;{{ openCustomerOrder.address.zipcode }}</template>
+                <template v-if="openCustomerOrder.address.district">{{ privacy.addressField(openCustomerOrder.address.district, orderSource(openCustomerOrder)) }}, </template>
+                <template v-if="openCustomerOrder.address.city">{{ privacy.addressField(openCustomerOrder.address.city, orderSource(openCustomerOrder)) }}</template>
+                <template v-if="openCustomerOrder.address.province">, {{ privacy.addressField(openCustomerOrder.address.province, orderSource(openCustomerOrder)) }}</template>
+                <template v-if="openCustomerOrder.address.zipcode"> &nbsp;{{ privacy.addressField(openCustomerOrder.address.zipcode, orderSource(openCustomerOrder)) }}</template>
               </p>
             </div>
           </div>

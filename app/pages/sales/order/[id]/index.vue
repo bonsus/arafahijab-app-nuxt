@@ -5,7 +5,7 @@ import {
   ChevronDown, UserCircle, FileText, Clock,
   CheckCircle, XCircle, AlertCircle, CreditCard,
   Printer, Building2, User, RotateCcw, Hash, Weight, Box,
-  History, X,
+  History, X, Eye,
 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -211,6 +211,31 @@ const toast = useToast()
 const { confirm } = useConfirm()
 const router = useRouter()
 const route = useRoute()
+
+const privacy = useOrderPrivacy()
+
+function orderSource(o: SalesOrder | null): string | null {
+  return o?.store?.source || null
+}
+
+function maskedCustomerName(o: SalesOrder) {
+  return o.customer ? (privacy.isProtected(orderSource(o)) && !privacy.revealAll ? privacy.customerName(o.customer.name, orderSource(o)) : o.customer.name) : '-'
+}
+function maskedCustomerPhone(o: SalesOrder) {
+  return o.customer?.phone ? privacy.customerPhone(o.customer.phone, orderSource(o)) : ''
+}
+function maskedName(value: string | undefined, o: SalesOrder) {
+  return value ? privacy.customerName(value, orderSource(o)) : ''
+}
+function maskedPhone(value: string | undefined, o: SalesOrder) {
+  return value ? privacy.customerPhone(value, orderSource(o)) : ''
+}
+function maskedAddress(value: string | undefined, o: SalesOrder) {
+  return value ? privacy.text(value, orderSource(o)) : ''
+}
+function maskedField(value: string | undefined, o: SalesOrder) {
+  return value ? privacy.addressField(value, orderSource(o)) : ''
+}
 
 const orderId = computed(() => route.params.id as string)
 
@@ -594,13 +619,24 @@ onMounted(fetchOrder)
 
           <!-- Customer -->
           <div class="rounded-xl bg-white p-5 shadow-xs ring-1 ring-gray-200">
-            <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
-              <UserCircle class="h-4 w-4 text-primary-500" />
-              Pelanggan
-            </h2>
+            <div class="mb-3 flex items-center justify-between">
+              <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <UserCircle class="h-4 w-4 text-primary-500" />
+                Pelanggan
+              </h2>
+              <button
+                v-if="privacy.isProtected(orderSource(order))"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600"
+                @click="privacy.toggleReveal()"
+              >
+                <Eye class="h-3.5 w-3.5" />
+                {{ privacy.isRevealed() ? 'Sembunyikan' : 'Lihat Asli' }}
+              </button>
+            </div>
             <div class="space-y-1 text-sm">
-              <p class="font-semibold text-gray-900">{{ order.customer?.name || '-' }}</p>
-              <p v-if="order.customer?.phone" class="text-gray-500">{{ order.customer.phone }}</p>
+              <p class="font-semibold text-gray-900">{{ maskedCustomerName(order) }}</p>
+              <p v-if="order.customer?.phone" class="text-gray-500">{{ maskedCustomerPhone(order) }}</p>
               <span v-if="order.customer_category" class="inline-block rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">
                 {{ order.customer_category.name }}
               </span>
@@ -624,11 +660,11 @@ onMounted(fetchOrder)
               </button> -->
             </div>
             <div v-if="order.address" class="space-y-0.5 text-sm text-gray-700">
-              <p class="font-semibold text-gray-900">{{ order.address.name }}</p>
-              <p class="text-gray-500">{{ order.address.phone }}</p>
-              <p>{{ order.address.address }}</p>
-              <p>{{ [order.address.district, order.address.city, order.address.province].filter(Boolean).join(', ') }}</p>
-              <p v-if="order.address.zipcode" class="text-gray-500">{{ order.address.zipcode }}</p>
+              <p class="font-semibold text-gray-900">{{ maskedName(order.address.name, order) }}</p>
+              <p class="text-gray-500">{{ maskedPhone(order.address.phone, order) }}</p>
+              <p>{{ maskedAddress(order.address.address, order) }}</p>
+              <p>{{ [maskedField(order.address.district, order), maskedField(order.address.city, order), maskedField(order.address.province, order)].filter(Boolean).join(', ') }}</p>
+              <p v-if="order.address.zipcode" class="text-gray-500">{{ maskedField(order.address.zipcode, order) }}</p>
             </div>
             <p v-else class="text-sm text-gray-400">Tidak ada alamat</p>
           </div>
@@ -713,8 +749,8 @@ onMounted(fetchOrder)
                   <img :src="`/images/platform/${order.dropship.source}.svg`" alt="" class="h-4 w-4 object-contain" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
                   <span class="capitalize text-gray-700">{{ order.dropship.source }}</span>
                 </div>
-                <p v-if="order.dropship.name" class="font-medium text-gray-900">{{ order.dropship.name }}</p>
-                <p v-if="order.dropship.phone" class="text-gray-500">{{ order.dropship.phone }}</p>
+                <p v-if="order.dropship.name" class="font-medium text-gray-900">{{ maskedName(order.dropship.name, order) }}</p>
+                <p v-if="order.dropship.phone" class="text-gray-500">{{ maskedPhone(order.dropship.phone, order) }}</p>
                 <a
                   v-if="order.dropship.file"
                   :href="order.dropship.file"
