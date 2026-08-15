@@ -1,5 +1,6 @@
 import { X, Check, AlertCircle } from 'lucide-vue-next'
 
+<script setup lang="ts">
 interface ImportResult {
   mp_product_id: string
   product_id: string
