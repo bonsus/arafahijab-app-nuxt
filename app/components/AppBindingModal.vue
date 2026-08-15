@@ -389,7 +389,7 @@ async function submitBinding(mpProd: MpProduct, sku: MpSkuDetail) {
       mp_product_id: mpProd.id,
       mp_product_name: mpProd.name,
       mp_sku_id: sku.id,
-      mp_sku: sku.sku || sku.id,
+      mp_sku: sku.sku == '' ? sku.id : sku.sku,
       mp_warehouse_id: sku.warehouse_id,
       mp_variants: sku.variants,
       status: 'active',
