@@ -92,7 +92,7 @@ const tabs: { key: MovementTab; label: string }[] = [
   { key: 'daily', label: 'Kartu Stock Harian' },
 ]
 
-const loading = ref(true)
+const loading = ref(false)
 const loadingSummary = ref(true)
 const movements = ref<Movement[]>([])
 const summary = ref<MovementSummary | null>(null)
@@ -101,7 +101,7 @@ const perPage = ref(20)
 const totalPage = ref(1)
 const total = ref(0)
 
-const loadingDaily = ref(true)
+const loadingDaily = ref(false)
 const dailyStocks = ref<DailyStock[]>([])
 
 const search = ref('')
@@ -290,11 +290,11 @@ function onTabChange(tab: MovementTab) {
 }
 
 function goToMovement(row: DailyStock) {
-  filterDate.value = { from: row.date, to: row.date }
-  activeTab.value = 'movement'
-  page.value = 1
-  syncQuery()
-  fetchMovements()
+  const query: Record<string, string> = {
+    date: formatDateFromForApi(row.date),
+  }
+  if (filterWarehouseIds.value.length) query.warehouse_id = filterWarehouseIds.value.join(',')
+  router.push({ path: '/inventory/movement-daily', query })
 }
 
 let searchTimer: ReturnType<typeof setTimeout>
@@ -649,13 +649,13 @@ onMounted(() => {
           <thead class="border-b border-gray-200 bg-gray-50/80 text-xs font-medium uppercase tracking-wider text-gray-500 text-nowrap">
             <tr>
               <th class="px-4 py-2.5 text-left w-32">Tanggal</th>
-              <th class="px-4 py-2.5 text-right w-24">Stok Awal</th>
+              <!-- <th class="px-4 py-2.5 text-right w-24">Stok Awal</th>
               <th class="px-4 py-2.5 text-right w-24">Stok Masuk</th>
               <th class="px-4 py-2.5 text-right w-24">Stok Keluar</th>
-              <th class="px-4 py-2.5 text-right w-24">Stok Akhir</th>
+              <th class="px-4 py-2.5 text-right w-24">Stok Akhir</th> -->
               <th class="px-4 py-2.5 text-right w-32">Saldo Awal</th>
-              <th class="px-4 py-2.5 text-right w-32">Saldo Masuk</th>
-              <th class="px-4 py-2.5 text-right w-32">Saldo Keluar</th>
+              <th class="px-4 py-2.5 text-right w-32">Masuk</th>
+              <th class="px-4 py-2.5 text-right w-32">Keluar</th>
               <th class="px-4 py-2.5 text-right w-32">Saldo Akhir</th>
             </tr>
           </thead>
@@ -688,14 +688,26 @@ onMounted(() => {
               @click="goToMovement(d)"
             >
               <td class="px-4 py-3 font-medium text-gray-900">{{ formatDate(d.date) }}</td>
-              <td class="px-4 py-3 text-right text-gray-700">{{ d.stock_start }}</td>
+              <!-- <td class="px-4 py-3 text-right text-gray-700">{{ d.stock_start }}</td>
               <td class="px-4 py-3 text-right text-green-600">+{{ d.stock_in }}</td>
               <td class="px-4 py-3 text-right text-red-600">-{{ d.stock_out }}</td>
-              <td class="px-4 py-3 text-right font-medium text-gray-900">{{ d.stock_end }}</td>
-              <td class="px-4 py-3 text-right text-gray-700">Rp{{ formatCurrency(d.balance_start) }}</td>
-              <td class="px-4 py-3 text-right text-green-600">Rp{{ formatCurrency(d.balance_in) }}</td>
-              <td class="px-4 py-3 text-right text-red-600">Rp{{ formatCurrency(d.balance_out) }}</td>
-              <td class="px-4 py-3 text-right font-medium text-gray-900">Rp{{ formatCurrency(d.balance_end) }}</td>
+              <td class="px-4 py-3 text-right font-medium text-gray-900">{{ d.stock_end }}</td> -->
+              <td class="px-4 py-3 text-right text-gray-700">
+                Rp{{ formatCurrency(d.balance_start) }}
+                <div class="text-gray-500 text-xs">{{ formatCurrency(d.stock_start) }}</div>
+              </td>
+              <td class="px-4 py-3 text-right text-green-600">
+                Rp{{ formatCurrency(d.balance_in) }}
+                <div class="text-gray-500 text-xs">{{ formatCurrency(d.stock_in) }}</div>
+              </td>
+              <td class="px-4 py-3 text-right text-red-600">
+                Rp{{ formatCurrency(d.balance_out) }}
+                <div class="text-gray-500 text-xs">{{ formatCurrency(d.stock_out) }}</div>
+              </td>
+              <td class="px-4 py-3 text-right font-medium text-gray-900">
+                Rp{{ formatCurrency(d.balance_end) }}
+                <div class="text-gray-500 text-xs">{{ formatCurrency(d.stock_end) }}</div>
+              </td>
             </tr>
           </tbody>
         </table>
