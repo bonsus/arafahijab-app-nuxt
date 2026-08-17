@@ -227,7 +227,7 @@ async function fetchOrders() {
       per_page: '20',
       sort_by: 'created_at',
       sorting: 'desc',
-      status: 'shipped',
+      status: 'shipped,completed',
     }
     if (orderSearch.value) params.search = orderSearch.value
     const res = await api.get<{ data: { data: OrderListItem[] } }>('/sales/orders/index', params)

@@ -69,7 +69,28 @@ interface Paginated<T> {
   total: number
 }
 
+interface DailyStock {
+  date: string
+  balance_start: string
+  balance_end: string
+  balance_in: string
+  balance_out: string
+  stock_start: number
+  stock_end: number
+  stock_in: number
+  stock_out: number
+}
+
 const api = useApi()
+const route = useRoute()
+const router = useRouter()
+
+type MovementTab = 'movement' | 'daily'
+const activeTab = ref<MovementTab>('movement')
+const tabs: { key: MovementTab; label: string }[] = [
+  { key: 'movement', label: 'Stock Movement' },
+  { key: 'daily', label: 'Kartu Stock Harian' },
+]
 
 const loading = ref(true)
 const loadingSummary = ref(true)
@@ -79,6 +100,9 @@ const page = ref(1)
 const perPage = ref(20)
 const totalPage = ref(1)
 const total = ref(0)
+
+const loadingDaily = ref(true)
+const dailyStocks = ref<DailyStock[]>([])
 
 const search = ref('')
 const filterWarehouseIds = ref<string[]>([])
@@ -201,20 +225,87 @@ async function fetchMovements() {
   finally { loading.value = false }
 }
 
+async function fetchDailyStocks() {
+  loadingDaily.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (filterWarehouseIds.value.length) params.warehouse_id = filterWarehouseIds.value.join(',')
+    if (filterDate.value.from) params.date_from = formatDateFromForApi(filterDate.value.from)
+    if (filterDate.value.to) params.date_to = formatDateToForApi(filterDate.value.to)
+    const res = await api.get<{ data: { data: DailyStock[] } }>(
+      '/inventories/reports/stock-movement-per-days',
+      params,
+    )
+    dailyStocks.value = res.data?.data || []
+  }
+  catch { dailyStocks.value = [] }
+  finally { loadingDaily.value = false }
+}
+
 function refreshAll() {
   fetchSummary()
+  if (activeTab.value === 'movement') fetchMovements()
+  else fetchDailyStocks()
+}
+
+// ─── URL query sync ───────────────────────────────────────────────────────────
+function buildQuery(): Record<string, string> {
+  const q: Record<string, string> = {}
+  if (activeTab.value !== 'movement') q.tab = activeTab.value
+  if (search.value) q.q = search.value
+  if (filterWarehouseIds.value.length) q.warehouse_id = filterWarehouseIds.value.join(',')
+  if (filterProductIds.value.length) q.product_id = filterProductIds.value.join(',')
+  if (filterSkuIds.value.length) q.sku_id = filterSkuIds.value.join(',')
+  if (filterType.value) q.type = filterType.value
+  if (filterDate.value.from) q.date_from = filterDate.value.from
+  if (filterDate.value.to) q.date_to = filterDate.value.to
+  if (page.value > 1) q.page = String(page.value)
+  if (perPage.value !== 20) q.per_page = String(perPage.value)
+  return q
+}
+
+function syncQuery() {
+  router.replace({ query: buildQuery() })
+}
+
+function initFromQuery() {
+  const q = route.query
+  activeTab.value = (q.tab as string) === 'daily' ? 'daily' : 'movement'
+  search.value = (q.q as string) || ''
+  filterWarehouseIds.value = q.warehouse_id ? (q.warehouse_id as string).split(',') : []
+  filterProductIds.value = q.product_id ? (q.product_id as string).split(',') : []
+  filterSkuIds.value = q.sku_id ? (q.sku_id as string).split(',') : []
+  filterType.value = (q.type as string) || ''
+  filterDate.value = { from: (q.date_from as string) || '', to: (q.date_to as string) || '' }
+  page.value = q.page ? Number.parseInt(q.page as string, 10) : 1
+  perPage.value = q.per_page ? Number.parseInt(q.per_page as string, 10) : 20
+}
+
+function onTabChange(tab: MovementTab) {
+  if (activeTab.value === tab) return
+  activeTab.value = tab
+  syncQuery()
+  if (tab === 'movement') fetchMovements()
+  else fetchDailyStocks()
+}
+
+function goToMovement(row: DailyStock) {
+  filterDate.value = { from: row.date, to: row.date }
+  activeTab.value = 'movement'
+  page.value = 1
+  syncQuery()
   fetchMovements()
 }
 
 let searchTimer: ReturnType<typeof setTimeout>
 function onSearch() {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => { page.value = 1; refreshAll() }, 300)
+  searchTimer = setTimeout(() => { page.value = 1; syncQuery(); refreshAll() }, 300)
 }
 
 function onWarehouseFilter(val: string | string[]) {
   filterWarehouseIds.value = val as string[]
-  page.value = 1; refreshAll()
+  page.value = 1; syncQuery(); refreshAll()
 }
 
 function onProductFilter(val: string | string[]) {
@@ -227,33 +318,35 @@ function onProductFilter(val: string | string[]) {
     )
     selectedSkuOptions.value = selectedSkuOptions.value.filter(o => filterSkuIds.value.includes(o.value))
   }
-  page.value = 1; refreshAll()
+  page.value = 1; syncQuery(); refreshAll()
 }
 
 function onSkuFilter(val: string | string[]) {
   filterSkuIds.value = val as string[]
   selectedSkuOptions.value = skuOptions.value.filter(o => filterSkuIds.value.includes(o.value))
-  page.value = 1; refreshAll()
+  page.value = 1; syncQuery(); refreshAll()
 }
 
 function onTypeFilter(val: string | string[]) {
   filterType.value = val as string
-  page.value = 1; refreshAll()
+  page.value = 1; syncQuery(); refreshAll()
 }
 
 function onDateFilter(val: { from: string; to: string }) {
   filterDate.value = val
-  page.value = 1; refreshAll()
+  page.value = 1; syncQuery(); refreshAll()
 }
 
 function onPageChange(p: number) {
   page.value = p
+  syncQuery()
   fetchMovements()
 }
 
 function onPerPageChange(pp: number) {
   perPage.value = pp
   page.value = 1
+  syncQuery()
   fetchMovements()
 }
 
@@ -315,6 +408,7 @@ function resetFilters() {
   filterType.value = ''
   filterDate.value = { from: '', to: '' }
   page.value = 1
+  syncQuery()
   refreshAll()
 }
 
@@ -363,8 +457,10 @@ function locationText(m: Movement): string {
 }
 
 onMounted(() => {
+  initFromQuery()
   fetchSummary()
-  fetchMovements()
+  if (activeTab.value === 'movement') fetchMovements()
+  else fetchDailyStocks()
   fetchWarehouseOptions()
   fetchProductSkuOptions()
 })
@@ -445,11 +541,26 @@ onMounted(() => {
       </template>
     </div>
 
+    <!-- Tabs -->
+    <div class="flex border-b border-gray-200">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
+        :class="activeTab === tab.key
+          ? 'border-primary-600 text-primary-600'
+          : 'border-transparent text-gray-500 hover:text-gray-700'"
+        @click="onTabChange(tab.key)"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
     <!-- Filters -->
     <div class="rounded-xl">
       <div class="space-y-3">
         <div class="flex items-center gap-2">
-          <div class="relative flex-1">
+          <div v-if="activeTab === 'movement'" class="relative flex-1">
             <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               v-model="search"
@@ -471,6 +582,7 @@ onMounted(() => {
             @search="fetchWarehouseOptions"
           />
           <AppFilterSelect
+            v-if="activeTab === 'movement'"
             :model-value="filterProductIds"
             :options="productOptions"
             :loading="loadingProducts"
@@ -481,6 +593,7 @@ onMounted(() => {
             @search="fetchProductSkuOptions"
           />
           <AppFilterSelect
+            v-if="activeTab === 'movement'"
             :model-value="filterSkuIds"
             :options="visibleSkuOptions"
             :loading="loadingSkus"
@@ -491,6 +604,7 @@ onMounted(() => {
             @search="fetchProductSkuOptions"
           />
           <AppFilterSelect
+            v-if="activeTab === 'movement'"
             :model-value="filterType"
             :options="typeOptions"
             :searchable="false"
@@ -500,13 +614,14 @@ onMounted(() => {
           <AppDateRangePicker :model-value="filterDate" @update:model-value="onDateFilter" />
           <button
             class="flex shrink-0 rounded-lg border border-gray-300 p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
-            :disabled="loading"
+            :disabled="loading || loadingDaily"
             title="Refresh"
             @click="refreshAll()"
           >
-            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
+            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading || loadingDaily }" />
           </button>
           <button
+            v-if="activeTab === 'movement'"
             class="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50"
             title="Export Excel"
             :disabled="exporting"
@@ -527,8 +642,68 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Daily Stock Card Table -->
+    <div v-if="activeTab === 'daily'" class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[900px] text-sm">
+          <thead class="border-b border-gray-200 bg-gray-50/80 text-xs font-medium uppercase tracking-wider text-gray-500 text-nowrap">
+            <tr>
+              <th class="px-4 py-2.5 text-left w-32">Tanggal</th>
+              <th class="px-4 py-2.5 text-right w-24">Stok Awal</th>
+              <th class="px-4 py-2.5 text-right w-24">Stok Masuk</th>
+              <th class="px-4 py-2.5 text-right w-24">Stok Keluar</th>
+              <th class="px-4 py-2.5 text-right w-24">Stok Akhir</th>
+              <th class="px-4 py-2.5 text-right w-32">Saldo Awal</th>
+              <th class="px-4 py-2.5 text-right w-32">Saldo Masuk</th>
+              <th class="px-4 py-2.5 text-right w-32">Saldo Keluar</th>
+              <th class="px-4 py-2.5 text-right w-32">Saldo Akhir</th>
+            </tr>
+          </thead>
+
+          <!-- Loading -->
+          <tbody v-if="loadingDaily">
+            <tr v-for="i in 8" :key="i" class="border-b border-gray-100">
+              <td v-for="j in 9" :key="j" class="px-4 py-3">
+                <div class="h-4 animate-pulse rounded bg-gray-200" :class="j === 1 ? 'w-24' : 'w-16'" />
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- Empty -->
+          <tbody v-else-if="!dailyStocks.length">
+            <tr>
+              <td colspan="9" class="px-4 py-16 text-center">
+                <Package class="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                <p class="text-sm text-gray-500">Belum ada data kartu stok harian.</p>
+              </td>
+            </tr>
+          </tbody>
+
+          <!-- Rows -->
+          <tbody v-else class="divide-y divide-gray-100">
+            <tr
+              v-for="d in dailyStocks"
+              :key="d.date"
+              class="cursor-pointer hover:bg-gray-50/60"
+              @click="goToMovement(d)"
+            >
+              <td class="px-4 py-3 font-medium text-gray-900">{{ formatDate(d.date) }}</td>
+              <td class="px-4 py-3 text-right text-gray-700">{{ d.stock_start }}</td>
+              <td class="px-4 py-3 text-right text-green-600">+{{ d.stock_in }}</td>
+              <td class="px-4 py-3 text-right text-red-600">-{{ d.stock_out }}</td>
+              <td class="px-4 py-3 text-right font-medium text-gray-900">{{ d.stock_end }}</td>
+              <td class="px-4 py-3 text-right text-gray-700">Rp{{ formatCurrency(d.balance_start) }}</td>
+              <td class="px-4 py-3 text-right text-green-600">Rp{{ formatCurrency(d.balance_in) }}</td>
+              <td class="px-4 py-3 text-right text-red-600">Rp{{ formatCurrency(d.balance_out) }}</td>
+              <td class="px-4 py-3 text-right font-medium text-gray-900">Rp{{ formatCurrency(d.balance_end) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Table -->
-    <div class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
+    <div v-if="activeTab === 'movement'" class="rounded-xl bg-white shadow-xs ring-1 ring-gray-200">
       <div class="overflow-x-auto">
         <table class="w-full min-w-[900px] text-sm">
           <thead class="border-b border-gray-200 bg-gray-50/80 text-xs font-medium uppercase tracking-wider text-gray-500 text-nowrap">
